@@ -1,0 +1,1051 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="مهام الساعة">
+  <title>مهام الساعة القادمة</title>
+  <style>
+    :root {
+      --bg: #f7f7f8;
+      --card: #ffffff;
+      --item: #f2f3f5;
+      --item-hover: #e9ebee;
+      --text: #111827;
+      --muted: #6b7280;
+      --border: #e5e7eb;
+      --red: #dc2626;
+      --red-soft: #fee2e2;
+      --blue: #2563eb;
+      --green: #16a34a;
+      --green-soft: #dcfce7;
+      --toast-bg: #1f2937;
+      --toast-text: #ffffff;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0f1115;
+        --card: #181a20;
+        --item: #22252e;
+        --item-hover: #2a2e39;
+        --text: #f3f4f6;
+        --muted: #9ca3af;
+        --border: #2d313d;
+        --red: #ef4444;
+        --red-soft: #3f1515;
+        --blue: #3b82f6;
+        --green: #22c55e;
+        --green-soft: #143320;
+        --toast-bg: #2a2e39;
+        --toast-text: #f3f4f6;
+      }
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      padding: env(safe-area-inset-top, 16px) 16px calc(80px + env(safe-area-inset-bottom, 0px));
+      font-family: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .container {
+      max-width: 680px;
+      margin: 8px auto 0;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .tabs-bar {
+      display: flex;
+      gap: 6px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 5px;
+    }
+    .tab-btn {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      padding: 9px 12px;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s ease;
+    }
+    .tab-btn.is-active {
+      background: var(--red);
+      color: #ffffff;
+    }
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 18px 20px;
+    }
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    h1 {
+      font-size: 17px;
+      margin: 0;
+      font-weight: 700;
+    }
+    .time-badge {
+      background: var(--red-soft);
+      color: var(--red);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .sub-stats {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 14px;
+    }
+    .graph-section-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 10px;
+    }
+    .stacked-bar {
+      display: flex;
+      height: 14px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: var(--item);
+      gap: 2px;
+      margin-bottom: 14px;
+    }
+    .stacked-seg {
+      height: 100%;
+      transition: width 0.25s ease;
+    }
+    .bars-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .bar-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .bar-label {
+      width: 165px;
+      flex-shrink: 0;
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .bar-track {
+      flex: 1;
+      height: 10px;
+      background: var(--item);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.25s ease;
+    }
+    .bar-mins {
+      width: 56px;
+      flex-shrink: 0;
+      font-size: 12px;
+      color: var(--muted);
+      text-align: left;
+    }
+    .task-list {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .task-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 11px 12px;
+      border-radius: 12px;
+      background: var(--item);
+      user-select: none;
+      transition: background 0.15s ease, opacity 0.4s ease;
+      flex-wrap: wrap;
+    }
+    .task-row:hover {
+      background: var(--item-hover);
+    }
+    .task-row.is-dragging {
+      opacity: 0.45;
+    }
+    .task-row.drag-over {
+      outline: 2px dashed var(--blue);
+    }
+    .task-row.is-completing {
+      opacity: 0.55;
+    }
+    .task-circle {
+      width: 26px;
+      height: 26px;
+      border-radius: 50%;
+      border: 2px solid var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .task-circle:hover {
+      border-color: var(--red);
+    }
+    .task-row.is-completing .task-circle {
+      background: var(--red);
+      border-color: var(--red);
+    }
+    .task-circle svg {
+      opacity: 0;
+      transform: scale(0.7);
+      transition: all 0.15s ease;
+    }
+    .task-row.is-completing .task-circle svg {
+      opacity: 1;
+      transform: scale(1);
+    }
+    .color-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .task-info {
+      flex: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      min-width: 120px;
+    }
+    .task-title {
+      font-size: 14px;
+      font-weight: 500;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .task-row.is-completing .task-title {
+      text-decoration: line-through;
+      color: var(--muted);
+    }
+    .task-dur {
+      font-size: 12px;
+      color: var(--muted);
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+      padding: 2px 8px;
+      border-radius: 999px;
+    }
+    .task-dur.is-running {
+      background: var(--red-soft);
+      color: var(--red);
+      font-weight: 700;
+    }
+    .task-dur.is-finished {
+      background: var(--green-soft);
+      color: var(--green);
+      font-weight: 700;
+    }
+    .row-actions {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-shrink: 0;
+    }
+    .icon-btn {
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--muted);
+      border-radius: 8px;
+      padding: 4px 7px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .icon-btn:hover {
+      color: var(--text);
+      border-color: var(--muted);
+    }
+    .icon-btn:disabled {
+      opacity: 0.35;
+      cursor: default;
+    }
+    .icon-btn.del:hover {
+      color: var(--red);
+      border-color: var(--red);
+    }
+    .timer-btn {
+      border: none;
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      background: var(--blue);
+      color: #ffffff;
+    }
+    .timer-btn.is-stop {
+      background: var(--red);
+    }
+    .promote-box {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-top: 8px;
+      margin-top: 4px;
+      border-top: 1px dashed var(--border);
+      flex-wrap: wrap;
+    }
+    .confirm-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--red);
+      flex: 1;
+    }
+    .add-bar {
+      display: flex;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 12px;
+      border-top: 1px solid var(--border);
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .input-field {
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 9px 12px;
+      font-size: 13px;
+      font-family: inherit;
+      outline: none;
+    }
+    .input-field:focus {
+      border-color: var(--blue);
+    }
+    .input-name {
+      flex: 1;
+      min-width: 160px;
+    }
+    .mins-wrap {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .input-mins {
+      width: 78px;
+      text-align: center;
+    }
+    .max-hint {
+      font-size: 12px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .add-btn {
+      background: var(--red);
+      color: #ffffff;
+      border: none;
+      border-radius: 10px;
+      padding: 9px 16px;
+      font-size: 15px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .add-btn:hover {
+      opacity: 0.9;
+    }
+    .footer-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-top: 12px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+      flex-wrap: wrap;
+    }
+    .copy-btn {
+      background: var(--item);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 7px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .copy-btn:hover {
+      background: var(--item-hover);
+    }
+    .copy-status {
+      font-size: 12px;
+      color: var(--green);
+      font-weight: 600;
+    }
+    .empty-msg {
+      text-align: center;
+      padding: 16px;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--muted);
+    }
+    .empty-msg.is-done {
+      color: var(--green);
+    }
+    .undo-toast {
+      position: fixed;
+      bottom: 18px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--toast-bg);
+      color: var(--toast-text);
+      padding: 10px 14px;
+      border-radius: 12px;
+      display: none;
+      align-items: center;
+      gap: 12px;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+      z-index: 100;
+      max-width: 92vw;
+      font-size: 13px;
+    }
+    .undo-toast.is-visible {
+      display: flex;
+    }
+    .undo-btn {
+      background: var(--red);
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="tabs-bar">
+      <button type="button" class="tab-btn is-active" id="tab-live">الساعة الحالية</button>
+      <button type="button" class="tab-btn" id="tab-inbox">Inbox (٤)</button>
+    </div>
+
+    <!-- LIVE VIEW -->
+    <div id="view-live" class="container" style="margin:0; gap:14px;">
+      <div class="card">
+        <div class="header-row">
+          <h1>مهام الساعة القادمة</h1>
+          <div class="time-badge" id="remaining-badge">٦٠ دقيقة فراغ</div>
+        </div>
+        <div class="sub-stats" id="sub-stats">مفيش مهام حالياً</div>
+
+        <div class="graph-section-title">توزيع الساعة (المهمة المنتهية بتتشال تماماً ووقتها بيرجع للمتاح)</div>
+        <div class="stacked-bar" id="stacked-bar"></div>
+        <div class="bars-list" id="bars-list"></div>
+      </div>
+
+      <div class="card">
+        <div class="graph-section-title">التشيك ليست (اضغط جوه الدائرة للإنهاء، أو حوّل للـ Inbox)</div>
+        <div class="task-list" id="task-list"></div>
+
+        <form class="add-bar" id="add-form">
+          <input type="text" class="input-field input-name" id="new-title" placeholder="اكتب اسم المهمة الجديدة..." required>
+          <div class="mins-wrap">
+            <input type="number" class="input-field input-mins" id="new-mins" min="1" max="60" value="60" required>
+            <span class="max-hint" id="max-hint">أقصى وقت: ٦٠ د</span>
+          </div>
+          <button type="submit" class="add-btn" title="إضافة مهمة">+</button>
+        </form>
+
+        <div class="footer-actions">
+          <button type="button" class="copy-btn" id="copy-btn">نسخ الحالة لإرسالها في الشات</button>
+          <span class="copy-status" id="copy-status"></span>
+          <button type="button" class="icon-btn" id="reset-btn">إعادة ضبط</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- INBOX VIEW -->
+    <div id="view-inbox" class="hidden">
+      <div class="card">
+        <div class="header-row">
+          <h1>Inbox (مهام بدون وقت)</h1>
+        </div>
+        <div class="sub-stats">أضف أفكارك ومهامك هنا من غير وقت، ولما تيجي تشتغل عليها اضغط «إضافة للساعة» وحدد وقتها.</div>
+
+        <div class="task-list" id="inbox-list"></div>
+
+        <form class="add-bar" id="inbox-form">
+          <input type="text" class="input-field input-name" id="inbox-title" placeholder="اكتب مهمة جديدة للـ Inbox..." required>
+          <button type="submit" class="add-btn" title="إضافة للـ Inbox">+</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="undo-toast" id="undo-toast">
+    <span id="undo-text">تم إنهاء المهمة</span>
+    <button type="button" class="undo-btn" id="undo-btn">تراجع (Undo)</button>
+  </div>
+
+  <script>
+    const STORAGE_KEY = 'hourly_tracker_standalone_v2';
+    const PALETTE = ['#2563eb', '#10b981', '#ec4899', '#f59e0b', '#8b5cf6', '#06b6d4', '#ef4444', '#84cc16'];
+    const DEFAULT_TASKS = [];
+    const DEFAULT_INBOX = [
+      { id: 101, label: 'وقت المشي والاستغفار' },
+      { id: 102, label: 'خد الدواء قبل ما تنام' },
+      { id: 103, label: 'إمضاء عقد فوري' },
+      { id: 104, label: 'قفل تقارير اسراء نوفمبر' }
+    ];
+
+    function loadState() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          return {
+            tasks: (parsed.tasks || []).map(t => ({
+              ...t,
+              remainingSec: typeof t.remainingSec === 'number' ? t.remainingSec : t.mins * 60,
+              running: Boolean(t.running && t.endAt),
+              endAt: t.endAt || null,
+              completing: false
+            })),
+            inbox: parsed.inbox || []
+          };
+        }
+      } catch (e) {}
+      return {
+        tasks: DEFAULT_TASKS.map(t => ({ ...t, completing: false })),
+        inbox: DEFAULT_INBOX.map(i => ({ ...i }))
+      };
+    }
+
+    function saveState() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          tasks: TASKS.map(({ completing, ...rest }) => rest),
+          inbox: INBOX
+        }));
+      } catch (e) {}
+    }
+
+    const initialState = loadState();
+    let TASKS = initialState.tasks;
+    let INBOX = initialState.inbox;
+    let currentTab = 'live';
+    let promotingInboxId = null;
+    let confirmDeleteInboxId = null;
+    let colorIdx = TASKS.length;
+    let dragSrcIdx = null;
+    let ticker = null;
+    let lastRemoved = null;
+    let undoTimeout = null;
+    const pendingDeletes = {};
+
+    function toAr(n) {
+      return String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.getElementById('tab-live').classList.toggle('is-active', tab === 'live');
+      document.getElementById('tab-inbox').classList.toggle('is-active', tab === 'inbox');
+      document.getElementById('view-live').classList.toggle('hidden', tab !== 'live');
+      document.getElementById('view-inbox').classList.toggle('hidden', tab !== 'inbox');
+      render();
+    }
+
+    document.getElementById('tab-live').addEventListener('click', () => switchTab('live'));
+    document.getElementById('tab-inbox').addEventListener('click', () => switchTab('inbox'));
+
+    function showUndo(task, index) {
+      lastRemoved = { task, index };
+      const toast = document.getElementById('undo-toast');
+      document.getElementById('undo-text').textContent = `تم إنهاء «${task.label}»`;
+      toast.classList.add('is-visible');
+      if (undoTimeout) clearTimeout(undoTimeout);
+      undoTimeout = setTimeout(() => {
+        toast.classList.remove('is-visible');
+        lastRemoved = null;
+      }, 5000);
+    }
+
+    document.getElementById('undo-btn').addEventListener('click', () => {
+      if (!lastRemoved) return;
+      const { task, index } = lastRemoved;
+      TASKS.splice(Math.min(index, TASKS.length), 0, { ...task, completing: false });
+      lastRemoved = null;
+      if (undoTimeout) clearTimeout(undoTimeout);
+      document.getElementById('undo-toast').classList.remove('is-visible');
+      render();
+    });
+
+    function formatDuration(t) {
+      if (t.remainingSec <= 0) return '٠٠:٠٠';
+      if (!t.running && t.remainingSec === t.mins * 60) {
+        return `${toAr(t.mins)} د`;
+      }
+      const m = Math.floor(t.remainingSec / 60);
+      const s = t.remainingSec % 60;
+      return `${toAr(String(m).padStart(2, '0'))}:${toAr(String(s).padStart(2, '0'))}`;
+    }
+
+    function syncRunningTimers(doFullRender = false) {
+      const now = Date.now();
+      let anyFinished = false;
+      TASKS.forEach(t => {
+        if (t.running && t.endAt) {
+          const left = Math.max(0, Math.ceil((t.endAt - now) / 1000));
+          t.remainingSec = left;
+          if (left <= 0) {
+            t.running = false;
+            t.endAt = null;
+            anyFinished = true;
+          }
+          const durEl = document.getElementById(`dur-${t.id}`);
+          if (durEl) {
+            durEl.textContent = formatDuration(t);
+            durEl.className = `task-dur ${t.running ? 'is-running' : (t.remainingSec === 0 ? 'is-finished' : '')}`;
+          }
+        }
+      });
+      if (anyFinished || doFullRender) {
+        render();
+      } else {
+        saveState();
+      }
+    }
+
+    function ensureTicker() {
+      const anyRunning = TASKS.some(t => t.running);
+      if (anyRunning && !ticker) {
+        ticker = setInterval(() => {
+          syncRunningTimers(false);
+          if (!TASKS.some(t => t.running) && ticker) {
+            clearInterval(ticker);
+            ticker = null;
+          }
+        }, 500);
+      } else if (!anyRunning && ticker) {
+        clearInterval(ticker);
+        ticker = null;
+      }
+    }
+
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) syncRunningTimers(true);
+    });
+    window.addEventListener('focus', () => syncRunningTimers(true));
+    window.addEventListener('pageshow', () => syncRunningTimers(true));
+
+    function moveTask(fromIdx, toIdx) {
+      if (toIdx < 0 || toIdx >= TASKS.length || fromIdx === toIdx) return;
+      const [moved] = TASKS.splice(fromIdx, 1);
+      TASKS.splice(toIdx, 0, moved);
+      render();
+    }
+
+    function render() {
+      saveState();
+      ensureTicker();
+
+      document.getElementById('tab-inbox').textContent = `Inbox (${toAr(INBOX.length)})`;
+
+      const totalTasksMins = TASKS.reduce((s, t) => s + t.mins, 0);
+      const freeMins = Math.max(0, 60 - totalTasksMins);
+
+      const displayItems = [...TASKS];
+      if (freeMins > 0) {
+        displayItems.push({ id: 'free', label: 'وقت فراغ', mins: freeMins, color: '#64748b', isFree: true });
+      }
+
+      const badgeEl = document.getElementById('remaining-badge');
+      const statsEl = document.getElementById('sub-stats');
+      const stackedEl = document.getElementById('stacked-bar');
+      const barsEl = document.getElementById('bars-list');
+      const listEl = document.getElementById('task-list');
+      const newMinsEl = document.getElementById('new-mins');
+      const maxHintEl = document.getElementById('max-hint');
+
+      if (freeMins > 0) {
+        newMinsEl.value = freeMins;
+        newMinsEl.max = freeMins;
+        maxHintEl.textContent = `أقصى وقت: ${toAr(freeMins)} د`;
+      } else {
+        newMinsEl.value = 5;
+        newMinsEl.max = 60;
+        maxHintEl.textContent = 'الساعة مكتملة (٦٠ د)';
+      }
+
+      if (TASKS.length === 0) {
+        badgeEl.textContent = '٦٠ دقيقة فراغ';
+        statsEl.textContent = 'مفيش مهام حالياً';
+      } else {
+        badgeEl.textContent = freeMins > 0
+          ? `${toAr(totalTasksMins)} د مهام · ${toAr(freeMins)} د فراغ`
+          : `${toAr(totalTasksMins)} دقيقة مهام`;
+        const overNote = totalTasksMins > 60 ? ` (زيادة ${toAr(totalTasksMins - 60)} د عن الساعة)` : '';
+        statsEl.textContent = `المهام الحالية: ${toAr(TASKS.length)}${overNote}`;
+      }
+
+      const graphSum = displayItems.reduce((s, t) => s + t.mins, 0);
+      if (graphSum === 0) {
+        stackedEl.innerHTML = '';
+        barsEl.innerHTML = '<div class="empty-msg">مفيش مهام حالياً.</div>';
+      } else {
+        stackedEl.innerHTML = displayItems.map(t => {
+          const pct = (t.mins / graphSum) * 100;
+          return `<div class="stacked-seg" style="width:${pct}%; background:${t.color};" title="${t.label}"></div>`;
+        }).join('');
+
+        const peak = Math.max(...displayItems.map(t => t.mins));
+        barsEl.innerHTML = displayItems.map(t => {
+          const w = (t.mins / peak) * 100;
+          return `
+            <div class="bar-row">
+              <div class="bar-label">${t.label}</div>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:${w}%; background:${t.color};"></div>
+              </div>
+              <div class="bar-mins">${toAr(t.mins)} د</div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      listEl.innerHTML = TASKS.length === 0
+        ? '<div class="empty-msg is-done">كل المهام خلصت! تقدر تضيف مهمة جديدة من تحت أو تسحب من الـ Inbox.</div>'
+        : TASKS.map((t, idx) => {
+            const durClass = t.running ? 'is-running' : (t.remainingSec === 0 ? 'is-finished' : '');
+            return `
+              <div class="task-row ${t.completing ? 'is-completing' : ''}" draggable="true" data-idx="${idx}">
+                <div class="task-circle" data-check="${t.id}" title="اضغط هنا لإنهاء المهمة">
+                  <svg viewBox="0 0 16 16" width="14" height="14">
+                    <path d="M3.2 8.4 L6.4 11.6 L12.8 4.4" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </div>
+                <span class="color-dot" style="background:${t.color};"></span>
+                <div class="task-info">
+                  <span class="task-title">${t.label}</span>
+                  <span class="task-dur ${durClass}" id="dur-${t.id}">${formatDuration(t)}</span>
+                </div>
+                <div class="row-actions">
+                  <button type="button" class="icon-btn" data-up="${idx}" ${idx === 0 ? 'disabled' : ''} title="تحريك لأعلى">▲</button>
+                  <button type="button" class="icon-btn" data-down="${idx}" ${idx === TASKS.length - 1 ? 'disabled' : ''} title="تحريك لأسفل">▼</button>
+                  <button type="button" class="icon-btn" data-to-inbox="${t.id}" title="تحويل للـ Inbox">للـ Inbox</button>
+                  <button type="button" class="timer-btn ${t.running ? 'is-stop' : ''}" data-timer="${t.id}">${t.running ? 'إيقاف' : 'بدء'}</button>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+      const inboxListEl = document.getElementById('inbox-list');
+      inboxListEl.innerHTML = INBOX.length === 0
+        ? '<div class="empty-msg">الـ Inbox فاضي حالياً. ضيف أي مهمة من تحت.</div>'
+        : INBOX.map(item => `
+            <div class="task-row">
+              <div class="task-info">
+                <span class="task-title">${item.label}</span>
+              </div>
+              <div class="row-actions">
+                <button type="button" class="timer-btn" data-promote="${item.id}">إضافة للساعة</button>
+                <button type="button" class="icon-btn del" data-ask-del="${item.id}" title="حذف">×</button>
+              </div>
+              ${promotingInboxId === item.id ? `
+                <div class="promote-box">
+                  <span class="max-hint">الوقت (دقائق):</span>
+                  <input type="number" class="input-field input-mins" id="promote-mins-${item.id}" min="1" max="120" value="${freeMins > 0 ? freeMins : 10}">
+                  <button type="button" class="timer-btn" data-confirm-promote="${item.id}">تأكيد</button>
+                  <button type="button" class="icon-btn" data-cancel-promote="1">إلغاء</button>
+                </div>
+              ` : ''}
+              ${confirmDeleteInboxId === item.id ? `
+                <div class="promote-box">
+                  <span class="confirm-text">هل تريد حذف المهمة بالفعل؟</span>
+                  <button type="button" class="timer-btn is-stop" data-confirm-del="${item.id}">حذف</button>
+                  <button type="button" class="icon-btn" data-cancel-del="1">إلغاء</button>
+                </div>
+              ` : ''}
+            </div>
+          `).join('');
+
+      listEl.querySelectorAll('[data-check]').forEach(circle => {
+        circle.addEventListener('click', e => {
+          e.stopPropagation();
+          const id = Number(circle.dataset.check);
+          const task = TASKS.find(x => x.id === id);
+          if (!task) return;
+
+          if (task.completing) {
+            task.completing = false;
+            if (pendingDeletes[id]) {
+              clearTimeout(pendingDeletes[id]);
+              delete pendingDeletes[id];
+            }
+            render();
+            return;
+          }
+
+          task.completing = true;
+          task.running = false;
+          task.endAt = null;
+          render();
+
+          pendingDeletes[id] = setTimeout(() => {
+            delete pendingDeletes[id];
+            const idx = TASKS.findIndex(x => x.id === id);
+            if (idx === -1) return;
+            const removed = { ...TASKS[idx], completing: false, running: false, endAt: null };
+            TASKS.splice(idx, 1);
+            showUndo(removed, idx);
+            render();
+          }, 2000);
+        });
+      });
+
+      listEl.querySelectorAll('.task-row').forEach(row => {
+        row.addEventListener('dragstart', e => {
+          dragSrcIdx = Number(row.dataset.idx);
+          row.classList.add('is-dragging');
+          e.dataTransfer.effectAllowed = 'move';
+        });
+        row.addEventListener('dragend', () => {
+          row.classList.remove('is-dragging');
+          listEl.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
+        });
+        row.addEventListener('dragover', e => {
+          e.preventDefault();
+          row.classList.add('drag-over');
+        });
+        row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
+        row.addEventListener('drop', e => {
+          e.preventDefault();
+          const targetIdx = Number(row.dataset.idx);
+          if (dragSrcIdx !== null && dragSrcIdx !== targetIdx) moveTask(dragSrcIdx, targetIdx);
+          dragSrcIdx = null;
+        });
+      });
+
+      listEl.querySelectorAll('[data-up]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const i = Number(btn.dataset.up);
+          moveTask(i, i - 1);
+        });
+      });
+
+      listEl.querySelectorAll('[data-down]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const i = Number(btn.dataset.down);
+          moveTask(i, i + 1);
+        });
+      });
+
+      listEl.querySelectorAll('[data-to-inbox]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const id = Number(btn.dataset.toInbox);
+          if (pendingDeletes[id]) {
+            clearTimeout(pendingDeletes[id]);
+            delete pendingDeletes[id];
+          }
+          const idx = TASKS.findIndex(x => x.id === id);
+          if (idx === -1) return;
+          const [moved] = TASKS.splice(idx, 1);
+          INBOX.push({ id: moved.id, label: moved.label });
+          render();
+        });
+      });
+
+      listEl.querySelectorAll('[data-timer]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const id = Number(btn.dataset.timer);
+          const task = TASKS.find(x => x.id === id);
+          if (!task || task.completing) return;
+          const now = Date.now();
+          if (task.running) {
+            task.remainingSec = task.endAt ? Math.max(0, Math.ceil((task.endAt - now) / 1000)) : task.remainingSec;
+            task.running = false;
+            task.endAt = null;
+          } else {
+            if (task.remainingSec <= 0) task.remainingSec = task.mins * 60;
+            TASKS.forEach(x => {
+              if (x.running && x.id !== id && x.endAt) {
+                x.remainingSec = Math.max(0, Math.ceil((x.endAt - now) / 1000));
+              }
+              x.running = (x.id === id);
+              x.endAt = (x.id === id) ? now + x.remainingSec * 1000 : null;
+            });
+          }
+          render();
+        });
+      });
+
+      inboxListEl.querySelectorAll('[data-promote]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          confirmDeleteInboxId = null;
+          promotingInboxId = Number(btn.dataset.promote);
+          render();
+          const inp = document.getElementById(`promote-mins-${promotingInboxId}`);
+          if (inp) inp.focus();
+        });
+      });
+
+      inboxListEl.querySelectorAll('[data-cancel-promote]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          promotingInboxId = null;
+          render();
+        });
+      });
+
+      inboxListEl.querySelectorAll('[data-confirm-promote]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.confirmPromote);
+          const minsInp = document.getElementById(`promote-mins-${id}`);
+          const mins = parseInt(minsInp ? minsInp.value : '0', 10);
+          if (!(mins > 0)) return;
+          const idx = INBOX.findIndex(x => x.id === id);
+          if (idx === -1) return;
+          const [item] = INBOX.splice(idx, 1);
+          TASKS.push({
+            id: Date.now(),
+            label: item.label,
+            mins,
+            color: PALETTE[colorIdx % PALETTE.length],
+            remainingSec: mins * 60,
+            running: false,
+            endAt: null,
+            completing: false
+          });
+          colorIdx++;
+          promotingInboxId = null;
+          switchTab('live');
+        });
+      });
+
+      inboxListEl.querySelectorAll('[data-ask-del]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          promotingInboxId = null;
+          confirmDeleteInboxId = Number(btn.dataset.askDel);
+          render();
+        });
+      });
+
+      inboxListEl.querySelectorAll('[data-confirm-del]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.confirmDel);
+          INBOX = INBOX.filter(x => x.id !== id);
+          confirmDeleteInboxId = null;
+          render();
+        });
+      });
+
+      inboxListEl.querySelectorAll('[data-cancel-del]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          confirmDeleteInboxId = null;
+          render();
+        });
+      });
+    }
+
+    document.getElementById('add-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const titleInput = document.getElementById('new-title');
+      const minsInput = document.getElementById('new-mins');
+      const label = titleInput.value.trim();
+      const mins = parseInt(minsInput.value, 10);
+      if (!label || !(mins > 0)) return;
+
+      TASKS.push({
+        id: Date.now(),
+        label,
+        mins,
+        color: PALETTE[colorIdx % PALETTE.length],
+        remainingSec: mins * 60,
+        running: false,
+        endAt: null,
+        completing: false
+      });
+      colorIdx++;
+      titleInput.value = '';
+      render();
+    });
+
+    document.getElementById('inbox-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const input = document.getElementById('inbox-title');
+      const label = input.value.trim();
+      if (!label) return;
+      INBOX.push({ id: Date.now(), label });
+      input.value = '';
+      render();
+    });
+
+    document.getElementById('copy-btn').addEventListener('click', async () => {
+      const statusEl = document.getElementById('copy-status');
+      let text = TASKS.length === 0
+        ? 'خلصت كل مهام الساعة القادمة.'
+        : 'المهام المتبقية في الساعة القادمة:\n' + TASKS.map(t => `- ${t.label} (${t.mins} د)`).join('\n');
+      if (INBOX.length > 0) {
+        text += '\n\nمهام الـ Inbox:\n' + INBOX.map(i => `- ${i.label}`).join('\n');
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        statusEl.textContent = 'تم النسخ!';
+      } catch (e) {
+        statusEl.textContent = 'تعذر النسخ التلقائي.';
+      }
+      setTimeout(() => { statusEl.textContent = ''; }, 3000);
+    });
+
+    document.getElementById('reset-btn').addEventListener('click', () => {
+      Object.values(pendingDeletes).forEach(clearTimeout);
+      TASKS = DEFAULT_TASKS.map(t => ({ ...t, completing: false }));
+      INBOX = DEFAULT_INBOX.map(i => ({ ...i }));
+      promotingInboxId = null;
+      confirmDeleteInboxId = null;
+      render();
+    });
+
+    syncRunningTimers(true);
+  </script>
+</body>
+</html>
