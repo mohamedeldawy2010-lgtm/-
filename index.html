@@ -534,7 +534,7 @@
         <div class="footer-actions">
           <button type="button" class="copy-btn" id="copy-btn">نسخ الحالة لإرسالها في الشات</button>
           <span class="copy-status" id="copy-status"></span>
-          <button type="button" class="icon-btn" id="reset-btn">إعادة ضبط</button>
+          <button type="button" class="icon-btn" id="refresh-app-btn" title="تحديث نسخة التطبيق">↻ تحديث</button>
         </div>
       </div>
     </div>
@@ -977,7 +977,6 @@
             </div>
           `).join('');
 
-      // Live listeners
       listEl.querySelectorAll('[data-check]').forEach(circle => {
         circle.addEventListener('click', e => {
           e.stopPropagation();
@@ -1093,7 +1092,6 @@
         });
       });
 
-      // Inbox listeners
       inboxListEl.querySelectorAll('[data-inbox-up]').forEach(btn => {
         btn.addEventListener('click', () => {
           const i = Number(btn.dataset.inboxUp);
@@ -1174,7 +1172,6 @@
         });
       });
 
-      // Routine listeners
       routineListEl.querySelectorAll('[data-routine-up]').forEach(btn => {
         btn.addEventListener('click', () => {
           const i = Number(btn.dataset.routineUp);
@@ -1296,13 +1293,10 @@
       setTimeout(() => { statusEl.textContent = ''; }, 3000);
     });
 
-    document.getElementById('reset-btn').addEventListener('click', () => {
-      Object.values(pendingDeletes).forEach(clearTimeout);
-      TASKS = [];
-      promotingInboxId = null;
-      confirmDeleteInboxId = null;
-      confirmDeleteRoutineId = null;
-      render();
+    document.getElementById('refresh-app-btn').addEventListener('click', () => {
+      saveState();
+      const base = window.location.href.split('?')[0];
+      window.location.replace(`${base}?v=${Date.now()}`);
     });
 
     syncRunningTimers(true);
