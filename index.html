@@ -70,13 +70,14 @@
       border: none;
       background: transparent;
       color: var(--muted);
-      padding: 9px 12px;
+      padding: 9px 8px;
       border-radius: 10px;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 600;
       cursor: pointer;
       font-family: inherit;
       transition: all 0.15s ease;
+      white-space: nowrap;
     }
     .tab-btn.is-active {
       background: var(--red);
@@ -227,8 +228,8 @@
       transform: scale(1);
     }
     .color-dot {
-      width: 10px;
-      height: 10px;
+      width: 11px;
+      height: 11px;
       border-radius: 50%;
       flex-shrink: 0;
     }
@@ -238,7 +239,7 @@
       justify-content: space-between;
       align-items: center;
       gap: 8px;
-      min-width: 120px;
+      min-width: 110px;
     }
     .task-title {
       font-size: 14px;
@@ -350,7 +351,7 @@
     }
     .input-name {
       flex: 1;
-      min-width: 160px;
+      min-width: 140px;
     }
     .mins-wrap {
       display: flex;
@@ -365,6 +366,28 @@
       font-size: 12px;
       color: var(--muted);
       white-space: nowrap;
+    }
+    .prio-picker {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+    .prio-dot-btn {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      cursor: pointer;
+      padding: 0;
+      transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+    .prio-dot-btn.is-selected {
+      transform: scale(1.15);
+      box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--text);
     }
     .add-btn {
       background: var(--red);
@@ -422,7 +445,7 @@
     .empty-msg.is-done {
       color: var(--green);
     }
-    .undo-toast {
+    .toast {
       position: fixed;
       bottom: 18px;
       left: 50%;
@@ -439,8 +462,13 @@
       max-width: 92vw;
       font-size: 13px;
     }
-    .undo-toast.is-visible {
+    .toast.is-visible {
       display: flex;
+    }
+    .toast.is-alarm {
+      background: var(--green);
+      color: #ffffff;
+      bottom: 72px;
     }
     .undo-btn {
       background: var(--red);
@@ -454,6 +482,17 @@
       font-family: inherit;
       white-space: nowrap;
     }
+    .alarm-close {
+      background: rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+      border: none;
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+    }
     .hidden { display: none !important; }
   </style>
 </head>
@@ -461,7 +500,8 @@
   <div class="container">
     <div class="tabs-bar">
       <button type="button" class="tab-btn is-active" id="tab-live">الساعة الحالية</button>
-      <button type="button" class="tab-btn" id="tab-inbox">Inbox (٤)</button>
+      <button type="button" class="tab-btn" id="tab-inbox">Inbox (٠)</button>
+      <button type="button" class="tab-btn" id="tab-routine">Routine (٠)</button>
     </div>
 
     <!-- LIVE VIEW -->
@@ -485,7 +525,7 @@
         <form class="add-bar" id="add-form">
           <input type="text" class="input-field input-name" id="new-title" placeholder="اكتب اسم المهمة الجديدة..." required>
           <div class="mins-wrap">
-            <input type="number" class="input-field input-mins" id="new-mins" min="1" max="60" value="60" required>
+            <input type="text" inputmode="numeric" class="input-field input-mins" id="new-mins" value="60" required>
             <span class="max-hint" id="max-hint">أقصى وقت: ٦٠ د</span>
           </div>
           <button type="submit" class="add-btn" title="إضافة مهمة">+</button>
@@ -505,19 +545,47 @@
         <div class="header-row">
           <h1>Inbox (مهام بدون وقت)</h1>
         </div>
-        <div class="sub-stats">أضف أفكارك ومهامك هنا من غير وقت، ولما تيجي تشتغل عليها اضغط «إضافة للساعة» وحدد وقتها.</div>
+        <div class="sub-stats">اختار لون الأولوية (أزرق: قليل · أصفر: متوسط · أحمر: عالي) وأضف مهمتك، واللون هيتنقل معاك للساعة.</div>
 
         <div class="task-list" id="inbox-list"></div>
 
         <form class="add-bar" id="inbox-form">
           <input type="text" class="input-field input-name" id="inbox-title" placeholder="اكتب مهمة جديدة للـ Inbox..." required>
+          <div class="prio-picker" id="prio-picker" title="أولوية المهمة">
+            <button type="button" class="prio-dot-btn is-selected" data-color="#2563eb" style="background:#2563eb;" title="أولوية قليلة"></button>
+            <button type="button" class="prio-dot-btn" data-color="#eab308" style="background:#eab308;" title="أولوية متوسطة"></button>
+            <button type="button" class="prio-dot-btn" data-color="#dc2626" style="background:#dc2626;" title="أولوية عالية"></button>
+          </div>
           <button type="submit" class="add-btn" title="إضافة للـ Inbox">+</button>
+        </form>
+      </div>
+    </div>
+
+    <!-- ROUTINE VIEW -->
+    <div id="view-routine" class="hidden">
+      <div class="card">
+        <div class="header-row">
+          <h1>Routine (قالب المهام اليومية)</h1>
+        </div>
+        <div class="sub-stats">مهام ثابتة بوقتها؛ لما تضيف أي مهمة للساعة بتتنسخ بوقتها وتفضل موجودة هنا دايماً.</div>
+
+        <div class="task-list" id="routine-list"></div>
+
+        <form class="add-bar" id="routine-form">
+          <input type="text" class="input-field input-name" id="routine-title" placeholder="اسم مهمة الروتين..." required>
+          <input type="text" inputmode="numeric" class="input-field input-mins" id="routine-mins" placeholder="الدقائق" required>
+          <button type="submit" class="add-btn" title="إضافة للروتين">+</button>
         </form>
       </div>
     </div>
   </div>
 
-  <div class="undo-toast" id="undo-toast">
+  <div class="toast is-alarm" id="alarm-toast">
+    <span id="alarm-text">انتهى وقت المهمة!</span>
+    <button type="button" class="alarm-close" id="alarm-close">حسناً</button>
+  </div>
+
+  <div class="toast" id="undo-toast">
     <span id="undo-text">تم إنهاء المهمة</span>
     <button type="button" class="undo-btn" id="undo-btn">تراجع (Undo)</button>
   </div>
@@ -526,12 +594,73 @@
     const STORAGE_KEY = 'hourly_tracker_standalone_v2';
     const PALETTE = ['#2563eb', '#10b981', '#ec4899', '#f59e0b', '#8b5cf6', '#06b6d4', '#ef4444', '#84cc16'];
     const DEFAULT_TASKS = [];
-    const DEFAULT_INBOX = [
-      { id: 101, label: 'وقت المشي والاستغفار' },
-      { id: 102, label: 'خد الدواء قبل ما تنام' },
-      { id: 103, label: 'إمضاء عقد فوري' },
-      { id: 104, label: 'قفل تقارير اسراء نوفمبر' }
-    ];
+    const DEFAULT_INBOX = [];
+    const DEFAULT_ROUTINE = [];
+
+    function parseMins(val) {
+      const normalized = String(val || '')
+        .replace(/[\u0660-\u0669]/g, d => d.charCodeAt(0) - 0x0660)
+        .replace(/[\u06F0-\u06F9]/g, d => d.charCodeAt(0) - 0x06F0)
+        .replace(/[^\d]/g, '');
+      const num = parseInt(normalized, 10);
+      return Number.isFinite(num) ? num : 0;
+    }
+
+    function toAr(n) {
+      return String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+    }
+
+    let audioCtx = null;
+    function unlockAudio() {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        if (!audioCtx) audioCtx = new AC();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+      } catch (e) {}
+    }
+
+    function playChime() {
+      try {
+        unlockAudio();
+        if (!audioCtx) return;
+        const notes = [587.33, 783.99, 1046.5];
+        notes.forEach((freq, i) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          const start = audioCtx.currentTime + i * 0.18;
+          gain.gain.setValueAtTime(0.001, start);
+          gain.gain.exponentialRampToValueAtTime(0.28, start + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(start);
+          osc.stop(start + 0.36);
+        });
+      } catch (e) {}
+      try {
+        if (navigator.vibrate) navigator.vibrate([250, 120, 250]);
+      } catch (e) {}
+    }
+
+    let alarmTimeout = null;
+    function showAlarm(label) {
+      playChime();
+      const toast = document.getElementById('alarm-toast');
+      document.getElementById('alarm-text').textContent = `انتهى وقت «${label}»!`;
+      toast.classList.add('is-visible');
+      if (alarmTimeout) clearTimeout(alarmTimeout);
+      alarmTimeout = setTimeout(() => {
+        toast.classList.remove('is-visible');
+      }, 8000);
+    }
+
+    document.getElementById('alarm-close').addEventListener('click', () => {
+      if (alarmTimeout) clearTimeout(alarmTimeout);
+      document.getElementById('alarm-toast').classList.remove('is-visible');
+    });
 
     function loadState() {
       try {
@@ -546,13 +675,15 @@
               endAt: t.endAt || null,
               completing: false
             })),
-            inbox: parsed.inbox || []
+            inbox: (parsed.inbox || []).map(i => ({ ...i, color: i.color || '#2563eb' })),
+            routine: parsed.routine || []
           };
         }
       } catch (e) {}
       return {
         tasks: DEFAULT_TASKS.map(t => ({ ...t, completing: false })),
-        inbox: DEFAULT_INBOX.map(i => ({ ...i }))
+        inbox: DEFAULT_INBOX.map(i => ({ ...i })),
+        routine: DEFAULT_ROUTINE.map(r => ({ ...r }))
       };
     }
 
@@ -560,7 +691,8 @@
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
           tasks: TASKS.map(({ completing, ...rest }) => rest),
-          inbox: INBOX
+          inbox: INBOX,
+          routine: ROUTINE
         }));
       } catch (e) {}
     }
@@ -568,9 +700,12 @@
     const initialState = loadState();
     let TASKS = initialState.tasks;
     let INBOX = initialState.inbox;
+    let ROUTINE = initialState.routine;
+    let selectedInboxColor = '#2563eb';
     let currentTab = 'live';
     let promotingInboxId = null;
     let confirmDeleteInboxId = null;
+    let confirmDeleteRoutineId = null;
     let colorIdx = TASKS.length;
     let dragSrcIdx = null;
     let ticker = null;
@@ -578,21 +713,28 @@
     let undoTimeout = null;
     const pendingDeletes = {};
 
-    function toAr(n) {
-      return String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
-    }
+    document.querySelectorAll('#prio-picker .prio-dot-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedInboxColor = btn.dataset.color;
+        document.querySelectorAll('#prio-picker .prio-dot-btn').forEach(b => b.classList.remove('is-selected'));
+        btn.classList.add('is-selected');
+      });
+    });
 
     function switchTab(tab) {
       currentTab = tab;
       document.getElementById('tab-live').classList.toggle('is-active', tab === 'live');
       document.getElementById('tab-inbox').classList.toggle('is-active', tab === 'inbox');
+      document.getElementById('tab-routine').classList.toggle('is-active', tab === 'routine');
       document.getElementById('view-live').classList.toggle('hidden', tab !== 'live');
       document.getElementById('view-inbox').classList.toggle('hidden', tab !== 'inbox');
+      document.getElementById('view-routine').classList.toggle('hidden', tab !== 'routine');
       render();
     }
 
     document.getElementById('tab-live').addEventListener('click', () => switchTab('live'));
     document.getElementById('tab-inbox').addEventListener('click', () => switchTab('inbox'));
+    document.getElementById('tab-routine').addEventListener('click', () => switchTab('routine'));
 
     function showUndo(task, index) {
       lastRemoved = { task, index };
@@ -628,7 +770,7 @@
 
     function syncRunningTimers(doFullRender = false) {
       const now = Date.now();
-      let anyFinished = false;
+      let finishedTask = null;
       TASKS.forEach(t => {
         if (t.running && t.endAt) {
           const left = Math.max(0, Math.ceil((t.endAt - now) / 1000));
@@ -636,7 +778,7 @@
           if (left <= 0) {
             t.running = false;
             t.endAt = null;
-            anyFinished = true;
+            finishedTask = t;
           }
           const durEl = document.getElementById(`dur-${t.id}`);
           if (durEl) {
@@ -645,7 +787,10 @@
           }
         }
       });
-      if (anyFinished || doFullRender) {
+      if (finishedTask) {
+        render();
+        showAlarm(finishedTask.label);
+      } else if (doFullRender) {
         render();
       } else {
         saveState();
@@ -674,10 +819,10 @@
     window.addEventListener('focus', () => syncRunningTimers(true));
     window.addEventListener('pageshow', () => syncRunningTimers(true));
 
-    function moveTask(fromIdx, toIdx) {
-      if (toIdx < 0 || toIdx >= TASKS.length || fromIdx === toIdx) return;
-      const [moved] = TASKS.splice(fromIdx, 1);
-      TASKS.splice(toIdx, 0, moved);
+    function moveInList(arr, fromIdx, toIdx) {
+      if (toIdx < 0 || toIdx >= arr.length || fromIdx === toIdx) return;
+      const [moved] = arr.splice(fromIdx, 1);
+      arr.splice(toIdx, 0, moved);
       render();
     }
 
@@ -686,6 +831,7 @@
       ensureTicker();
 
       document.getElementById('tab-inbox').textContent = `Inbox (${toAr(INBOX.length)})`;
+      document.getElementById('tab-routine').textContent = `Routine (${toAr(ROUTINE.length)})`;
 
       const totalTasksMins = TASKS.reduce((s, t) => s + t.mins, 0);
       const freeMins = Math.max(0, 60 - totalTasksMins);
@@ -705,11 +851,9 @@
 
       if (freeMins > 0) {
         newMinsEl.value = freeMins;
-        newMinsEl.max = freeMins;
         maxHintEl.textContent = `أقصى وقت: ${toAr(freeMins)} د`;
       } else {
         newMinsEl.value = 5;
-        newMinsEl.max = 60;
         maxHintEl.textContent = 'الساعة مكتملة (٦٠ د)';
       }
 
@@ -750,7 +894,7 @@
       }
 
       listEl.innerHTML = TASKS.length === 0
-        ? '<div class="empty-msg is-done">كل المهام خلصت! تقدر تضيف مهمة جديدة من تحت أو تسحب من الـ Inbox.</div>'
+        ? '<div class="empty-msg is-done">كل المهام خلصت! تقدر تضيف مهمة جديدة من تحت أو تسحب من الـ Inbox أو الـ Routine.</div>'
         : TASKS.map((t, idx) => {
             const durClass = t.running ? 'is-running' : (t.remainingSec === 0 ? 'is-finished' : '');
             return `
@@ -778,19 +922,22 @@
       const inboxListEl = document.getElementById('inbox-list');
       inboxListEl.innerHTML = INBOX.length === 0
         ? '<div class="empty-msg">الـ Inbox فاضي حالياً. ضيف أي مهمة من تحت.</div>'
-        : INBOX.map(item => `
+        : INBOX.map((item, idx) => `
             <div class="task-row">
+              <span class="color-dot" style="background:${item.color || '#2563eb'};"></span>
               <div class="task-info">
                 <span class="task-title">${item.label}</span>
               </div>
               <div class="row-actions">
+                <button type="button" class="icon-btn" data-inbox-up="${idx}" ${idx === 0 ? 'disabled' : ''} title="تحريك لأعلى">▲</button>
+                <button type="button" class="icon-btn" data-inbox-down="${idx}" ${idx === INBOX.length - 1 ? 'disabled' : ''} title="تحريك لأسفل">▼</button>
                 <button type="button" class="timer-btn" data-promote="${item.id}">إضافة للساعة</button>
                 <button type="button" class="icon-btn del" data-ask-del="${item.id}" title="حذف">×</button>
               </div>
               ${promotingInboxId === item.id ? `
                 <div class="promote-box">
                   <span class="max-hint">الوقت (دقائق):</span>
-                  <input type="number" class="input-field input-mins" id="promote-mins-${item.id}" min="1" max="120" value="${freeMins > 0 ? freeMins : 10}">
+                  <input type="text" inputmode="numeric" class="input-field input-mins" id="promote-mins-${item.id}" value="${freeMins > 0 ? freeMins : 10}">
                   <button type="button" class="timer-btn" data-confirm-promote="${item.id}">تأكيد</button>
                   <button type="button" class="icon-btn" data-cancel-promote="1">إلغاء</button>
                 </div>
@@ -805,6 +952,32 @@
             </div>
           `).join('');
 
+      const routineListEl = document.getElementById('routine-list');
+      routineListEl.innerHTML = ROUTINE.length === 0
+        ? '<div class="empty-msg">مفيش مهام روتين لسه. ضيف مهامك اليومية بالوقت بتاعها من تحت.</div>'
+        : ROUTINE.map((item, idx) => `
+            <div class="task-row">
+              <div class="task-info">
+                <span class="task-title">${item.label}</span>
+                <span class="task-dur">${toAr(item.mins)} د</span>
+              </div>
+              <div class="row-actions">
+                <button type="button" class="icon-btn" data-routine-up="${idx}" ${idx === 0 ? 'disabled' : ''} title="تحريك لأعلى">▲</button>
+                <button type="button" class="icon-btn" data-routine-down="${idx}" ${idx === ROUTINE.length - 1 ? 'disabled' : ''} title="تحريك لأسفل">▼</button>
+                <button type="button" class="timer-btn" data-use-routine="${item.id}">إضافة للساعة</button>
+                <button type="button" class="icon-btn del" data-ask-del-routine="${item.id}" title="حذف من الروتين">×</button>
+              </div>
+              ${confirmDeleteRoutineId === item.id ? `
+                <div class="promote-box">
+                  <span class="confirm-text">هل تريد حذف المهمة من الروتين؟</span>
+                  <button type="button" class="timer-btn is-stop" data-confirm-del-routine="${item.id}">حذف</button>
+                  <button type="button" class="icon-btn" data-cancel-del-routine="1">إلغاء</button>
+                </div>
+              ` : ''}
+            </div>
+          `).join('');
+
+      // Live listeners
       listEl.querySelectorAll('[data-check]').forEach(circle => {
         circle.addEventListener('click', e => {
           e.stopPropagation();
@@ -857,7 +1030,7 @@
         row.addEventListener('drop', e => {
           e.preventDefault();
           const targetIdx = Number(row.dataset.idx);
-          if (dragSrcIdx !== null && dragSrcIdx !== targetIdx) moveTask(dragSrcIdx, targetIdx);
+          if (dragSrcIdx !== null && dragSrcIdx !== targetIdx) moveInList(TASKS, dragSrcIdx, targetIdx);
           dragSrcIdx = null;
         });
       });
@@ -866,7 +1039,7 @@
         btn.addEventListener('click', e => {
           e.stopPropagation();
           const i = Number(btn.dataset.up);
-          moveTask(i, i - 1);
+          moveInList(TASKS, i, i - 1);
         });
       });
 
@@ -874,7 +1047,7 @@
         btn.addEventListener('click', e => {
           e.stopPropagation();
           const i = Number(btn.dataset.down);
-          moveTask(i, i + 1);
+          moveInList(TASKS, i, i + 1);
         });
       });
 
@@ -889,7 +1062,7 @@
           const idx = TASKS.findIndex(x => x.id === id);
           if (idx === -1) return;
           const [moved] = TASKS.splice(idx, 1);
-          INBOX.push({ id: moved.id, label: moved.label });
+          INBOX.push({ id: moved.id, label: moved.label, color: moved.color || '#2563eb' });
           render();
         });
       });
@@ -897,6 +1070,7 @@
       listEl.querySelectorAll('[data-timer]').forEach(btn => {
         btn.addEventListener('click', e => {
           e.stopPropagation();
+          unlockAudio();
           const id = Number(btn.dataset.timer);
           const task = TASKS.find(x => x.id === id);
           if (!task || task.completing) return;
@@ -916,6 +1090,21 @@
             });
           }
           render();
+        });
+      });
+
+      // Inbox listeners
+      inboxListEl.querySelectorAll('[data-inbox-up]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = Number(btn.dataset.inboxUp);
+          moveInList(INBOX, i, i - 1);
+        });
+      });
+
+      inboxListEl.querySelectorAll('[data-inbox-down]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = Number(btn.dataset.inboxDown);
+          moveInList(INBOX, i, i + 1);
         });
       });
 
@@ -940,7 +1129,7 @@
         btn.addEventListener('click', () => {
           const id = Number(btn.dataset.confirmPromote);
           const minsInp = document.getElementById(`promote-mins-${id}`);
-          const mins = parseInt(minsInp ? minsInp.value : '0', 10);
+          const mins = parseMins(minsInp ? minsInp.value : '0');
           if (!(mins > 0)) return;
           const idx = INBOX.findIndex(x => x.id === id);
           if (idx === -1) return;
@@ -949,7 +1138,7 @@
             id: Date.now(),
             label: item.label,
             mins,
-            color: PALETTE[colorIdx % PALETTE.length],
+            color: item.color || PALETTE[colorIdx % PALETTE.length],
             remainingSec: mins * 60,
             running: false,
             endAt: null,
@@ -984,6 +1173,64 @@
           render();
         });
       });
+
+      // Routine listeners
+      routineListEl.querySelectorAll('[data-routine-up]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = Number(btn.dataset.routineUp);
+          moveInList(ROUTINE, i, i - 1);
+        });
+      });
+
+      routineListEl.querySelectorAll('[data-routine-down]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = Number(btn.dataset.routineDown);
+          moveInList(ROUTINE, i, i + 1);
+        });
+      });
+
+      routineListEl.querySelectorAll('[data-use-routine]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.useRoutine);
+          const item = ROUTINE.find(x => x.id === id);
+          if (!item) return;
+          TASKS.push({
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            label: item.label,
+            mins: item.mins,
+            color: PALETTE[colorIdx % PALETTE.length],
+            remainingSec: item.mins * 60,
+            running: false,
+            endAt: null,
+            completing: false
+          });
+          colorIdx++;
+          switchTab('live');
+        });
+      });
+
+      routineListEl.querySelectorAll('[data-ask-del-routine]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          confirmDeleteRoutineId = Number(btn.dataset.askDelRoutine);
+          render();
+        });
+      });
+
+      routineListEl.querySelectorAll('[data-confirm-del-routine]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.confirmDelRoutine);
+          ROUTINE = ROUTINE.filter(x => x.id !== id);
+          confirmDeleteRoutineId = null;
+          render();
+        });
+      });
+
+      routineListEl.querySelectorAll('[data-cancel-del-routine]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          confirmDeleteRoutineId = null;
+          render();
+        });
+      });
     }
 
     document.getElementById('add-form').addEventListener('submit', e => {
@@ -991,7 +1238,7 @@
       const titleInput = document.getElementById('new-title');
       const minsInput = document.getElementById('new-mins');
       const label = titleInput.value.trim();
-      const mins = parseInt(minsInput.value, 10);
+      const mins = parseMins(minsInput.value);
       if (!label || !(mins > 0)) return;
 
       TASKS.push({
@@ -1014,8 +1261,21 @@
       const input = document.getElementById('inbox-title');
       const label = input.value.trim();
       if (!label) return;
-      INBOX.push({ id: Date.now(), label });
+      INBOX.push({ id: Date.now(), label, color: selectedInboxColor });
       input.value = '';
+      render();
+    });
+
+    document.getElementById('routine-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const titleInput = document.getElementById('routine-title');
+      const minsInput = document.getElementById('routine-mins');
+      const label = titleInput.value.trim();
+      const mins = parseMins(minsInput.value);
+      if (!label || !(mins > 0)) return;
+      ROUTINE.push({ id: Date.now(), label, mins });
+      titleInput.value = '';
+      minsInput.value = '';
       render();
     });
 
@@ -1038,10 +1298,10 @@
 
     document.getElementById('reset-btn').addEventListener('click', () => {
       Object.values(pendingDeletes).forEach(clearTimeout);
-      TASKS = DEFAULT_TASKS.map(t => ({ ...t, completing: false }));
-      INBOX = DEFAULT_INBOX.map(i => ({ ...i }));
+      TASKS = [];
       promotingInboxId = null;
       confirmDeleteInboxId = null;
+      confirmDeleteRoutineId = null;
       render();
     });
 
