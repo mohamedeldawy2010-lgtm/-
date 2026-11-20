@@ -176,6 +176,56 @@
       flex-direction: column;
       gap: 8px;
     }
+    .prio-group {
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 10px;
+    }
+    .prio-group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 11px 14px;
+      background: var(--item);
+      cursor: pointer;
+      user-select: none;
+    }
+    .prio-group-header:hover {
+      background: var(--item-hover);
+    }
+    .prio-group-title {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      font-weight: 700;
+    }
+    .prio-group-right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .count-pill {
+      font-size: 12px;
+      font-weight: 700;
+      padding: 2px 10px;
+      border-radius: 999px;
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .group-arrow {
+      font-size: 12px;
+      color: var(--muted);
+    }
+    .prio-group-body {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      background: var(--card);
+    }
     .task-row {
       display: flex;
       align-items: center;
@@ -342,7 +392,7 @@
       color: var(--text);
       border-radius: 10px;
       padding: 9px 12px;
-      font-size: 13px;
+      font-size: 16px;
       font-family: inherit;
       outline: none;
     }
@@ -437,13 +487,36 @@
     }
     .empty-msg {
       text-align: center;
-      padding: 16px;
-      font-size: 14px;
+      padding: 12px;
+      font-size: 13px;
       font-weight: 600;
       color: var(--muted);
     }
     .empty-msg.is-done {
       color: var(--green);
+    }
+    .completed-meta {
+      font-size: 11px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+    .hour-clock {
+      font-size: 12px;
+      color: var(--blue);
+      font-weight: 600;
+      margin-top: -8px;
+      margin-bottom: 12px;
+    }
+    .today-summary {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--green);
+      background: var(--green-soft);
+      padding: 8px 12px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
     }
     .toast {
       position: fixed;
@@ -512,6 +585,7 @@
           <div class="time-badge" id="remaining-badge">٦٠ دقيقة فراغ</div>
         </div>
         <div class="sub-stats" id="sub-stats">مفيش مهام حالياً</div>
+        <div class="hour-clock" id="hour-clock-hint"></div>
 
         <div class="graph-section-title">توزيع الساعة (المهمة المنتهية بتتشال تماماً ووقتها بيرجع للمتاح)</div>
         <div class="stacked-bar" id="stacked-bar"></div>
@@ -537,24 +611,27 @@
           <button type="button" class="icon-btn" id="refresh-app-btn" title="تحديث نسخة التطبيق">↻ تحديث</button>
         </div>
       </div>
+
+      <!-- COMPLETED LOG (48h rolling) -->
+      <div class="prio-group" id="completed-box" style="margin-bottom:0;"></div>
     </div>
 
     <!-- INBOX VIEW -->
     <div id="view-inbox" class="hidden">
       <div class="card">
         <div class="header-row">
-          <h1>Inbox (مهام بدون وقت)</h1>
+          <h1>Inbox (مرتب حسب الأولوية)</h1>
         </div>
-        <div class="sub-stats">اختار لون الأولوية (أزرق: قليل · أصفر: متوسط · أحمر: عالي)، وعند النقل للساعة كل مهمة بتاخد لون مميز في الجراف مع خط أولوية جانبي.</div>
+        <div class="sub-stats">اضغط على أي قائمة لفتحها وإضافة مهامها للساعة.</div>
 
-        <div class="task-list" id="inbox-list"></div>
+        <div id="inbox-groups"></div>
 
         <form class="add-bar" id="inbox-form">
           <input type="text" class="input-field input-name" id="inbox-title" placeholder="اكتب مهمة جديدة للـ Inbox..." required>
           <div class="prio-picker" id="prio-picker" title="أولوية المهمة">
-            <button type="button" class="prio-dot-btn is-selected" data-color="#2563eb" style="background:#2563eb;" title="أولوية قليلة"></button>
+            <button type="button" class="prio-dot-btn is-selected" data-color="#2563eb" style="background:#2563eb;" title="أولوية منخفضة"></button>
             <button type="button" class="prio-dot-btn" data-color="#eab308" style="background:#eab308;" title="أولوية متوسطة"></button>
-            <button type="button" class="prio-dot-btn" data-color="#dc2626" style="background:#dc2626;" title="أولوية عالية"></button>
+            <button type="button" class="prio-dot-btn" data-color="#dc2626" style="background:#dc2626;" title="أولوية مرتفعة"></button>
           </div>
           <button type="submit" class="add-btn" title="إضافة للـ Inbox">+</button>
         </form>
@@ -592,7 +669,13 @@
 
   <script>
     const STORAGE_KEY = 'hourly_tracker_standalone_v2';
+    const TWO_DAYS_MS = 48 * 60 * 60 * 1000;
     const PALETTE = ['#2563eb', '#10b981', '#ec4899', '#f59e0b', '#8b5cf6', '#06b6d4', '#ef4444', '#84cc16'];
+    const PRIO_GROUPS = [
+      { key: '#dc2626', title: 'أولوية مرتفعة', color: '#dc2626' },
+      { key: '#eab308', title: 'أولوية متوسطة', color: '#eab308' },
+      { key: '#2563eb', title: 'أولوية منخفضة', color: '#2563eb' }
+    ];
     const DEFAULT_TASKS = [];
     const DEFAULT_INBOX = [];
     const DEFAULT_ROUTINE = [];
@@ -608,6 +691,29 @@
 
     function toAr(n) {
       return String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
+    }
+
+    function updateHourClock() {
+      const el = document.getElementById('hour-clock-hint');
+      if (!el) return;
+      const now = new Date();
+      const minsLeft = 60 - now.getMinutes();
+      const nextHour24 = (now.getHours() + 1) % 24;
+      const ampm = nextHour24 >= 12 ? 'م' : 'ص';
+      const nextHour12 = nextHour24 % 12 || 12;
+      el.textContent = `الوقت الفعلي: باقي ${toAr(minsLeft)} د على الساعة ${toAr(nextHour12)}:٠٠ ${ampm}`;
+    }
+
+    function formatCompletedTime(ts) {
+      const d = new Date(ts);
+      const now = new Date();
+      const isToday = d.toDateString() === now.toDateString();
+      const dayLabel = isToday ? 'النهارده' : 'أمس';
+      let h = d.getHours();
+      const m = String(d.getMinutes()).padStart(2, '0');
+      const ampm = h >= 12 ? 'م' : 'ص';
+      h = h % 12 || 12;
+      return `${dayLabel} · ${toAr(h)}:${toAr(m)} ${ampm}`;
     }
 
     let audioCtx = null;
@@ -676,23 +782,32 @@
               completing: false
             })),
             inbox: (parsed.inbox || []).map(i => ({ ...i, color: i.color || '#2563eb' })),
-            routine: parsed.routine || []
+            routine: parsed.routine || [],
+            completed: parsed.completed || []
           };
         }
       } catch (e) {}
       return {
         tasks: DEFAULT_TASKS.map(t => ({ ...t, completing: false })),
         inbox: DEFAULT_INBOX.map(i => ({ ...i })),
-        routine: DEFAULT_ROUTINE.map(r => ({ ...r }))
+        routine: DEFAULT_ROUTINE.map(r => ({ ...r })),
+        completed: []
       };
     }
 
+    function pruneCompleted() {
+      const cutoff = Date.now() - TWO_DAYS_MS;
+      COMPLETED = COMPLETED.filter(c => c.completedAt >= cutoff);
+    }
+
     function saveState() {
+      pruneCompleted();
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
           tasks: TASKS.map(({ completing, ...rest }) => rest),
           inbox: INBOX,
-          routine: ROUTINE
+          routine: ROUTINE,
+          completed: COMPLETED
         }));
       } catch (e) {}
     }
@@ -701,7 +816,10 @@
     let TASKS = initialState.tasks;
     let INBOX = initialState.inbox;
     let ROUTINE = initialState.routine;
+    let COMPLETED = initialState.completed;
+    let completedOpen = false;
     let selectedInboxColor = '#2563eb';
+    let openGroups = { '#dc2626': true, '#eab308': false, '#2563eb': false };
     let currentTab = 'live';
     let promotingInboxId = null;
     let confirmDeleteInboxId = null;
@@ -745,8 +863,8 @@
     document.getElementById('tab-inbox').addEventListener('click', () => switchTab('inbox'));
     document.getElementById('tab-routine').addEventListener('click', () => switchTab('routine'));
 
-    function showUndo(task, index) {
-      lastRemoved = { task, index };
+    function showUndo(task, index, completedId) {
+      lastRemoved = { task, index, completedId };
       const toast = document.getElementById('undo-toast');
       document.getElementById('undo-text').textContent = `تم إنهاء «${task.label}»`;
       toast.classList.add('is-visible');
@@ -759,8 +877,9 @@
 
     document.getElementById('undo-btn').addEventListener('click', () => {
       if (!lastRemoved) return;
-      const { task, index } = lastRemoved;
+      const { task, index, completedId } = lastRemoved;
       TASKS.splice(Math.min(index, TASKS.length), 0, { ...task, completing: false });
+      COMPLETED = COMPLETED.filter(c => c.logId !== completedId);
       lastRemoved = null;
       if (undoTimeout) clearTimeout(undoTimeout);
       document.getElementById('undo-toast').classList.remove('is-visible');
@@ -832,6 +951,22 @@
       if (toIdx < 0 || toIdx >= arr.length || fromIdx === toIdx) return;
       const [moved] = arr.splice(fromIdx, 1);
       arr.splice(toIdx, 0, moved);
+      render();
+    }
+
+    function moveInboxWithinGroup(itemId, dir) {
+      const item = INBOX.find(x => x.id === itemId);
+      if (!item) return;
+      const color = item.color || '#2563eb';
+      const sameGroupIndices = INBOX.map((x, idx) => ((x.color || '#2563eb') === color ? idx : -1)).filter(idx => idx !== -1);
+      const pos = sameGroupIndices.indexOf(INBOX.findIndex(x => x.id === itemId));
+      const targetPos = pos + dir;
+      if (targetPos < 0 || targetPos >= sameGroupIndices.length) return;
+      const fromIdx = sameGroupIndices[pos];
+      const toIdx = sameGroupIndices[targetPos];
+      const temp = INBOX[fromIdx];
+      INBOX[fromIdx] = INBOX[toIdx];
+      INBOX[toIdx] = temp;
       render();
     }
 
@@ -929,38 +1064,106 @@
             `;
           }).join('');
 
-      const inboxListEl = document.getElementById('inbox-list');
-      inboxListEl.innerHTML = INBOX.length === 0
-        ? '<div class="empty-msg">الـ Inbox فاضي حالياً. ضيف أي مهمة من تحت.</div>'
-        : INBOX.map((item, idx) => `
-            <div class="task-row">
-              <span class="color-dot" style="background:${item.color || '#2563eb'};"></span>
-              <div class="task-info">
-                <span class="task-title">${item.label}</span>
-              </div>
-              <div class="row-actions">
-                <button type="button" class="icon-btn" data-inbox-up="${idx}" ${idx === 0 ? 'disabled' : ''} title="تحريك لأعلى">▲</button>
-                <button type="button" class="icon-btn" data-inbox-down="${idx}" ${idx === INBOX.length - 1 ? 'disabled' : ''} title="تحريك لأسفل">▼</button>
-                <button type="button" class="timer-btn" data-promote="${item.id}">إضافة للساعة</button>
-                <button type="button" class="icon-btn del" data-ask-del="${item.id}" title="حذف">×</button>
-              </div>
-              ${promotingInboxId === item.id ? `
-                <div class="promote-box">
-                  <span class="max-hint">الوقت (دقائق):</span>
-                  <input type="text" inputmode="numeric" class="input-field input-mins" id="promote-mins-${item.id}" value="${freeMins > 0 ? freeMins : 10}">
-                  <button type="button" class="timer-btn" data-confirm-promote="${item.id}">تأكيد</button>
-                  <button type="button" class="icon-btn" data-cancel-promote="1">إلغاء</button>
-                </div>
-              ` : ''}
-              ${confirmDeleteInboxId === item.id ? `
-                <div class="promote-box">
-                  <span class="confirm-text">هل تريد حذف المهمة بالفعل؟</span>
-                  <button type="button" class="timer-btn is-stop" data-confirm-del="${item.id}">حذف</button>
-                  <button type="button" class="icon-btn" data-cancel-del="1">إلغاء</button>
-                </div>
-              ` : ''}
+      updateHourClock();
+
+      // Completed log accordion (rolling 48h)
+      const todayStr = new Date().toDateString();
+      const todayItems = COMPLETED.filter(c => new Date(c.completedAt).toDateString() === todayStr);
+      const todayCount = todayItems.length;
+      const todayMins = todayItems.reduce((s, c) => s + (Number(c.mins) || 0), 0);
+
+      const completedBox = document.getElementById('completed-box');
+      completedBox.innerHTML = `
+        <div class="prio-group-header" id="toggle-completed">
+          <div class="prio-group-title">
+            <span class="color-dot" style="background:var(--green);"></span>
+            <span>المهام المكتملة (آخر ٤٨ ساعة)</span>
+          </div>
+          <div class="prio-group-right">
+            <span class="count-pill">${toAr(COMPLETED.length)}</span>
+            <span class="group-arrow">${completedOpen ? '▼' : '◀'}</span>
+          </div>
+        </div>
+        ${completedOpen ? `
+          <div class="prio-group-body">
+            <div class="today-summary">
+              <span>إنجاز اليوم</span>
+              <span>${toAr(todayCount)} ${todayCount === 1 ? 'مهمة' : 'مهام'} · ${toAr(todayMins)} دقيقة</span>
             </div>
-          `).join('');
+            ${COMPLETED.length === 0
+              ? '<div class="empty-msg">مفيش مهام مكتملة خلال آخر ٤٨ ساعة.</div>'
+              : COMPLETED.map(c => `
+                <div class="task-row" style="opacity:0.85;">
+                  <span class="color-dot" style="background:var(--green);"></span>
+                  <div class="task-info">
+                    <span class="task-title" style="text-decoration:line-through; color:var(--muted);">${c.label}</span>
+                    <span class="completed-meta">${toAr(c.mins)} د · ${formatCompletedTime(c.completedAt)}</span>
+                  </div>
+                </div>
+              `).join('')}
+          </div>
+        ` : ''}
+      `;
+
+      document.getElementById('toggle-completed').addEventListener('click', () => {
+        completedOpen = !completedOpen;
+        render();
+      });
+
+      const inboxGroupsEl = document.getElementById('inbox-groups');
+      inboxGroupsEl.innerHTML = PRIO_GROUPS.map(g => {
+        const items = INBOX.filter(item => (item.color || '#2563eb') === g.key);
+        const isOpen = Boolean(openGroups[g.key]);
+        return `
+          <div class="prio-group">
+            <div class="prio-group-header" data-toggle-group="${g.key}">
+              <div class="prio-group-title">
+                <span class="color-dot" style="background:${g.color};"></span>
+                <span>${g.title}</span>
+              </div>
+              <div class="prio-group-right">
+                <span class="count-pill">${toAr(items.length)}</span>
+                <span class="group-arrow">${isOpen ? '▼' : '◀'}</span>
+              </div>
+            </div>
+            ${isOpen ? `
+              <div class="prio-group-body">
+                ${items.length === 0
+                  ? '<div class="empty-msg">مفيش مهام في الأولوية دي حالياً.</div>'
+                  : items.map((item, idx) => `
+                    <div class="task-row">
+                      <span class="color-dot" style="background:${g.color};"></span>
+                      <div class="task-info">
+                        <span class="task-title">${item.label}</span>
+                      </div>
+                      <div class="row-actions">
+                        <button type="button" class="icon-btn" data-inbox-up="${item.id}" ${idx === 0 ? 'disabled' : ''} title="تحريك لأعلى">▲</button>
+                        <button type="button" class="icon-btn" data-inbox-down="${item.id}" ${idx === items.length - 1 ? 'disabled' : ''} title="تحريك لأسفل">▼</button>
+                        <button type="button" class="timer-btn" data-promote="${item.id}">إضافة للساعة</button>
+                        <button type="button" class="icon-btn del" data-ask-del="${item.id}" title="حذف">×</button>
+                      </div>
+                      ${promotingInboxId === item.id ? `
+                        <div class="promote-box">
+                          <span class="max-hint">الوقت (دقائق):</span>
+                          <input type="text" inputmode="numeric" class="input-field input-mins" id="promote-mins-${item.id}" value="" placeholder="الدقائق">
+                          <button type="button" class="timer-btn" data-confirm-promote="${item.id}">تأكيد</button>
+                          <button type="button" class="icon-btn" data-cancel-promote="1">إلغاء</button>
+                        </div>
+                      ` : ''}
+                      ${confirmDeleteInboxId === item.id ? `
+                        <div class="promote-box">
+                          <span class="confirm-text">هل تريد حذف المهمة بالفعل؟</span>
+                          <button type="button" class="timer-btn is-stop" data-confirm-del="${item.id}">حذف</button>
+                          <button type="button" class="icon-btn" data-cancel-del="1">إلغاء</button>
+                        </div>
+                      ` : ''}
+                    </div>
+                  `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
 
       const routineListEl = document.getElementById('routine-list');
       routineListEl.innerHTML = ROUTINE.length === 0
@@ -987,6 +1190,7 @@
             </div>
           `).join('');
 
+      // Live listeners
       listEl.querySelectorAll('[data-check]').forEach(circle => {
         circle.addEventListener('click', e => {
           e.stopPropagation();
@@ -1015,7 +1219,9 @@
             if (idx === -1) return;
             const removed = { ...TASKS[idx], completing: false, running: false, endAt: null };
             TASKS.splice(idx, 1);
-            showUndo(removed, idx);
+            const logId = Date.now() + Math.floor(Math.random() * 1000);
+            COMPLETED.unshift({ logId, label: removed.label, mins: removed.mins, completedAt: Date.now() });
+            showUndo(removed, idx, logId);
             render();
           }, 2000);
         });
@@ -1071,7 +1277,9 @@
           const idx = TASKS.findIndex(x => x.id === id);
           if (idx === -1) return;
           const [moved] = TASKS.splice(idx, 1);
-          INBOX.push({ id: moved.id, label: moved.label, color: moved.priorityColor || '#2563eb' });
+          const prio = moved.priorityColor || '#2563eb';
+          INBOX.push({ id: moved.id, label: moved.label, color: prio });
+          openGroups[prio] = true;
           render();
         });
       });
@@ -1102,21 +1310,27 @@
         });
       });
 
-      inboxListEl.querySelectorAll('[data-inbox-up]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const i = Number(btn.dataset.inboxUp);
-          moveInList(INBOX, i, i - 1);
+      inboxGroupsEl.querySelectorAll('[data-toggle-group]').forEach(header => {
+        header.addEventListener('click', () => {
+          const key = header.dataset.toggleGroup;
+          openGroups[key] = !openGroups[key];
+          render();
         });
       });
 
-      inboxListEl.querySelectorAll('[data-inbox-down]').forEach(btn => {
+      inboxGroupsEl.querySelectorAll('[data-inbox-up]').forEach(btn => {
         btn.addEventListener('click', () => {
-          const i = Number(btn.dataset.inboxDown);
-          moveInList(INBOX, i, i + 1);
+          moveInboxWithinGroup(Number(btn.dataset.inboxUp), -1);
         });
       });
 
-      inboxListEl.querySelectorAll('[data-promote]').forEach(btn => {
+      inboxGroupsEl.querySelectorAll('[data-inbox-down]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          moveInboxWithinGroup(Number(btn.dataset.inboxDown), 1);
+        });
+      });
+
+      inboxGroupsEl.querySelectorAll('[data-promote]').forEach(btn => {
         btn.addEventListener('click', () => {
           confirmDeleteInboxId = null;
           promotingInboxId = Number(btn.dataset.promote);
@@ -1126,19 +1340,20 @@
         });
       });
 
-      inboxListEl.querySelectorAll('[data-cancel-promote]').forEach(btn => {
+      inboxGroupsEl.querySelectorAll('[data-cancel-promote]').forEach(btn => {
         btn.addEventListener('click', () => {
           promotingInboxId = null;
           render();
         });
       });
 
-      inboxListEl.querySelectorAll('[data-confirm-promote]').forEach(btn => {
+      inboxGroupsEl.querySelectorAll('[data-confirm-promote]').forEach(btn => {
         btn.addEventListener('click', () => {
           const id = Number(btn.dataset.confirmPromote);
           const minsInp = document.getElementById(`promote-mins-${id}`);
-          const mins = parseMins(minsInp ? minsInp.value : '0');
-          if (!(mins > 0)) return;
+          const rawMins = parseMins(minsInp ? minsInp.value : '0');
+          if (!(rawMins > 0)) return;
+          const mins = Math.min(60, rawMins);
           const idx = INBOX.findIndex(x => x.id === id);
           if (idx === -1) return;
           const [item] = INBOX.splice(idx, 1);
@@ -1158,7 +1373,7 @@
         });
       });
 
-      inboxListEl.querySelectorAll('[data-ask-del]').forEach(btn => {
+      inboxGroupsEl.querySelectorAll('[data-ask-del]').forEach(btn => {
         btn.addEventListener('click', () => {
           promotingInboxId = null;
           confirmDeleteInboxId = Number(btn.dataset.askDel);
@@ -1166,7 +1381,7 @@
         });
       });
 
-      inboxListEl.querySelectorAll('[data-confirm-del]').forEach(btn => {
+      inboxGroupsEl.querySelectorAll('[data-confirm-del]').forEach(btn => {
         btn.addEventListener('click', () => {
           const id = Number(btn.dataset.confirmDel);
           INBOX = INBOX.filter(x => x.id !== id);
@@ -1175,7 +1390,7 @@
         });
       });
 
-      inboxListEl.querySelectorAll('[data-cancel-del]').forEach(btn => {
+      inboxGroupsEl.querySelectorAll('[data-cancel-del]').forEach(btn => {
         btn.addEventListener('click', () => {
           confirmDeleteInboxId = null;
           render();
@@ -1267,6 +1482,7 @@
       const label = input.value.trim();
       if (!label) return;
       INBOX.push({ id: Date.now(), label, color: selectedInboxColor });
+      openGroups[selectedInboxColor] = true;
       input.value = '';
       render();
     });
@@ -1308,6 +1524,7 @@
     });
 
     syncRunningTimers(true);
+    setInterval(updateHourClock, 15000);
   </script>
 </body>
 </html>
