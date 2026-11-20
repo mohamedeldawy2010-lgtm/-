@@ -507,6 +507,55 @@
       margin-top: -8px;
       margin-bottom: 12px;
     }
+    .prio-row-dot {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      border: 2px solid var(--card);
+      box-shadow: 0 0 0 1px var(--border);
+      cursor: pointer;
+      flex-shrink: 0;
+      padding: 0;
+      transition: transform 0.15s ease;
+    }
+    .prio-row-dot:hover {
+      transform: scale(1.15);
+    }
+    .prio-choice-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+    }
+    .prio-choice-btn.is-current {
+      border-color: var(--text);
+      background: var(--item-hover);
+    }
+    .task-dur-btn {
+      font-size: 12px;
+      color: var(--text);
+      background: var(--card);
+      border: 1px solid var(--border);
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+      padding: 3px 9px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 600;
+    }
+    .task-dur-btn:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
     .today-summary {
       font-size: 13px;
       font-weight: 700;
@@ -622,7 +671,7 @@
         <div class="header-row">
           <h1>Inbox (مرتب حسب الأولوية)</h1>
         </div>
-        <div class="sub-stats">اضغط على أي قائمة لفتحها وإضافة مهامها للساعة.</div>
+        <div class="sub-stats">اضغط على أي قائمة لفتحها، واضغط على الدايرة الملونة جنب أي مهمة لتغيير أولويتها.</div>
 
         <div id="inbox-groups"></div>
 
@@ -644,7 +693,7 @@
         <div class="header-row">
           <h1>Routine (قالب المهام اليومية)</h1>
         </div>
-        <div class="sub-stats">مهام ثابتة بوقتها؛ لما تضيف أي مهمة للساعة بتتنسخ بوقتها وتفضل موجودة هنا دايماً.</div>
+        <div class="sub-stats">مهام ثابتة بوقتها؛ اضغط على الوقت لتعديله، ولما تضيف أي مهمة للساعة بتتنسخ بوقتها وتفضل موجودة هنا دايماً.</div>
 
         <div class="task-list" id="routine-list"></div>
 
@@ -822,8 +871,10 @@
     let openGroups = { '#dc2626': true, '#eab308': false, '#2563eb': false };
     let currentTab = 'live';
     let promotingInboxId = null;
+    let editingPrioInboxId = null;
     let confirmDeleteInboxId = null;
     let confirmDeleteRoutineId = null;
+    let editingRoutineMinsId = null;
     let colorIdx = TASKS.length;
     let dragSrcIdx = null;
     let ticker = null;
@@ -1132,7 +1183,7 @@
                   ? '<div class="empty-msg">مفيش مهام في الأولوية دي حالياً.</div>'
                   : items.map((item, idx) => `
                     <div class="task-row">
-                      <span class="color-dot" style="background:${g.color};"></span>
+                      <button type="button" class="prio-row-dot" data-edit-prio="${item.id}" style="background:${g.color};" title="تغيير الأولوية"></button>
                       <div class="task-info">
                         <span class="task-title">${item.label}</span>
                       </div>
@@ -1148,6 +1199,18 @@
                           <input type="text" inputmode="numeric" class="input-field input-mins" id="promote-mins-${item.id}" value="" placeholder="الدقائق">
                           <button type="button" class="timer-btn" data-confirm-promote="${item.id}">تأكيد</button>
                           <button type="button" class="icon-btn" data-cancel-promote="1">إلغاء</button>
+                        </div>
+                      ` : ''}
+                      ${editingPrioInboxId === item.id ? `
+                        <div class="promote-box">
+                          <span class="max-hint">تغيير الأولوية:</span>
+                          ${PRIO_GROUPS.map(pg => `
+                            <button type="button" class="prio-choice-btn ${(item.color || '#2563eb') === pg.key ? 'is-current' : ''}" data-set-prio="${item.id}" data-prio-color="${pg.key}">
+                              <span class="color-dot" style="background:${pg.color};"></span>
+                              <span>${pg.title.replace('أولوية ', '')}</span>
+                            </button>
+                          `).join('')}
+                          <button type="button" class="icon-btn" data-cancel-prio="1">إلغاء</button>
                         </div>
                       ` : ''}
                       ${confirmDeleteInboxId === item.id ? `
@@ -1172,7 +1235,7 @@
             <div class="task-row">
               <div class="task-info">
                 <span class="task-title">${item.label}</span>
-                <span class="task-dur">${toAr(item.mins)} د</span>
+                <button type="button" class="task-dur-btn" data-edit-routine-mins="${item.id}" title="تعديل الوقت">${toAr(item.mins)} د</button>
               </div>
               <div class="row-actions">
                 <button type="button" class="icon-btn" data-routine-up="${idx}" ${idx === 0 ? 'disabled' : ''} title="تحريك لأعلى">▲</button>
@@ -1180,6 +1243,14 @@
                 <button type="button" class="timer-btn" data-use-routine="${item.id}">إضافة للساعة</button>
                 <button type="button" class="icon-btn del" data-ask-del-routine="${item.id}" title="حذف من الروتين">×</button>
               </div>
+              ${editingRoutineMinsId === item.id ? `
+                <div class="promote-box">
+                  <span class="max-hint">تعديل الوقت (دقائق):</span>
+                  <input type="text" inputmode="numeric" class="input-field input-mins" id="edit-routine-mins-${item.id}" value="" placeholder="${toAr(item.mins)}">
+                  <button type="button" class="timer-btn" data-save-routine-mins="${item.id}">حفظ</button>
+                  <button type="button" class="icon-btn" data-cancel-routine-mins="1">إلغاء</button>
+                </div>
+              ` : ''}
               ${confirmDeleteRoutineId === item.id ? `
                 <div class="promote-box">
                   <span class="confirm-text">هل تريد حذف المهمة من الروتين؟</span>
@@ -1330,9 +1401,40 @@
         });
       });
 
+      inboxGroupsEl.querySelectorAll('[data-edit-prio]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.editPrio);
+          promotingInboxId = null;
+          confirmDeleteInboxId = null;
+          editingPrioInboxId = (editingPrioInboxId === id) ? null : id;
+          render();
+        });
+      });
+
+      inboxGroupsEl.querySelectorAll('[data-set-prio]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.setPrio);
+          const newColor = btn.dataset.prioColor;
+          const item = INBOX.find(x => x.id === id);
+          if (!item) return;
+          item.color = newColor;
+          openGroups[newColor] = true;
+          editingPrioInboxId = null;
+          render();
+        });
+      });
+
+      inboxGroupsEl.querySelectorAll('[data-cancel-prio]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          editingPrioInboxId = null;
+          render();
+        });
+      });
+
       inboxGroupsEl.querySelectorAll('[data-promote]').forEach(btn => {
         btn.addEventListener('click', () => {
           confirmDeleteInboxId = null;
+          editingPrioInboxId = null;
           promotingInboxId = Number(btn.dataset.promote);
           render();
           const inp = document.getElementById(`promote-mins-${promotingInboxId}`);
@@ -1376,6 +1478,7 @@
       inboxGroupsEl.querySelectorAll('[data-ask-del]').forEach(btn => {
         btn.addEventListener('click', () => {
           promotingInboxId = null;
+          editingPrioInboxId = null;
           confirmDeleteInboxId = Number(btn.dataset.askDel);
           render();
         });
@@ -1430,8 +1533,43 @@
         });
       });
 
+      routineListEl.querySelectorAll('[data-edit-routine-mins]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.editRoutineMins);
+          confirmDeleteRoutineId = null;
+          editingRoutineMinsId = (editingRoutineMinsId === id) ? null : id;
+          render();
+          if (editingRoutineMinsId === id) {
+            const inp = document.getElementById(`edit-routine-mins-${id}`);
+            if (inp) inp.focus();
+          }
+        });
+      });
+
+      routineListEl.querySelectorAll('[data-save-routine-mins]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.saveRoutineMins);
+          const inp = document.getElementById(`edit-routine-mins-${id}`);
+          const rawMins = parseMins(inp ? inp.value : '0');
+          if (!(rawMins > 0)) return;
+          const item = ROUTINE.find(x => x.id === id);
+          if (!item) return;
+          item.mins = Math.min(60, rawMins);
+          editingRoutineMinsId = null;
+          render();
+        });
+      });
+
+      routineListEl.querySelectorAll('[data-cancel-routine-mins]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          editingRoutineMinsId = null;
+          render();
+        });
+      });
+
       routineListEl.querySelectorAll('[data-ask-del-routine]').forEach(btn => {
         btn.addEventListener('click', () => {
+          editingRoutineMinsId = null;
           confirmDeleteRoutineId = Number(btn.dataset.askDelRoutine);
           render();
         });
