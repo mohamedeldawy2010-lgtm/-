@@ -519,7 +519,7 @@
       </div>
 
       <div class="card">
-        <div class="graph-section-title">التشيك ليست (اضغط جوه الدائرة للإنهاء، أو حوّل للـ Inbox)</div>
+        <div class="graph-section-title">التشيك ليست (اضغط جوه الدائرة للإنهاء، والخط الجانبي يوضح الأولوية)</div>
         <div class="task-list" id="task-list"></div>
 
         <form class="add-bar" id="add-form">
@@ -545,7 +545,7 @@
         <div class="header-row">
           <h1>Inbox (مهام بدون وقت)</h1>
         </div>
-        <div class="sub-stats">اختار لون الأولوية (أزرق: قليل · أصفر: متوسط · أحمر: عالي) وأضف مهمتك، واللون هيتنقل معاك للساعة.</div>
+        <div class="sub-stats">اختار لون الأولوية (أزرق: قليل · أصفر: متوسط · أحمر: عالي)، وعند النقل للساعة كل مهمة بتاخد لون مميز في الجراف مع خط أولوية جانبي.</div>
 
         <div class="task-list" id="inbox-list"></div>
 
@@ -712,6 +712,15 @@
     let lastRemoved = null;
     let undoTimeout = null;
     const pendingDeletes = {};
+
+    function nextDistinctColor() {
+      const used = new Set(TASKS.map(t => t.color));
+      const free = PALETTE.find(c => !used.has(c));
+      if (free) return free;
+      const c = PALETTE[colorIdx % PALETTE.length];
+      colorIdx++;
+      return c;
+    }
 
     document.querySelectorAll('#prio-picker .prio-dot-btn').forEach(btn => {
       btn.addEventListener('click', () => {
@@ -897,8 +906,9 @@
         ? '<div class="empty-msg is-done">كل المهام خلصت! تقدر تضيف مهمة جديدة من تحت أو تسحب من الـ Inbox أو الـ Routine.</div>'
         : TASKS.map((t, idx) => {
             const durClass = t.running ? 'is-running' : (t.remainingSec === 0 ? 'is-finished' : '');
+            const prioBorder = t.priorityColor ? `border-right: 4px solid ${t.priorityColor};` : '';
             return `
-              <div class="task-row ${t.completing ? 'is-completing' : ''}" draggable="true" data-idx="${idx}">
+              <div class="task-row ${t.completing ? 'is-completing' : ''}" style="${prioBorder}" draggable="true" data-idx="${idx}">
                 <div class="task-circle" data-check="${t.id}" title="اضغط هنا لإنهاء المهمة">
                   <svg viewBox="0 0 16 16" width="14" height="14">
                     <path d="M3.2 8.4 L6.4 11.6 L12.8 4.4" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
@@ -1061,7 +1071,7 @@
           const idx = TASKS.findIndex(x => x.id === id);
           if (idx === -1) return;
           const [moved] = TASKS.splice(idx, 1);
-          INBOX.push({ id: moved.id, label: moved.label, color: moved.color || '#2563eb' });
+          INBOX.push({ id: moved.id, label: moved.label, color: moved.priorityColor || '#2563eb' });
           render();
         });
       });
@@ -1136,13 +1146,13 @@
             id: Date.now(),
             label: item.label,
             mins,
-            color: item.color || PALETTE[colorIdx % PALETTE.length],
+            color: nextDistinctColor(),
+            priorityColor: item.color || '#2563eb',
             remainingSec: mins * 60,
             running: false,
             endAt: null,
             completing: false
           });
-          colorIdx++;
           promotingInboxId = null;
           switchTab('live');
         });
@@ -1195,13 +1205,12 @@
             id: Date.now() + Math.floor(Math.random() * 1000),
             label: item.label,
             mins: item.mins,
-            color: PALETTE[colorIdx % PALETTE.length],
+            color: nextDistinctColor(),
             remainingSec: item.mins * 60,
             running: false,
             endAt: null,
             completing: false
           });
-          colorIdx++;
           switchTab('live');
         });
       });
@@ -1242,13 +1251,12 @@
         id: Date.now(),
         label,
         mins,
-        color: PALETTE[colorIdx % PALETTE.length],
+        color: nextDistinctColor(),
         remainingSec: mins * 60,
         running: false,
         endAt: null,
         completing: false
       });
-      colorIdx++;
       titleInput.value = '';
       render();
     });
