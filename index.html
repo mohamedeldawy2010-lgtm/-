@@ -226,6 +226,44 @@
       white-space: nowrap;
     }
 
+    /* Compact Circular Inbox Trigger */
+    .inbox-mini-btn {
+      display: inline-flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 2px;
+      background: transparent;
+      border: none;
+      padding: 0;
+      cursor: pointer;
+      font-family: inherit;
+      flex-shrink: 0;
+    }
+    .inbox-mini-circle {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: var(--item);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      box-shadow: 0 2px 6px rgba(15, 23, 42, 0.06);
+      transition: transform 0.15s ease, border-color 0.15s ease;
+    }
+    .inbox-mini-btn:hover .inbox-mini-circle {
+      border-color: var(--blue);
+      transform: scale(1.06);
+    }
+    .inbox-mini-count {
+      font-size: 11px;
+      font-weight: 800;
+      color: var(--muted);
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+    }
+
     /* Inbox Launcher Button */
     .inbox-launcher-btn {
       width: 100%;
@@ -449,7 +487,8 @@
       gap: 8px;
     }
     .input-mins {
-      width: 76px;
+      width: 88px;
+      padding: 10px 8px;
       text-align: center;
       font-weight: 800;
     }
@@ -827,7 +866,13 @@
       <!-- Card 1: Hour Allocation -->
       <div class="card">
         <div class="header-row">
-          <h1>مهام الساعة القادمة</h1>
+          <div style="display:flex; align-items:center; gap:10px;">
+            <button type="button" class="inbox-mini-btn" id="open-inbox-modal-btn" title="صندوق المهام (Inbox)">
+              <span class="inbox-mini-circle">📥</span>
+              <span class="inbox-mini-count" id="inbox-launcher-pill">٠</span>
+            </button>
+            <h1>مهام الساعة القادمة</h1>
+          </div>
           <div class="time-badge" id="remaining-badge">٦٠ دقيقة فراغ</div>
         </div>
         <div class="sub-stats" id="sub-stats">مفيش مهام حالياً</div>
@@ -836,15 +881,6 @@
         <div class="stacked-bar" id="stacked-bar"></div>
         <div class="bars-list" id="bars-list"></div>
       </div>
-
-      <!-- Card 2: Inbox Launcher Button inside Live Screen -->
-      <button type="button" class="inbox-launcher-btn" id="open-inbox-modal-btn">
-        <div class="inbox-launcher-left">
-          <span>📥</span>
-          <span>صندوق المهام (Inbox)</span>
-        </div>
-        <span class="count-pill" id="inbox-launcher-pill">٠ مهام</span>
-      </button>
 
       <!-- Card 3: Checklist & Direct Task Addition -->
       <div class="card">
@@ -936,12 +972,6 @@
       <div class="modal-body">
         <div class="sub-stats" style="margin:0 0 4px 0;">مهام اليوم مقسمة حسب فتراتك (اضغط على الدايرة لتغيير القسم).</div>
         <div id="inbox-groups"></div>
-
-        <form class="add-bar" id="inbox-form" style="margin-top:8px;">
-          <input type="text" class="input-field input-name" id="inbox-title" placeholder="اكتب مهمة جديدة للـ Inbox..." required>
-          <select id="inbox-section-select" class="input-field" style="padding:9px 10px; font-size:16px; font-weight:700; max-width:145px;"></select>
-          <button type="submit" class="add-btn" title="إضافة للـ Inbox">+</button>
-        </form>
       </div>
       <div class="modal-foot">
         <span class="max-hint" id="inbox-footer-count">إجمالي المهام: ٠</span>
@@ -1256,7 +1286,11 @@
 
     let currentTab = 'live';
     let promotingInboxId = null;
+    let movingInboxId = null;
+    let addingToInboxSecId = null;
     let editingRoutineId = null;
+    let movingRoutineId = null;
+    let addingToRoutineSecId = null;
     let colorIdx = TASKS.length;
     let ticker = null;
     let lastRemoved = null;
@@ -1351,11 +1385,13 @@
     function renderSectionsManagerList() {
       const listEl = document.getElementById('inbox-sections-list');
       if (!listEl) return;
-      listEl.innerHTML = INBOX_SECTIONS.map(sec => `
-        <div style="background:var(--item); padding:10px 12px; border-radius:12px; border:1px solid var(--border); display:flex; align-items:center; gap:8px;">
-          <input type="color" value="${sec.color || '#4f75ff'}" data-sec-color="${sec.id}" style="width:32px; height:32px; border:none; border-radius:8px; cursor:pointer; background:transparent;">
-          <input type="text" value="${sec.name}" data-sec-name="${sec.id}" class="input-field" style="flex:1; padding:6px 10px; font-size:16px; font-weight:700;">
-          <button type="button" class="icon-btn del" data-del-sec="${sec.id}" ${INBOX_SECTIONS.length <= 1 ? 'disabled title="لا يمكن حذف القسم الأخير"' : 'title="حذف القسم"'}>×</button>
+      listEl.innerHTML = INBOX_SECTIONS.map((sec, idx) => `
+        <div style="background:var(--item); padding:10px 12px; border-radius:12px; border:1px solid var(--border); display:flex; align-items:center; gap:6px;">
+          <input type="color" value="${sec.color || '#4f75ff'}" data-sec-color="${sec.id}" style="width:30px; height:30px; border:none; border-radius:8px; cursor:pointer; background:transparent; flex-shrink:0;">
+          <input type="text" value="${sec.name}" data-sec-name="${sec.id}" class="input-field" style="flex:1; min-width:0; padding:6px 10px; font-size:16px; font-weight:700;">
+          <button type="button" class="icon-btn" data-sec-up="${idx}" ${idx === 0 ? 'disabled' : ''} title="تحريك لأعلى" style="padding:5px 7px;">▲</button>
+          <button type="button" class="icon-btn" data-sec-down="${idx}" ${idx === INBOX_SECTIONS.length - 1 ? 'disabled' : ''} title="تحريك لأسفل" style="padding:5px 7px;">▼</button>
+          <button type="button" class="icon-btn del" data-del-sec="${sec.id}" ${INBOX_SECTIONS.length <= 1 ? 'disabled title="لا يمكن حذف القسم الأخير"' : 'title="حذف القسم"'} style="padding:5px 8px;">×</button>
         </div>
       `).join('');
 
@@ -1374,6 +1410,32 @@
           const s = INBOX_SECTIONS.find(x => x.id === id);
           if (s) s.color = inp.value;
           saveState();
+        });
+      });
+
+      listEl.querySelectorAll('[data-sec-up]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = Number(btn.dataset.secUp);
+          if (i > 0) {
+            const tmp = INBOX_SECTIONS[i];
+            INBOX_SECTIONS[i] = INBOX_SECTIONS[i - 1];
+            INBOX_SECTIONS[i - 1] = tmp;
+            saveState();
+            renderSectionsManagerList();
+          }
+        });
+      });
+
+      listEl.querySelectorAll('[data-sec-down]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = Number(btn.dataset.secDown);
+          if (i < INBOX_SECTIONS.length - 1) {
+            const tmp = INBOX_SECTIONS[i];
+            INBOX_SECTIONS[i] = INBOX_SECTIONS[i + 1];
+            INBOX_SECTIONS[i + 1] = tmp;
+            saveState();
+            renderSectionsManagerList();
+          }
         });
       });
 
@@ -1427,11 +1489,13 @@
     function renderRoutineSectionsManagerList() {
       const listEl = document.getElementById('routine-sections-list');
       if (!listEl) return;
-      listEl.innerHTML = ROUTINE_SECTIONS.map(sec => `
-        <div style="background:var(--item); padding:10px 12px; border-radius:12px; border:1px solid var(--border); display:flex; align-items:center; gap:8px;">
-          <input type="color" value="${sec.color || '#4f75ff'}" data-rsec-color="${sec.id}" style="width:32px; height:32px; border:none; border-radius:8px; cursor:pointer; background:transparent;">
-          <input type="text" value="${sec.name}" data-rsec-name="${sec.id}" class="input-field" style="flex:1; padding:6px 10px; font-size:16px; font-weight:700;">
-          <button type="button" class="icon-btn del" data-del-rsec="${sec.id}" ${ROUTINE_SECTIONS.length <= 1 ? 'disabled title="لا يمكن حذف القسم الأخير"' : 'title="حذف القسم"'}>×</button>
+      listEl.innerHTML = ROUTINE_SECTIONS.map((sec, idx) => `
+        <div style="background:var(--item); padding:10px 12px; border-radius:12px; border:1px solid var(--border); display:flex; align-items:center; gap:6px;">
+          <input type="color" value="${sec.color || '#4f75ff'}" data-rsec-color="${sec.id}" style="width:30px; height:30px; border:none; border-radius:8px; cursor:pointer; background:transparent; flex-shrink:0;">
+          <input type="text" value="${sec.name}" data-rsec-name="${sec.id}" class="input-field" style="flex:1; min-width:0; padding:6px 10px; font-size:16px; font-weight:700;">
+          <button type="button" class="icon-btn" data-rsec-up="${idx}" ${idx === 0 ? 'disabled' : ''} title="تحريك لأعلى" style="padding:5px 7px;">▲</button>
+          <button type="button" class="icon-btn" data-rsec-down="${idx}" ${idx === ROUTINE_SECTIONS.length - 1 ? 'disabled' : ''} title="تحريك لأسفل" style="padding:5px 7px;">▼</button>
+          <button type="button" class="icon-btn del" data-del-rsec="${sec.id}" ${ROUTINE_SECTIONS.length <= 1 ? 'disabled title="لا يمكن حذف القسم الأخير"' : 'title="حذف القسم"'} style="padding:5px 8px;">×</button>
         </div>
       `).join('');
 
@@ -1450,6 +1514,32 @@
           const s = ROUTINE_SECTIONS.find(x => x.id === id);
           if (s) s.color = inp.value;
           saveState();
+        });
+      });
+
+      listEl.querySelectorAll('[data-rsec-up]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = Number(btn.dataset.rsecUp);
+          if (i > 0) {
+            const tmp = ROUTINE_SECTIONS[i];
+            ROUTINE_SECTIONS[i] = ROUTINE_SECTIONS[i - 1];
+            ROUTINE_SECTIONS[i - 1] = tmp;
+            saveState();
+            renderRoutineSectionsManagerList();
+          }
+        });
+      });
+
+      listEl.querySelectorAll('[data-rsec-down]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = Number(btn.dataset.rsecDown);
+          if (i < ROUTINE_SECTIONS.length - 1) {
+            const tmp = ROUTINE_SECTIONS[i];
+            ROUTINE_SECTIONS[i] = ROUTINE_SECTIONS[i + 1];
+            ROUTINE_SECTIONS[i + 1] = tmp;
+            saveState();
+            renderRoutineSectionsManagerList();
+          }
         });
       });
 
@@ -1482,6 +1572,23 @@
       saveState();
       renderRoutineSectionsManagerList();
     });
+
+    function moveInboxWithinSection(itemId, dir) {
+      const item = INBOX.find(x => x.id === itemId);
+      if (!item) return;
+      const secId = item.sectionId || INBOX_SECTIONS[0].id;
+      const sameSecIndices = INBOX.map((x, idx) => ((x.sectionId || INBOX_SECTIONS[0].id) === secId ? idx : -1)).filter(idx => idx !== -1);
+      const pos = sameSecIndices.indexOf(INBOX.findIndex(x => x.id === itemId));
+      const targetPos = pos + dir;
+      if (targetPos < 0 || targetPos >= sameSecIndices.length) return;
+      const fromIdx = sameSecIndices[pos];
+      const toIdx = sameSecIndices[targetPos];
+      const temp = INBOX[fromIdx];
+      INBOX[fromIdx] = INBOX[toIdx];
+      INBOX[toIdx] = temp;
+      saveState();
+      renderInboxInsideModal();
+    }
 
     function moveRoutineWithinSection(itemId, dir) {
       const item = ROUTINE.find(x => x.id === itemId);
@@ -1710,35 +1817,59 @@
 
       if (!inboxGroupsEl) return;
 
-      inboxGroupsEl.innerHTML = INBOX_SECTIONS.map(sec => {
+      inboxGroupsEl.innerHTML = INBOX_SECTIONS.map((sec, secIdx) => {
         const items = INBOX.filter(item => item.sectionId === sec.id);
         const isOpen = openSections[sec.id] !== false;
         return `
           <div class="prio-group">
-            <div class="prio-group-header" data-toggle-sec="${sec.id}" style="cursor:pointer;">
+            <div class="prio-group-header" data-toggle-sec="${sec.id}" style="cursor:pointer; padding:11px 14px;">
               <div class="prio-group-title">
                 <span class="color-dot" style="background:${sec.color || '#4f75ff'};"></span>
                 <span>${sec.name}</span>
               </div>
-              <div class="prio-group-right">
+              <div class="prio-group-right" style="gap:5px;">
+                <button type="button" class="gear-btn" data-sec-hdr-up="${secIdx}" ${secIdx === 0 ? 'disabled' : ''} title="رفع القسم لأعلى" style="padding:2px 6px;">▲</button>
+                <button type="button" class="gear-btn" data-sec-hdr-down="${secIdx}" ${secIdx === INBOX_SECTIONS.length - 1 ? 'disabled' : ''} title="إنزال القسم لأسفل" style="padding:2px 6px;">▼</button>
+                <button type="button" class="gear-btn" data-add-in-sec="${sec.id}" title="إضافة مهمة في هذا القسم" style="font-weight:800; padding:2px 8px;">+</button>
                 <span class="count-pill">${toAr(items.length)}</span>
                 <span class="group-arrow">${isOpen ? '▼' : '◀'}</span>
               </div>
             </div>
             ${isOpen ? `
               <div class="prio-group-body">
+                ${addingToInboxSecId === sec.id ? `
+                  <div class="promote-box" style="margin-top:0; padding-top:0; border-top:none; padding-bottom:6px; border-bottom:1px dashed var(--border);">
+                    <input type="text" class="input-field input-name" id="quick-inbox-input-${sec.id}" placeholder="مهمة جديدة في ${sec.name}...">
+                    <button type="button" class="timer-btn" data-confirm-add-sec="${sec.id}">إضافة</button>
+                    <button type="button" class="icon-btn" data-cancel-add-sec="1">إلغاء</button>
+                  </div>
+                ` : ''}
                 ${items.length === 0
                   ? '<div class="empty-msg" style="padding:10px;">لا توجد مهام في هذا القسم بعد.</div>'
-                  : items.map(item => `
+                  : items.map((item, idx) => `
                     <div class="task-row">
-                      <span class="color-dot color-dot-clickable" style="background:${sec.color || '#4f75ff'};" data-cycle-sec="${item.id}" title="اضغط لنقل المهمة للقسم التالي"></span>
+                      <span class="color-dot color-dot-clickable" style="background:${sec.color || '#4f75ff'};" data-move-sec="${item.id}" title="نقل لقسم آخر"></span>
                       <div class="task-info">
                         <span class="task-title">${item.label}</span>
                       </div>
                       <div class="row-actions">
+                        <button type="button" class="icon-btn" data-move-sec="${item.id}" title="نقل لقسم آخر">📁 نقل</button>
+                        <button type="button" class="icon-btn" data-inbox-up="${item.id}" ${idx === 0 ? 'disabled' : ''} title="تحريك لأعلى">▲</button>
+                        <button type="button" class="icon-btn" data-inbox-down="${item.id}" ${idx === items.length - 1 ? 'disabled' : ''} title="تحريك لأسفل">▼</button>
                         <button type="button" class="timer-btn" data-promote="${item.id}">إضافة للساعة</button>
                         <button type="button" class="icon-btn del" data-del-inbox="${item.id}" title="حذف">×</button>
                       </div>
+                      ${movingInboxId === item.id ? `
+                        <div class="promote-box">
+                          <span class="max-hint">نقل إلى:</span>
+                          ${INBOX_SECTIONS.map(s => `
+                            <button type="button" class="chip-btn ${s.id === item.sectionId ? 'is-active' : ''}" data-set-inbox-sec="${item.id}" data-target-sec="${s.id}">
+                              <span class="color-dot" style="background:${s.color || '#4f75ff'}; width:8px; height:8px;"></span> ${s.name}
+                            </button>
+                          `).join('')}
+                          <button type="button" class="icon-btn" data-cancel-move-sec="1">إغلاق</button>
+                        </div>
+                      ` : ''}
                       ${promotingInboxId === item.id ? `
                         <div class="promote-box">
                           <span class="max-hint">الوقت (دقائق - أقصى وقت ٦٠):</span>
@@ -1763,16 +1894,107 @@
         });
       });
 
-      inboxGroupsEl.querySelectorAll('[data-cycle-sec]').forEach(dot => {
-        dot.addEventListener('click', () => {
-          const id = Number(dot.dataset.cycleSec);
-          const item = INBOX.find(x => x.id === id);
-          if (!item || INBOX_SECTIONS.length <= 1) return;
-          const currentIdx = INBOX_SECTIONS.findIndex(s => s.id === item.sectionId);
-          const nextSec = INBOX_SECTIONS[(currentIdx + 1) % INBOX_SECTIONS.length];
-          item.sectionId = nextSec.id;
-          openSections[nextSec.id] = true;
+      inboxGroupsEl.querySelectorAll('[data-sec-hdr-up]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const i = Number(btn.dataset.secHdrUp);
+          if (i > 0) {
+            const tmp = INBOX_SECTIONS[i];
+            INBOX_SECTIONS[i] = INBOX_SECTIONS[i - 1];
+            INBOX_SECTIONS[i - 1] = tmp;
+            saveState();
+            renderInboxInsideModal();
+          }
+        });
+      });
+
+      inboxGroupsEl.querySelectorAll('[data-sec-hdr-down]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const i = Number(btn.dataset.secHdrDown);
+          if (i < INBOX_SECTIONS.length - 1) {
+            const tmp = INBOX_SECTIONS[i];
+            INBOX_SECTIONS[i] = INBOX_SECTIONS[i + 1];
+            INBOX_SECTIONS[i + 1] = tmp;
+            saveState();
+            renderInboxInsideModal();
+          }
+        });
+      });
+
+      inboxGroupsEl.querySelectorAll('[data-inbox-up]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          moveInboxWithinSection(Number(btn.dataset.inboxUp), -1);
+        });
+      });
+
+      inboxGroupsEl.querySelectorAll('[data-inbox-down]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          moveInboxWithinSection(Number(btn.dataset.inboxDown), 1);
+        });
+      });
+
+      inboxGroupsEl.querySelectorAll('[data-add-in-sec]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const secId = btn.dataset.addInSec;
+          openSections[secId] = true;
+          addingToInboxSecId = (addingToInboxSecId === secId) ? null : secId;
+          renderInboxInsideModal();
+          if (addingToInboxSecId) {
+            const inp = document.getElementById(`quick-inbox-input-${secId}`);
+            if (inp) inp.focus();
+          }
+        });
+      });
+
+      inboxGroupsEl.querySelectorAll('[data-confirm-add-sec]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const secId = btn.dataset.confirmAddSec;
+          const inp = document.getElementById(`quick-inbox-input-${secId}`);
+          const label = inp ? inp.value.trim() : '';
+          if (!label) return;
+          INBOX.push({ id: Date.now(), label, sectionId: secId });
+          addingToInboxSecId = null;
           saveState();
+          render();
+          renderInboxInsideModal();
+        });
+      });
+
+      inboxGroupsEl.querySelectorAll('[data-cancel-add-sec]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          addingToInboxSecId = null;
+          renderInboxInsideModal();
+        });
+      });
+
+      inboxGroupsEl.querySelectorAll('[data-move-sec]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.moveSec);
+          promotingInboxId = null;
+          movingInboxId = (movingInboxId === id) ? null : id;
+          renderInboxInsideModal();
+        });
+      });
+
+      inboxGroupsEl.querySelectorAll('[data-set-inbox-sec]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.setInboxSec);
+          const targetSec = btn.dataset.targetSec;
+          const item = INBOX.find(x => x.id === id);
+          if (!item) return;
+          item.sectionId = targetSec;
+          openSections[targetSec] = true;
+          movingInboxId = null;
+          saveState();
+          renderInboxInsideModal();
+        });
+      });
+
+      inboxGroupsEl.querySelectorAll('[data-cancel-move-sec]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          movingInboxId = null;
           renderInboxInsideModal();
         });
       });
@@ -1839,7 +2061,7 @@
 
       document.getElementById('tab-routine').textContent = `Routine (${toAr(ROUTINE.length)})`;
       const inboxLauncherPill = document.getElementById('inbox-launcher-pill');
-      if (inboxLauncherPill) inboxLauncherPill.textContent = `${toAr(INBOX.length)} مهام`;
+      if (inboxLauncherPill) inboxLauncherPill.textContent = toAr(INBOX.length);
 
       const totalTasksMins = TASKS.reduce((s, t) => s + t.mins, 0);
       const freeMins = Math.max(0, 60 - totalTasksMins);
@@ -1984,7 +2206,7 @@
 
       // Routine List grouped by sections with ▲/▼ reordering
       const routineListEl = document.getElementById('routine-list');
-      routineListEl.innerHTML = ROUTINE_SECTIONS.map(sec => {
+      routineListEl.innerHTML = ROUTINE_SECTIONS.map((sec, secIdx) => {
         const items = ROUTINE.filter(item => (item.sectionId || ROUTINE_SECTIONS[0].id) === sec.id);
         const isOpen = openRoutineSections[sec.id] !== false;
         return `
@@ -1994,28 +2216,51 @@
                 <span class="color-dot" style="background:${sec.color || '#4f75ff'};"></span>
                 <span>${sec.name}</span>
               </div>
-              <div class="prio-group-right">
+              <div class="prio-group-right" style="gap:5px;">
+                <button type="button" class="gear-btn" data-rsec-hdr-up="${secIdx}" ${secIdx === 0 ? 'disabled' : ''} title="رفع القسم لأعلى" style="padding:2px 6px;">▲</button>
+                <button type="button" class="gear-btn" data-rsec-hdr-down="${secIdx}" ${secIdx === ROUTINE_SECTIONS.length - 1 ? 'disabled' : ''} title="إنزال القسم لأسفل" style="padding:2px 6px;">▼</button>
+                <button type="button" class="gear-btn" data-add-in-rsec="${sec.id}" title="إضافة مهمة في هذا القسم" style="font-weight:800; padding:2px 8px;">+</button>
                 <span class="count-pill">${toAr(items.length)}</span>
                 <span class="group-arrow">${isOpen ? '▼' : '◀'}</span>
               </div>
             </div>
             ${isOpen ? `
               <div class="prio-group-body" style="padding:10px; gap:8px;">
+                ${addingToRoutineSecId === sec.id ? `
+                  <div class="promote-box" style="margin-top:0; padding-top:0; border-top:none; padding-bottom:6px; border-bottom:1px dashed var(--border);">
+                    <input type="text" class="input-field input-name" id="quick-rtn-name-${sec.id}" placeholder="مهمة جديدة في ${sec.name}...">
+                    <input type="text" inputmode="numeric" class="input-field input-mins" id="quick-rtn-mins-${sec.id}" placeholder="الدقائق">
+                    <button type="button" class="timer-btn" data-confirm-add-rsec="${sec.id}">إضافة</button>
+                    <button type="button" class="icon-btn" data-cancel-add-rsec="1">إلغاء</button>
+                  </div>
+                ` : ''}
                 ${items.length === 0
                   ? '<div class="empty-msg" style="padding:10px;">لا توجد مهام في هذا القسم بعد.</div>'
                   : items.map((item, idx) => `
                     <div class="task-row">
-                      <span class="color-dot color-dot-clickable" style="background:${sec.color || '#4f75ff'};" data-cycle-rsec="${item.id}" title="اضغط لنقل المهمة للقسم التالي"></span>
+                      <span class="color-dot color-dot-clickable" style="background:${sec.color || '#4f75ff'};" data-move-rsec="${item.id}" title="نقل لقسم آخر"></span>
                       <div class="task-info" style="cursor: pointer;" data-edit-routine="${item.id}" title="اضغط لتعديل الاسم أو الوقت">
                         <span class="task-title">✏️ ${item.label}</span>
                         <span class="task-dur">${toAr(item.mins)} د</span>
                       </div>
                       <div class="row-actions">
+                        <button type="button" class="icon-btn" data-move-rsec="${item.id}" title="نقل لقسم آخر">📁 نقل</button>
                         <button type="button" class="icon-btn" data-rtn-up="${item.id}" ${idx === 0 ? 'disabled' : ''} title="تحريك لأعلى">▲</button>
                         <button type="button" class="icon-btn" data-rtn-down="${item.id}" ${idx === items.length - 1 ? 'disabled' : ''} title="تحريك لأسفل">▼</button>
                         <button type="button" class="timer-btn" data-use-routine="${item.id}">إضافة للساعة</button>
                         <button type="button" class="icon-btn del" data-del-routine="${item.id}" title="حذف من الروتين">×</button>
                       </div>
+                      ${movingRoutineId === item.id ? `
+                        <div class="promote-box">
+                          <span class="max-hint">نقل إلى:</span>
+                          ${ROUTINE_SECTIONS.map(s => `
+                            <button type="button" class="chip-btn ${s.id === (item.sectionId || ROUTINE_SECTIONS[0].id) ? 'is-active' : ''}" data-set-rtn-sec="${item.id}" data-target-rsec="${s.id}">
+                              <span class="color-dot" style="background:${s.color || '#4f75ff'}; width:8px; height:8px;"></span> ${s.name}
+                            </button>
+                          `).join('')}
+                          <button type="button" class="icon-btn" data-cancel-move-rsec="1">إغلاق</button>
+                        </div>
+                      ` : ''}
                       ${editingRoutineId === item.id ? `
                         <div class="promote-box">
                           <input type="text" class="input-field input-name" id="edit-rtn-name-${item.id}" value="${item.label}" placeholder="اسم المهمة">
@@ -2122,6 +2367,41 @@
       });
 
       // Routine listeners
+      routineListEl.querySelectorAll('[data-add-in-rsec]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const secId = btn.dataset.addInRsec;
+          openRoutineSections[secId] = true;
+          addingToRoutineSecId = (addingToRoutineSecId === secId) ? null : secId;
+          render();
+          if (addingToRoutineSecId) {
+            const inp = document.getElementById(`quick-rtn-name-${secId}`);
+            if (inp) inp.focus();
+          }
+        });
+      });
+
+      routineListEl.querySelectorAll('[data-confirm-add-rsec]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const secId = btn.dataset.confirmAddRsec;
+          const nameInp = document.getElementById(`quick-rtn-name-${secId}`);
+          const minsInp = document.getElementById(`quick-rtn-mins-${secId}`);
+          const label = nameInp ? nameInp.value.trim() : '';
+          const mins = parseMins(minsInp ? minsInp.value : '0');
+          if (!label || !(mins > 0)) return;
+          ROUTINE.push({ id: Date.now(), label, mins: Math.min(60, mins), sectionId: secId });
+          addingToRoutineSecId = null;
+          render();
+        });
+      });
+
+      routineListEl.querySelectorAll('[data-cancel-add-rsec]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          addingToRoutineSecId = null;
+          render();
+        });
+      });
+
       routineListEl.querySelectorAll('[data-toggle-rsec]').forEach(header => {
         header.addEventListener('click', () => {
           const id = header.dataset.toggleRsec;
@@ -2130,15 +2410,57 @@
         });
       });
 
-      routineListEl.querySelectorAll('[data-cycle-rsec]').forEach(dot => {
-        dot.addEventListener('click', () => {
-          const id = Number(dot.dataset.cycleRsec);
+      routineListEl.querySelectorAll('[data-rsec-hdr-up]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const i = Number(btn.dataset.rsecHdrUp);
+          if (i > 0) {
+            const tmp = ROUTINE_SECTIONS[i];
+            ROUTINE_SECTIONS[i] = ROUTINE_SECTIONS[i - 1];
+            ROUTINE_SECTIONS[i - 1] = tmp;
+            render();
+          }
+        });
+      });
+
+      routineListEl.querySelectorAll('[data-rsec-hdr-down]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const i = Number(btn.dataset.rsecHdrDown);
+          if (i < ROUTINE_SECTIONS.length - 1) {
+            const tmp = ROUTINE_SECTIONS[i];
+            ROUTINE_SECTIONS[i] = ROUTINE_SECTIONS[i + 1];
+            ROUTINE_SECTIONS[i + 1] = tmp;
+            render();
+          }
+        });
+      });
+
+      routineListEl.querySelectorAll('[data-move-rsec]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.moveRsec);
+          editingRoutineId = null;
+          movingRoutineId = (movingRoutineId === id) ? null : id;
+          render();
+        });
+      });
+
+      routineListEl.querySelectorAll('[data-set-rtn-sec]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.setRtnSec);
+          const targetSec = btn.dataset.targetRsec;
           const item = ROUTINE.find(x => x.id === id);
-          if (!item || ROUTINE_SECTIONS.length <= 1) return;
-          const currentIdx = ROUTINE_SECTIONS.findIndex(s => s.id === (item.sectionId || ROUTINE_SECTIONS[0].id));
-          const nextSec = ROUTINE_SECTIONS[(currentIdx + 1) % ROUTINE_SECTIONS.length];
-          item.sectionId = nextSec.id;
-          openRoutineSections[nextSec.id] = true;
+          if (!item) return;
+          item.sectionId = targetSec;
+          openRoutineSections[targetSec] = true;
+          movingRoutineId = null;
+          render();
+        });
+      });
+
+      routineListEl.querySelectorAll('[data-cancel-move-rsec]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          movingRoutineId = null;
           render();
         });
       });
@@ -2256,22 +2578,6 @@
       titleInput.value = '';
       minsInput.value = '';
       render();
-    });
-
-    // Add Inbox Task Form
-    document.getElementById('inbox-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const input = document.getElementById('inbox-title');
-      const secSelect = document.getElementById('inbox-section-select');
-      const label = input.value.trim();
-      if (!label) return;
-      const sectionId = secSelect ? secSelect.value : (INBOX_SECTIONS[0] ? INBOX_SECTIONS[0].id : 'sec-1');
-      INBOX.push({ id: Date.now(), label, sectionId });
-      openSections[sectionId] = true;
-      input.value = '';
-      saveState();
-      render();
-      renderInboxInsideModal();
     });
 
     // Copy Status
