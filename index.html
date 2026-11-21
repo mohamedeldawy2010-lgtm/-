@@ -317,6 +317,36 @@
     .task-row.is-completing {
       opacity: 0.45;
     }
+    .task-row.is-dragging, .prio-group.is-dragging {
+      opacity: 0.92;
+      transition: none !important;
+      box-shadow: 0 10px 26px rgba(15, 23, 42, 0.18);
+      border-color: var(--blue);
+    }
+    .task-row.drag-over {
+      border-top: 2.5px solid var(--blue);
+      border-bottom: 2.5px solid var(--blue);
+    }
+    .drag-handle {
+      color: var(--text-soft);
+      opacity: 0.82;
+      font-size: 19px;
+      font-weight: 800;
+      line-height: 1;
+      letter-spacing: -1px;
+      padding: 10px 7px;
+      margin: -6px -2px;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+      -webkit-user-select: none;
+      flex-shrink: 0;
+    }
+    .drag-handle:active {
+      cursor: grabbing;
+      opacity: 0.9;
+      color: var(--blue);
+    }
     .task-circle {
       width: 24px;
       height: 24px;
@@ -888,11 +918,13 @@
 
         <form class="add-bar" id="add-form">
           <input type="text" class="input-field input-name" id="new-title" placeholder="اكتب اسم المهمة الجديدة..." required>
-          <div class="mins-wrap">
-            <input type="text" inputmode="numeric" class="input-field input-mins" id="new-mins" value="60" required>
-            <span class="max-hint" id="max-hint">أقصى وقت: ٦٠ د</span>
-          </div>
           <button type="submit" class="add-btn" title="إضافة مهمة">+</button>
+        </form>
+        <form class="promote-box hidden" id="live-mins-prompt" style="margin-top:10px;">
+          <span class="max-hint" id="live-mins-label">الوقت (دقائق):</span>
+          <input type="text" inputmode="numeric" class="input-field input-mins" id="live-mins-input" value="" placeholder="الدقائق" required>
+          <button type="submit" class="timer-btn">تأكيد</button>
+          <button type="button" class="icon-btn" id="live-mins-cancel">إلغاء</button>
         </form>
       </div>
 
@@ -939,16 +971,9 @@
             </button>
           </div>
         </div>
-        <div class="sub-stats">اضغط على الاسم لتعديله، على الدايرة لنقل القسم، أو استخدم ▲/▼ للترتيب.</div>
+        <div class="sub-stats">اضغط على الاسم لتعديله، واسحب من النقط ⋮⋮ لترتيب الأقسام أو المهام.</div>
 
         <div id="routine-list"></div>
-
-        <form class="add-bar" id="routine-form">
-          <input type="text" class="input-field input-name" id="routine-title" placeholder="اسم مهمة الروتين..." required>
-          <input type="text" inputmode="numeric" class="input-field input-mins" id="routine-mins" placeholder="الدقائق" required>
-          <select id="routine-section-select" class="input-field" style="padding:9px 10px; font-size:16px; font-weight:700; max-width:145px;"></select>
-          <button type="submit" class="add-btn" title="إضافة للروتين">+</button>
-        </form>
       </div>
     </div>
   </div>
@@ -1209,6 +1234,9 @@
           if (tr.type === 'checks') tr.done = [];
           if (tr.type === 'counter') tr.val = 0;
         });
+        (stateObj.routine || []).forEach(r => {
+          r.doneToday = false;
+        });
 
         stateObj.lastReset = threshold.toISOString();
         return true;
@@ -1306,6 +1334,7 @@
       pruneCompleted();
       state.trackers = TRACKERS;
       state.trackersLogs = TRACKERS_LOGS;
+      state.routine = ROUTINE;
       checkAndApplyDaily3AMReset(state);
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
@@ -1573,6 +1602,120 @@
       renderRoutineSectionsManagerList();
     });
 
+    function attachLiveSortable(containerEl, itemSelector, handleSelector, onSwap, onFinish) {
+      if (!containerEl) return;
+      let activeIdx = null;
+      let moved = false;
+      let startY = 0;
+      let srcEl = null;
+
+      function getItems() {
+        return Array.from(containerEl.children).filter(el => el.matches(itemSelector));
+      }
+
+      function updatePos(clientY) {
+        if (activeIdx === null || !srcEl) return;
+        const items = getItems();
+
+        if (activeIdx > 0) {
+          const prevEl = items[activeIdx - 1];
+          const prevRect = prevEl.getBoundingClientRect();
+          if (clientY < prevRect.top + prevRect.height * 0.55) {
+            srcEl.style.transform = '';
+            const oldTop = srcEl.getBoundingClientRect().top;
+            containerEl.insertBefore(srcEl, prevEl);
+            const newTop = srcEl.getBoundingClientRect().top;
+            startY += (newTop - oldTop);
+            onSwap(activeIdx, activeIdx - 1);
+            activeIdx--;
+            moved = true;
+          }
+        }
+
+        const updatedItems = getItems();
+        if (activeIdx < updatedItems.length - 1) {
+          const nextEl = updatedItems[activeIdx + 1];
+          const nextRect = nextEl.getBoundingClientRect();
+          if (clientY > nextRect.top + nextRect.height * 0.45) {
+            srcEl.style.transform = '';
+            const oldTop = srcEl.getBoundingClientRect().top;
+            containerEl.insertBefore(nextEl, srcEl);
+            const newTop = srcEl.getBoundingClientRect().top;
+            startY += (newTop - oldTop);
+            onSwap(activeIdx, activeIdx + 1);
+            activeIdx++;
+            moved = true;
+          }
+        }
+
+        const dy = clientY - startY;
+        srcEl.style.transform = `translate3d(0, ${dy}px, 0) scale(1.01)`;
+      }
+
+      function finish() {
+        if (activeIdx === null) return;
+        const didMove = moved;
+        activeIdx = null;
+        moved = false;
+        if (srcEl) {
+          srcEl.style.transform = '';
+          srcEl.style.zIndex = '';
+          srcEl.classList.remove('is-dragging');
+          srcEl = null;
+        }
+        if (didMove && onFinish) onFinish();
+      }
+
+      getItems().forEach(itemEl => {
+        const handle = itemEl.querySelector(handleSelector);
+        if (!handle) return;
+
+        handle.addEventListener('touchstart', e => {
+          if (!e.touches || !e.touches[0]) return;
+          e.preventDefault();
+          e.stopPropagation();
+          const items = getItems();
+          activeIdx = items.indexOf(itemEl);
+          moved = false;
+          startY = e.touches[0].clientY;
+          srcEl = itemEl;
+          srcEl.classList.add('is-dragging');
+          srcEl.style.zIndex = '25';
+          srcEl.style.position = 'relative';
+        }, { passive: false });
+
+        handle.addEventListener('touchmove', e => {
+          if (activeIdx === null || !e.touches || !e.touches[0]) return;
+          e.preventDefault();
+          updatePos(e.touches[0].clientY);
+        }, { passive: false });
+
+        handle.addEventListener('touchend', finish);
+        handle.addEventListener('touchcancel', finish);
+
+        handle.addEventListener('mousedown', e => {
+          e.preventDefault();
+          e.stopPropagation();
+          const items = getItems();
+          activeIdx = items.indexOf(itemEl);
+          moved = false;
+          startY = e.clientY;
+          srcEl = itemEl;
+          srcEl.classList.add('is-dragging');
+          srcEl.style.zIndex = '25';
+          srcEl.style.position = 'relative';
+          const onMove = ev => updatePos(ev.clientY);
+          const onUp = () => {
+            document.removeEventListener('mousemove', onMove);
+            document.removeEventListener('mouseup', onUp);
+            finish();
+          };
+          document.addEventListener('mousemove', onMove);
+          document.addEventListener('mouseup', onUp);
+        });
+      });
+    }
+
     function moveInboxWithinSection(itemId, dir) {
       const item = INBOX.find(x => x.id === itemId);
       if (!item) return;
@@ -1821,15 +1964,14 @@
         const items = INBOX.filter(item => item.sectionId === sec.id);
         const isOpen = openSections[sec.id] !== false;
         return `
-          <div class="prio-group">
+          <div class="prio-group" data-sec-id="${sec.id}">
             <div class="prio-group-header" data-toggle-sec="${sec.id}" style="cursor:pointer; padding:11px 14px;">
               <div class="prio-group-title">
+                <span class="drag-handle sec-drag-handle" title="اسحب لترتيب القسم">⋮⋮</span>
                 <span class="color-dot" style="background:${sec.color || '#4f75ff'};"></span>
                 <span>${sec.name}</span>
               </div>
               <div class="prio-group-right" style="gap:5px;">
-                <button type="button" class="gear-btn" data-sec-hdr-up="${secIdx}" ${secIdx === 0 ? 'disabled' : ''} title="رفع القسم لأعلى" style="padding:2px 6px;">▲</button>
-                <button type="button" class="gear-btn" data-sec-hdr-down="${secIdx}" ${secIdx === INBOX_SECTIONS.length - 1 ? 'disabled' : ''} title="إنزال القسم لأسفل" style="padding:2px 6px;">▼</button>
                 <button type="button" class="gear-btn" data-add-in-sec="${sec.id}" title="إضافة مهمة في هذا القسم" style="font-weight:800; padding:2px 8px;">+</button>
                 <span class="count-pill">${toAr(items.length)}</span>
                 <span class="group-arrow">${isOpen ? '▼' : '◀'}</span>
@@ -1847,15 +1989,14 @@
                 ${items.length === 0
                   ? '<div class="empty-msg" style="padding:10px;">لا توجد مهام في هذا القسم بعد.</div>'
                   : items.map((item, idx) => `
-                    <div class="task-row">
+                    <div class="task-row" data-inbox-id="${item.id}">
+                      <span class="drag-handle inbox-task-drag-handle" title="اسحب للترتيب">⋮⋮</span>
                       <span class="color-dot color-dot-clickable" style="background:${sec.color || '#4f75ff'};" data-move-sec="${item.id}" title="نقل لقسم آخر"></span>
                       <div class="task-info">
                         <span class="task-title">${item.label}</span>
                       </div>
                       <div class="row-actions">
                         <button type="button" class="icon-btn" data-move-sec="${item.id}" title="نقل لقسم آخر">📁 نقل</button>
-                        <button type="button" class="icon-btn" data-inbox-up="${item.id}" ${idx === 0 ? 'disabled' : ''} title="تحريك لأعلى">▲</button>
-                        <button type="button" class="icon-btn" data-inbox-down="${item.id}" ${idx === items.length - 1 ? 'disabled' : ''} title="تحريك لأسفل">▼</button>
                         <button type="button" class="timer-btn" data-promote="${item.id}">إضافة للساعة</button>
                         <button type="button" class="icon-btn del" data-del-inbox="${item.id}" title="حذف">×</button>
                       </div>
@@ -1894,44 +2035,45 @@
         });
       });
 
-      inboxGroupsEl.querySelectorAll('[data-sec-hdr-up]').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          const i = Number(btn.dataset.secHdrUp);
-          if (i > 0) {
-            const tmp = INBOX_SECTIONS[i];
-            INBOX_SECTIONS[i] = INBOX_SECTIONS[i - 1];
-            INBOX_SECTIONS[i - 1] = tmp;
+      // Live 60fps drag-and-drop for Inbox Partitions
+      attachLiveSortable(
+        inboxGroupsEl,
+        '.prio-group',
+        '.sec-drag-handle',
+        (from, to) => {
+          const [moved] = INBOX_SECTIONS.splice(from, 1);
+          INBOX_SECTIONS.splice(to, 0, moved);
+        },
+        () => {
+          saveState();
+          renderInboxInsideModal();
+        }
+      );
+
+      // Live 60fps drag-and-drop for Inbox Tasks inside each Partition
+      inboxGroupsEl.querySelectorAll('.prio-group').forEach(groupEl => {
+        const secId = groupEl.dataset.secId;
+        const bodyEl = groupEl.querySelector('.prio-group-body');
+        if (!bodyEl) return;
+        attachLiveSortable(
+          bodyEl,
+          '.task-row',
+          '.inbox-task-drag-handle',
+          (from, to) => {
+            const secIndices = INBOX.map((x, idx) => ((x.sectionId || INBOX_SECTIONS[0].id) === secId ? idx : -1)).filter(idx => idx !== -1);
+            if (from < secIndices.length && to < secIndices.length) {
+              const idxA = secIndices[from];
+              const idxB = secIndices[to];
+              const tmp = INBOX[idxA];
+              INBOX[idxA] = INBOX[idxB];
+              INBOX[idxB] = tmp;
+            }
+          },
+          () => {
             saveState();
             renderInboxInsideModal();
           }
-        });
-      });
-
-      inboxGroupsEl.querySelectorAll('[data-sec-hdr-down]').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          const i = Number(btn.dataset.secHdrDown);
-          if (i < INBOX_SECTIONS.length - 1) {
-            const tmp = INBOX_SECTIONS[i];
-            INBOX_SECTIONS[i] = INBOX_SECTIONS[i + 1];
-            INBOX_SECTIONS[i + 1] = tmp;
-            saveState();
-            renderInboxInsideModal();
-          }
-        });
-      });
-
-      inboxGroupsEl.querySelectorAll('[data-inbox-up]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          moveInboxWithinSection(Number(btn.dataset.inboxUp), -1);
-        });
-      });
-
-      inboxGroupsEl.querySelectorAll('[data-inbox-down]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          moveInboxWithinSection(Number(btn.dataset.inboxDown), 1);
-        });
+        );
       });
 
       inboxGroupsEl.querySelectorAll('[data-add-in-sec]').forEach(btn => {
@@ -2029,9 +2171,11 @@
         btn.addEventListener('click', () => {
           const id = Number(btn.dataset.confirmPromote);
           const minsInp = document.getElementById(`promote-mins-${id}`);
+          const totalTasksMins = TASKS.reduce((s, t) => s + t.mins, 0);
+          const freeMins = Math.max(0, 60 - totalTasksMins);
           const rawMins = parseMins(minsInp ? minsInp.value : '0');
-          if (!(rawMins > 0)) return;
-          const mins = Math.min(60, rawMins);
+          if (!(rawMins > 0) || freeMins <= 0) return;
+          const mins = Math.min(freeMins, rawMins);
           const idx = INBOX.findIndex(x => x.id === id);
           if (idx === -1) return;
           const [item] = INBOX.splice(idx, 1);
@@ -2059,7 +2203,8 @@
       saveState();
       ensureTicker();
 
-      document.getElementById('tab-routine').textContent = `Routine (${toAr(ROUTINE.length)})`;
+      const remainingRoutineTotal = ROUTINE.filter(item => !item.doneToday).length;
+      document.getElementById('tab-routine').textContent = `Routine (${toAr(remainingRoutineTotal)})`;
       const inboxLauncherPill = document.getElementById('inbox-launcher-pill');
       if (inboxLauncherPill) inboxLauncherPill.textContent = toAr(INBOX.length);
 
@@ -2076,16 +2221,7 @@
       const stackedEl = document.getElementById('stacked-bar');
       const barsEl = document.getElementById('bars-list');
       const listEl = document.getElementById('task-list');
-      const newMinsEl = document.getElementById('new-mins');
-      const maxHintEl = document.getElementById('max-hint');
 
-      if (freeMins > 0) {
-        newMinsEl.value = freeMins;
-        maxHintEl.textContent = `أقصى وقت: ${toAr(freeMins)} د`;
-      } else {
-        newMinsEl.value = 5;
-        maxHintEl.textContent = 'الساعة مكتملة (٦٠ د)';
-      }
 
       if (TASKS.length === 0) {
         badgeEl.textContent = '٦٠ دقيقة فراغ';
@@ -2125,11 +2261,12 @@
 
       listEl.innerHTML = TASKS.length === 0
         ? '<div class="empty-msg is-done">كل المهام خلصت! تقدر تضيف مهمة جديدة من تحت أو تسحب من الـ Inbox أو الـ Routine.</div>'
-        : TASKS.map(t => {
+        : TASKS.map((t, idx) => {
             const durClass = t.running ? 'is-running' : (t.remainingSec === 0 ? 'is-finished' : '');
             const prioBorder = t.priorityColor ? `border-right: 4px solid ${t.priorityColor};` : '';
             return `
-              <div class="task-row ${t.completing ? 'is-completing' : ''}" style="${prioBorder}">
+              <div class="task-row ${t.completing ? 'is-completing' : ''}" style="${prioBorder}" data-live-idx="${idx}">
+                <span class="drag-handle" data-drag-idx="${idx}" title="اسحب للترتيب">⋮⋮</span>
                 <div class="task-circle" data-check="${t.id}" title="اضغط هنا لإنهاء المهمة">
                   <svg viewBox="0 0 16 16" width="14" height="14">
                     <path d="M3.2 8.4 L6.4 11.6 L12.8 4.4" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
@@ -2196,31 +2333,23 @@
         render();
       });
 
-      // Routine section selector
-      const rtnSecSelect = document.getElementById('routine-section-select');
-      if (rtnSecSelect) {
-        const prevVal = rtnSecSelect.value;
-        rtnSecSelect.innerHTML = ROUTINE_SECTIONS.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-        if (prevVal && ROUTINE_SECTIONS.some(s => s.id === prevVal)) rtnSecSelect.value = prevVal;
-      }
-
       // Routine List grouped by sections with ▲/▼ reordering
       const routineListEl = document.getElementById('routine-list');
       routineListEl.innerHTML = ROUTINE_SECTIONS.map((sec, secIdx) => {
         const items = ROUTINE.filter(item => (item.sectionId || ROUTINE_SECTIONS[0].id) === sec.id);
+        const remCount = items.filter(item => !item.doneToday).length;
         const isOpen = openRoutineSections[sec.id] !== false;
         return `
-          <div class="prio-group" style="margin-bottom:10px; border-radius:16px;">
+          <div class="prio-group" data-rsec-id="${sec.id}" style="margin-bottom:10px; border-radius:16px;">
             <div class="prio-group-header" data-toggle-rsec="${sec.id}" style="cursor:pointer; padding:11px 14px;">
               <div class="prio-group-title">
+                <span class="drag-handle rsec-drag-handle" title="اسحب لترتيب القسم">⋮⋮</span>
                 <span class="color-dot" style="background:${sec.color || '#4f75ff'};"></span>
                 <span>${sec.name}</span>
               </div>
               <div class="prio-group-right" style="gap:5px;">
-                <button type="button" class="gear-btn" data-rsec-hdr-up="${secIdx}" ${secIdx === 0 ? 'disabled' : ''} title="رفع القسم لأعلى" style="padding:2px 6px;">▲</button>
-                <button type="button" class="gear-btn" data-rsec-hdr-down="${secIdx}" ${secIdx === ROUTINE_SECTIONS.length - 1 ? 'disabled' : ''} title="إنزال القسم لأسفل" style="padding:2px 6px;">▼</button>
                 <button type="button" class="gear-btn" data-add-in-rsec="${sec.id}" title="إضافة مهمة في هذا القسم" style="font-weight:800; padding:2px 8px;">+</button>
-                <span class="count-pill">${toAr(items.length)}</span>
+                <span class="count-pill">${toAr(remCount)}</span>
                 <span class="group-arrow">${isOpen ? '▼' : '◀'}</span>
               </div>
             </div>
@@ -2237,7 +2366,13 @@
                 ${items.length === 0
                   ? '<div class="empty-msg" style="padding:10px;">لا توجد مهام في هذا القسم بعد.</div>'
                   : items.map((item, idx) => `
-                    <div class="task-row">
+                    <div class="task-row ${item.doneToday ? 'is-completing' : ''}">
+                      <span class="drag-handle rtn-task-drag-handle" title="اسحب للترتيب">⋮⋮</span>
+                      <div class="task-circle" data-check-routine="${item.id}" title="تعليم كمكتمل اليوم">
+                        <svg viewBox="0 0 16 16" width="14" height="14">
+                          <path d="M3.2 8.4 L6.4 11.6 L12.8 4.4" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                      </div>
                       <span class="color-dot color-dot-clickable" style="background:${sec.color || '#4f75ff'};" data-move-rsec="${item.id}" title="نقل لقسم آخر"></span>
                       <div class="task-info" style="cursor: pointer;" data-edit-routine="${item.id}" title="اضغط لتعديل الاسم أو الوقت">
                         <span class="task-title">✏️ ${item.label}</span>
@@ -2245,8 +2380,6 @@
                       </div>
                       <div class="row-actions">
                         <button type="button" class="icon-btn" data-move-rsec="${item.id}" title="نقل لقسم آخر">📁 نقل</button>
-                        <button type="button" class="icon-btn" data-rtn-up="${item.id}" ${idx === 0 ? 'disabled' : ''} title="تحريك لأعلى">▲</button>
-                        <button type="button" class="icon-btn" data-rtn-down="${item.id}" ${idx === items.length - 1 ? 'disabled' : ''} title="تحريك لأسفل">▼</button>
                         <button type="button" class="timer-btn" data-use-routine="${item.id}">إضافة للساعة</button>
                         <button type="button" class="icon-btn del" data-del-routine="${item.id}" title="حذف من الروتين">×</button>
                       </div>
@@ -2279,6 +2412,119 @@
           </div>
         `;
       }).join('');
+
+      // Live tasks drag-and-drop reorder via subtle ⋮⋮ handle (instant 60fps + live neighbor displacement)
+      let activeDragIdx = null;
+      let dragMoved = false;
+      let dragStartY = 0;
+      let dragSrcRow = null;
+
+      function updateDragPosition(clientY) {
+        if (activeDragIdx === null || !dragSrcRow) return;
+        const rows = Array.from(listEl.querySelectorAll('.task-row'));
+
+        // Check swap with previous row (moving up)
+        if (activeDragIdx > 0) {
+          const prevRow = rows[activeDragIdx - 1];
+          const prevRect = prevRow.getBoundingClientRect();
+          if (clientY < prevRect.top + prevRect.height * 0.55) {
+            dragSrcRow.style.transform = '';
+            const oldTop = dragSrcRow.getBoundingClientRect().top;
+            listEl.insertBefore(dragSrcRow, prevRow);
+            const newTop = dragSrcRow.getBoundingClientRect().top;
+            dragStartY += (newTop - oldTop);
+
+            const [moved] = TASKS.splice(activeDragIdx, 1);
+            TASKS.splice(activeDragIdx - 1, 0, moved);
+            activeDragIdx--;
+            dragMoved = true;
+          }
+        }
+
+        // Check swap with next row (moving down)
+        const updatedRows = Array.from(listEl.querySelectorAll('.task-row'));
+        if (activeDragIdx < updatedRows.length - 1) {
+          const nextRow = updatedRows[activeDragIdx + 1];
+          const nextRect = nextRow.getBoundingClientRect();
+          if (clientY > nextRect.top + nextRect.height * 0.45) {
+            dragSrcRow.style.transform = '';
+            const oldTop = dragSrcRow.getBoundingClientRect().top;
+            listEl.insertBefore(nextRow, dragSrcRow);
+            const newTop = dragSrcRow.getBoundingClientRect().top;
+            dragStartY += (newTop - oldTop);
+
+            const [moved] = TASKS.splice(activeDragIdx, 1);
+            TASKS.splice(activeDragIdx + 1, 0, moved);
+            activeDragIdx++;
+            dragMoved = true;
+          }
+        }
+
+        const dy = clientY - dragStartY;
+        dragSrcRow.style.transform = `translate3d(0, ${dy}px, 0) scale(1.01)`;
+      }
+
+      function finishDrag() {
+        if (activeDragIdx === null) return;
+        const didMove = dragMoved;
+        activeDragIdx = null;
+        dragMoved = false;
+        if (dragSrcRow) {
+          dragSrcRow.style.transform = '';
+          dragSrcRow.style.zIndex = '';
+          dragSrcRow.classList.remove('is-dragging');
+          dragSrcRow = null;
+        }
+        if (didMove) render();
+      }
+
+      listEl.querySelectorAll('.drag-handle').forEach(handle => {
+        handle.addEventListener('touchstart', e => {
+          if (!e.touches || !e.touches[0]) return;
+          e.preventDefault();
+          e.stopPropagation();
+          activeDragIdx = Number(handle.dataset.dragIdx);
+          activeDropIdx = activeDragIdx;
+          dragStartY = e.touches[0].clientY;
+          dragSrcRow = handle.closest('.task-row');
+          if (dragSrcRow) {
+            dragSrcRow.classList.add('is-dragging');
+            dragSrcRow.style.zIndex = '20';
+            dragSrcRow.style.position = 'relative';
+          }
+        }, { passive: false });
+
+        handle.addEventListener('touchmove', e => {
+          if (activeDragIdx === null || !e.touches || !e.touches[0]) return;
+          e.preventDefault();
+          updateDragPosition(e.touches[0].clientY);
+        }, { passive: false });
+
+        handle.addEventListener('touchend', finishDrag);
+        handle.addEventListener('touchcancel', finishDrag);
+
+        handle.addEventListener('mousedown', e => {
+          e.preventDefault();
+          e.stopPropagation();
+          activeDragIdx = Number(handle.dataset.dragIdx);
+          activeDropIdx = activeDragIdx;
+          dragStartY = e.clientY;
+          dragSrcRow = handle.closest('.task-row');
+          if (dragSrcRow) {
+            dragSrcRow.classList.add('is-dragging');
+            dragSrcRow.style.zIndex = '20';
+            dragSrcRow.style.position = 'relative';
+          }
+          const onMouseMove = ev => updateDragPosition(ev.clientY);
+          const onMouseUp = () => {
+            document.removeEventListener('mousemove', onMouseMove);
+            document.removeEventListener('mouseup', onMouseUp);
+            finishDrag();
+          };
+          document.addEventListener('mousemove', onMouseMove);
+          document.addEventListener('mouseup', onMouseUp);
+        });
+      });
 
       // Live tasks listeners
       listEl.querySelectorAll('[data-check]').forEach(circle => {
@@ -2410,30 +2656,39 @@
         });
       });
 
-      routineListEl.querySelectorAll('[data-rsec-hdr-up]').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          const i = Number(btn.dataset.rsecHdrUp);
-          if (i > 0) {
-            const tmp = ROUTINE_SECTIONS[i];
-            ROUTINE_SECTIONS[i] = ROUTINE_SECTIONS[i - 1];
-            ROUTINE_SECTIONS[i - 1] = tmp;
-            render();
-          }
-        });
-      });
+      // Live 60fps drag-and-drop for Routine Partitions
+      attachLiveSortable(
+        routineListEl,
+        '.prio-group',
+        '.rsec-drag-handle',
+        (from, to) => {
+          const [moved] = ROUTINE_SECTIONS.splice(from, 1);
+          ROUTINE_SECTIONS.splice(to, 0, moved);
+        },
+        () => render()
+      );
 
-      routineListEl.querySelectorAll('[data-rsec-hdr-down]').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          const i = Number(btn.dataset.rsecHdrDown);
-          if (i < ROUTINE_SECTIONS.length - 1) {
-            const tmp = ROUTINE_SECTIONS[i];
-            ROUTINE_SECTIONS[i] = ROUTINE_SECTIONS[i + 1];
-            ROUTINE_SECTIONS[i + 1] = tmp;
-            render();
-          }
-        });
+      // Live 60fps drag-and-drop for Routine Tasks inside each Partition
+      routineListEl.querySelectorAll('.prio-group').forEach(groupEl => {
+        const secId = groupEl.dataset.rsecId;
+        const bodyEl = groupEl.querySelector('.prio-group-body');
+        if (!bodyEl) return;
+        attachLiveSortable(
+          bodyEl,
+          '.task-row',
+          '.rtn-task-drag-handle',
+          (from, to) => {
+            const secIndices = ROUTINE.map((x, idx) => ((x.sectionId || ROUTINE_SECTIONS[0].id) === secId ? idx : -1)).filter(idx => idx !== -1);
+            if (from < secIndices.length && to < secIndices.length) {
+              const idxA = secIndices[from];
+              const idxB = secIndices[to];
+              const tmp = ROUTINE[idxA];
+              ROUTINE[idxA] = ROUTINE[idxB];
+              ROUTINE[idxB] = tmp;
+            }
+          },
+          () => render()
+        );
       });
 
       routineListEl.querySelectorAll('[data-move-rsec]').forEach(btn => {
@@ -2465,15 +2720,16 @@
         });
       });
 
-      routineListEl.querySelectorAll('[data-rtn-up]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          moveRoutineWithinSection(Number(btn.dataset.rtnUp), -1);
-        });
-      });
 
-      routineListEl.querySelectorAll('[data-rtn-down]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          moveRoutineWithinSection(Number(btn.dataset.rtnDown), 1);
+
+      routineListEl.querySelectorAll('[data-check-routine]').forEach(circle => {
+        circle.addEventListener('click', e => {
+          e.stopPropagation();
+          const id = Number(circle.dataset.checkRoutine);
+          const item = ROUTINE.find(x => x.id === id);
+          if (!item) return;
+          item.doneToday = !item.doneToday;
+          render();
         });
       });
 
@@ -2540,44 +2796,68 @@
       });
     }
 
-    // Direct Add Task to Hour
-    document.getElementById('add-form').addEventListener('submit', e => {
+    // Direct Add Task to Hour (2-step: type name -> numeric keypad for mins, capped at remaining <= 60)
+    let pendingLiveLabel = '';
+    const addFormEl = document.getElementById('add-form');
+    const livePromptEl = document.getElementById('live-mins-prompt');
+    const liveMinsLabelEl = document.getElementById('live-mins-label');
+    const liveMinsInputEl = document.getElementById('live-mins-input');
+
+    addFormEl.addEventListener('submit', e => {
       e.preventDefault();
       const titleInput = document.getElementById('new-title');
-      const minsInput = document.getElementById('new-mins');
       const label = titleInput.value.trim();
-      const mins = parseMins(minsInput.value);
-      if (!label || !(mins > 0)) return;
+      if (!label) return;
 
+      const totalTasksMins = TASKS.reduce((s, t) => s + t.mins, 0);
+      const freeMins = Math.max(0, 60 - totalTasksMins);
+      if (freeMins <= 0) {
+        liveMinsLabelEl.textContent = 'الساعة مكتملة (٦٠ د) — خلّص أو حوّل مهمة الأول';
+        liveMinsInputEl.classList.add('hidden');
+        livePromptEl.querySelector('button[type="submit"]').classList.add('hidden');
+        livePromptEl.classList.remove('hidden');
+        return;
+      }
+
+      pendingLiveLabel = label;
+      liveMinsLabelEl.textContent = `وقت «${label}» (متاح: ${toAr(freeMins)} د):`;
+      liveMinsInputEl.classList.remove('hidden');
+      livePromptEl.querySelector('button[type="submit"]').classList.remove('hidden');
+      liveMinsInputEl.value = '';
+      livePromptEl.classList.remove('hidden');
+      liveMinsInputEl.focus();
+    });
+
+    livePromptEl.addEventListener('submit', e => {
+      e.preventDefault();
+      if (!pendingLiveLabel) return;
+      const totalTasksMins = TASKS.reduce((s, t) => s + t.mins, 0);
+      const freeMins = Math.max(0, 60 - totalTasksMins);
+      const rawMins = parseMins(liveMinsInputEl.value);
+      if (!(rawMins > 0) || freeMins <= 0) return;
+
+      const mins = Math.min(freeMins, rawMins);
       TASKS.push({
         id: Date.now(),
-        label,
-        mins: Math.min(60, mins),
+        label: pendingLiveLabel,
+        mins,
         color: nextDistinctColor(),
-        remainingSec: Math.min(60, mins) * 60,
+        remainingSec: mins * 60,
         running: false,
         endAt: null,
         completing: false
       });
-      titleInput.value = '';
+      pendingLiveLabel = '';
+      document.getElementById('new-title').value = '';
+      liveMinsInputEl.value = '';
+      livePromptEl.classList.add('hidden');
       render();
     });
 
-    // Add Routine Item Form
-    document.getElementById('routine-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const titleInput = document.getElementById('routine-title');
-      const minsInput = document.getElementById('routine-mins');
-      const label = titleInput.value.trim();
-      const mins = parseMins(minsInput.value);
-      if (!label || !(mins > 0)) return;
-      const secSelect = document.getElementById('routine-section-select');
-      const sectionId = secSelect && secSelect.value ? secSelect.value : ROUTINE_SECTIONS[0].id;
-      ROUTINE.push({ id: Date.now(), label, mins: Math.min(60, mins), sectionId });
-      openRoutineSections[sectionId] = true;
-      titleInput.value = '';
-      minsInput.value = '';
-      render();
+    document.getElementById('live-mins-cancel').addEventListener('click', () => {
+      pendingLiveLabel = '';
+      liveMinsInputEl.value = '';
+      livePromptEl.classList.add('hidden');
     });
 
     // Copy Status
@@ -2839,35 +3119,157 @@
       document.getElementById('modal-trackers-log').classList.add('hidden');
     });
 
-    // PDF / Print Handler
-    document.getElementById('print-pdf-btn').addEventListener('click', () => {
-      const printArea = document.getElementById('print-area');
+    // Real Offline PDF Generator (renders Arabic report to Canvas -> JPEG -> PDF Blob)
+    function buildPdfFromJpeg(jpgBytes, imgW, imgH) {
+      const pdfW = 595;
+      const pdfH = Math.round((imgH / imgW) * pdfW);
+      const enc = new TextEncoder();
+      const chunks = [];
+      let offset = 0;
+      const offsets = [];
+
+      function pushStr(s) {
+        const b = enc.encode(s);
+        chunks.push(b);
+        offset += b.length;
+      }
+      function pushBytes(b) {
+        chunks.push(b);
+        offset += b.length;
+      }
+
+      pushStr('%PDF-1.4\n');
+
+      offsets.push(offset);
+      pushStr('1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n');
+
+      offsets.push(offset);
+      pushStr('2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n');
+
+      offsets.push(offset);
+      pushStr(`3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ${pdfW} ${pdfH}] /Resources << /XObject << /Im0 4 0 R >> >> /Contents 5 0 R >>\nendobj\n`);
+
+      offsets.push(offset);
+      pushStr(`4 0 obj\n<< /Type /XObject /Subtype /Image /Width ${imgW} /Height ${imgH} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /DCTDecode /Length ${jpgBytes.length} >>\nstream\n`);
+      pushBytes(jpgBytes);
+      pushStr('\nendstream\nendobj\n');
+
+      const contentStr = `q ${pdfW} 0 0 ${pdfH} 0 0 cm /Im0 Do Q`;
+      offsets.push(offset);
+      pushStr(`5 0 obj\n<< /Length ${contentStr.length} >>\nstream\n${contentStr}\nendstream\nendobj\n`);
+
+      const xrefOffset = offset;
+      pushStr('xref\n0 6\n0000000000 65535 f \n');
+      offsets.forEach(o => {
+        pushStr(String(o).padStart(10, '0') + ' 00000 n \n');
+      });
+      pushStr(`trailer\n<< /Size 6 /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF`);
+
+      const out = new Uint8Array(offset);
+      let pos = 0;
+      chunks.forEach(c => { out.set(c, pos); pos += c.length; });
+      return new Blob([out], { type: 'application/pdf' });
+    }
+
+    document.getElementById('print-pdf-btn').addEventListener('click', async () => {
       const allDays = [
-        { label: 'اليوم الحالي', trackers: TRACKERS },
+        { label: 'اليوم الحالي (حتى الآن)', trackers: TRACKERS },
         ...(TRACKERS_LOGS || []).map(l => ({ label: l.dateStr, trackers: l.trackers }))
       ];
 
-      printArea.innerHTML = `
-        <div style="direction:rtl; font-family:system-ui, sans-serif; padding:24px; color:#111;">
-          <h1 style="text-align:center; font-size:18px; margin-bottom:20px;">تقرير سجل العدادات اليومية</h1>
-          ${allDays.map(day => `
-            <div style="border:1px solid #ddd; border-radius:8px; padding:12px; margin-bottom:16px; page-break-inside:avoid;">
-              <h3 style="margin:0 0 10px 0; font-size:14px; color:#15803d;">${day.label}</h3>
-              <table style="width:100%; border-collapse:collapse; font-size:13px;">
-                ${(day.trackers || []).map(t => `
-                  <tr style="border-bottom:1px solid #eee;">
-                    <td style="padding:6px; font-weight:bold;">${t.name}</td>
-                    <td style="padding:6px; text-align:left;">
-                      ${t.type === 'checks' ? `${(t.done || []).length} / ${(t.items || []).length}` : `${t.val || 0} / ${t.goal || 0} ${t.unit || ''}`}
-                    </td>
-                  </tr>
-                `).join('')}
-              </table>
-            </div>
-          `).join('')}
-        </div>
-      `;
-      window.print();
+      const W = 1240;
+      let totalH = 150;
+      allDays.forEach(day => {
+        totalH += 75 + ((day.trackers || []).length * 46) + 30;
+      });
+      const H = Math.max(900, totalH);
+
+      const canvas = document.createElement('canvas');
+      canvas.width = W;
+      canvas.height = H;
+      const ctx = canvas.getContext('2d');
+
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, W, H);
+
+      ctx.direction = 'rtl';
+      ctx.textAlign = 'center';
+      ctx.fillStyle = '#0f172a';
+      ctx.font = 'bold 38px -apple-system, Tahoma, Arial, sans-serif';
+      ctx.fillText('تقرير سجل العدادات اليومية', W / 2, 75);
+
+      let y = 135;
+      allDays.forEach(day => {
+        const rows = day.trackers || [];
+        const boxH = 68 + rows.length * 46 + 16;
+
+        ctx.fillStyle = '#f8fafc';
+        ctx.strokeStyle = '#cbd5e1';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.roundRect(60, y, W - 120, boxH, 16);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.textAlign = 'right';
+        ctx.fillStyle = '#15803d';
+        ctx.font = 'bold 26px -apple-system, Tahoma, Arial, sans-serif';
+        ctx.fillText('📅 ' + day.label, W - 90, y + 44);
+
+        let ry = y + 82;
+        rows.forEach((t, idx) => {
+          const res = t.type === 'checks'
+            ? `${toAr((t.done || []).length)} / ${toAr((t.items || []).length)}`
+            : `${toAr(t.val || 0)} / ${toAr(t.goal || 0)} ${t.unit || ''}`;
+
+          ctx.textAlign = 'right';
+          ctx.fillStyle = '#1e293b';
+          ctx.font = 'bold 23px -apple-system, Tahoma, Arial, sans-serif';
+          ctx.fillText(t.name, W - 95, ry);
+
+          ctx.textAlign = 'left';
+          ctx.fillStyle = '#334155';
+          ctx.font = '23px -apple-system, Tahoma, Arial, sans-serif';
+          ctx.fillText(res, 95, ry);
+
+          if (idx < rows.length - 1) {
+            ctx.strokeStyle = '#e2e8f0';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(90, ry + 14);
+            ctx.lineTo(W - 90, ry + 14);
+            ctx.stroke();
+          }
+          ry += 46;
+        });
+
+        y += boxH + 24;
+      });
+
+      const dataUrl = canvas.toDataURL('image/jpeg', 0.92);
+      const binStr = atob(dataUrl.split(',')[1]);
+      const jpgBytes = new Uint8Array(binStr.length);
+      for (let i = 0; i < binStr.length; i++) jpgBytes[i] = binStr.charCodeAt(i);
+
+      const pdfBlob = buildPdfFromJpeg(jpgBytes, W, H);
+      const fileName = `trackers-log-${new Date().toISOString().slice(0, 10)}.pdf`;
+
+      try {
+        const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: 'سجل العدادات اليومي' });
+          return;
+        }
+      } catch (e) {}
+
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = fileName;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
     });
 
     render();
