@@ -1,942 +1,131 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-  <meta name="apple-mobile-web-app-status-bar-style" content="default">
-  <meta name="apple-mobile-web-app-title" content="مهام الساعة">
-  <title>مهام الساعة القادمة</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>منظم الساعات</title>
   <style>
     :root {
-      --bg: #f7f7f8;
-      --card: #ffffff;
-      --item: #f2f3f5;
-      --item-hover: #e9ebee;
-      --text: #111827;
-      --muted: #6b7280;
-      --border: #e5e7eb;
-      --red: #dc2626;
-      --red-soft: #fee2e2;
-      --blue: #2563eb;
-      --green: #16a34a;
-      --green-soft: #dcfce7;
-      --toast-bg: #1f2937;
-      --toast-text: #ffffff;
-    }
-    @media (prefers-color-scheme: dark) {
-      :root {
-        --bg: #0f1115;
-        --card: #181a20;
-        --item: #22252e;
-        --item-hover: #2a2e39;
-        --text: #f3f4f6;
-        --muted: #9ca3af;
-        --border: #2d313d;
-        --red: #ef4444;
-        --red-soft: #3f1515;
-        --blue: #3b82f6;
-        --green: #22c55e;
-        --green-soft: #143320;
-        --toast-bg: #2a2e39;
-        --toast-text: #f3f4f6;
-      }
+      --bg: #0f1115;
+      --card: #171922;
+      --card-border: #242938;
+      --item: #1f2330;
+      --item-hover: #272d3e;
+      --text: #f1f5f9;
+      --muted: #8e9bb0;
+      --border: #2a3042;
+      --blue: #4f75ff;
+      --blue-soft: #1e294b;
+      --green: #2fb368;
+      --green-soft: #143322;
+      --toast-bg: #222634;
+      --toast-text: #f1f5f9;
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      padding: env(safe-area-inset-top, 16px) 16px calc(80px + env(safe-area-inset-bottom, 0px));
-      font-family: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, sans-serif;
+      padding: env(safe-area-inset-top, 16px) 16px calc(40px + env(safe-area-inset-bottom, 0px));
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
       background: var(--bg);
       color: var(--text);
-    }
-    .container {
-      max-width: 680px;
-      margin: 8px auto 0;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-    .tabs-bar {
-      display: flex;
-      gap: 6px;
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 14px;
-      padding: 5px;
-    }
-    .tab-btn {
-      flex: 1;
-      border: none;
-      background: transparent;
-      color: var(--muted);
-      padding: 9px 8px;
-      border-radius: 10px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
-      transition: all 0.15s ease;
-      white-space: nowrap;
-    }
-    .tab-btn.is-active {
-      background: var(--red);
-      color: #ffffff;
-    }
-    .card {
-      background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 16px;
-      padding: 18px 20px;
-    }
-    .header-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-bottom: 10px;
-    }
-    h1 {
-      font-size: 17px;
-      margin: 0;
-      font-weight: 700;
-    }
-    .time-badge {
-      background: var(--red-soft);
-      color: var(--red);
-      padding: 6px 14px;
-      border-radius: 999px;
-      font-size: 14px;
-      font-weight: 700;
-    }
-    .sub-stats {
-      font-size: 13px;
-      color: var(--muted);
-      margin-bottom: 14px;
-    }
-    .graph-section-title {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--muted);
-      margin-bottom: 10px;
-    }
-    .stacked-bar {
-      display: flex;
-      height: 14px;
-      border-radius: 999px;
-      overflow: hidden;
-      background: var(--item);
-      gap: 2px;
-      margin-bottom: 14px;
-    }
-    .stacked-seg {
-      height: 100%;
-      transition: width 0.25s ease;
-    }
-    .bars-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .bar-row {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .bar-label {
-      width: 165px;
-      flex-shrink: 0;
-      font-size: 13px;
-      white-space: nowrap;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .bar-track {
-      flex: 1;
-      height: 10px;
-      background: var(--item);
-      border-radius: 999px;
-      overflow: hidden;
-    }
-    .bar-fill {
-      height: 100%;
-      border-radius: 999px;
-      transition: width 0.25s ease;
-    }
-    .bar-mins {
-      width: 56px;
-      flex-shrink: 0;
-      font-size: 12px;
-      color: var(--muted);
-      text-align: left;
-    }
-    .task-list {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .prio-group {
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      overflow: hidden;
-      margin-bottom: 10px;
-    }
-    .prio-group-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 11px 14px;
-      background: var(--item);
-      cursor: pointer;
-      user-select: none;
-    }
-    .prio-group-header:hover {
-      background: var(--item-hover);
-    }
-    .prio-group-title {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      font-weight: 700;
-    }
-    .prio-group-right {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-    .count-pill {
-      font-size: 12px;
-      font-weight: 700;
-      padding: 2px 10px;
-      border-radius: 999px;
-      background: var(--card);
-      color: var(--text);
-      border: 1px solid var(--border);
-    }
-    .group-arrow {
-      font-size: 12px;
-      color: var(--muted);
-    }
-    .prio-group-body {
-      padding: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      background: var(--card);
-    }
-    .task-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 11px 12px;
-      border-radius: 12px;
-      background: var(--item);
-      user-select: none;
-      transition: background 0.15s ease, opacity 0.4s ease;
-      flex-wrap: wrap;
-    }
-    .task-row:hover {
-      background: var(--item-hover);
-    }
-    .task-row.is-dragging {
-      opacity: 0.45;
-    }
-    .task-row.drag-over {
-      outline: 2px dashed var(--blue);
-    }
-    .task-row.is-completing {
-      opacity: 0.55;
-    }
-    .task-circle {
-      width: 26px;
-      height: 26px;
-      border-radius: 50%;
-      border: 2px solid var(--muted);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-      cursor: pointer;
-      transition: all 0.15s ease;
-    }
-    .task-circle:hover {
-      border-color: var(--red);
-    }
-    .task-row.is-completing .task-circle {
-      background: var(--red);
-      border-color: var(--red);
-    }
-    .task-circle svg {
-      opacity: 0;
-      transform: scale(0.7);
-      transition: all 0.15s ease;
-    }
-    .task-row.is-completing .task-circle svg {
-      opacity: 1;
-      transform: scale(1);
-    }
-    .color-dot {
-      width: 11px;
-      height: 11px;
-      border-radius: 50%;
-      flex-shrink: 0;
-    }
-    .task-info {
-      flex: 1;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      min-width: 110px;
-    }
-    .task-title {
-      font-size: 14px;
-      font-weight: 500;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
-    .task-row.is-completing .task-title {
-      text-decoration: line-through;
-      color: var(--muted);
-    }
-    .task-dur {
-      font-size: 12px;
-      color: var(--muted);
-      flex-shrink: 0;
-      font-variant-numeric: tabular-nums;
-      padding: 2px 8px;
-      border-radius: 999px;
-    }
-    .task-dur.is-running {
-      background: var(--red-soft);
-      color: var(--red);
-      font-weight: 700;
-    }
-    .task-dur.is-finished {
-      background: var(--green-soft);
-      color: var(--green);
-      font-weight: 700;
-    }
-    .row-actions {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      flex-shrink: 0;
-    }
-    .icon-btn {
-      border: 1px solid var(--border);
-      background: var(--card);
-      color: var(--muted);
-      border-radius: 8px;
-      padding: 4px 7px;
-      font-size: 12px;
-      cursor: pointer;
-      font-family: inherit;
-    }
-    .icon-btn:hover {
-      color: var(--text);
-      border-color: var(--muted);
-    }
-    .icon-btn:disabled {
-      opacity: 0.35;
-      cursor: default;
-    }
-    .icon-btn.del:hover {
-      color: var(--red);
-      border-color: var(--red);
-    }
-    .timer-btn {
-      border: none;
-      border-radius: 8px;
-      padding: 5px 10px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
-      background: var(--blue);
-      color: #ffffff;
-    }
-    .timer-btn.is-stop {
-      background: var(--red);
-    }
-    .promote-box {
-      width: 100%;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding-top: 8px;
-      margin-top: 4px;
-      border-top: 1px dashed var(--border);
-      flex-wrap: wrap;
-    }
-    .confirm-text {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--red);
-      flex: 1;
-    }
-    .add-bar {
-      display: flex;
-      gap: 8px;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid var(--border);
-      flex-wrap: wrap;
-      align-items: center;
-    }
-    .input-field {
-      border: 1px solid var(--border);
-      background: var(--bg);
-      color: var(--text);
-      border-radius: 10px;
-      padding: 9px 12px;
-      font-size: 16px;
-      font-family: inherit;
-      outline: none;
-    }
-    .input-field:focus {
-      border-color: var(--blue);
-    }
-    .input-name {
-      flex: 1;
-      min-width: 140px;
-    }
-    .mins-wrap {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
-    .input-mins {
-      width: 78px;
-      text-align: center;
-    }
-    .max-hint {
-      font-size: 12px;
-      color: var(--muted);
-      white-space: nowrap;
-    }
-    .prio-picker {
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 8px;
-      background: var(--bg);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-    }
-    .prio-dot-btn {
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      border: 2px solid transparent;
-      cursor: pointer;
-      padding: 0;
-      transition: transform 0.15s ease, box-shadow 0.15s ease;
-    }
-    .prio-dot-btn.is-selected {
-      transform: scale(1.15);
-      box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--text);
-    }
-    .add-btn {
-      background: var(--red);
-      color: #ffffff;
-      border: none;
-      border-radius: 10px;
-      padding: 9px 16px;
-      font-size: 15px;
-      font-weight: 700;
-      cursor: pointer;
-      font-family: inherit;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .add-btn:hover {
-      opacity: 0.9;
-    }
-    .footer-actions {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      margin-top: 12px;
-      padding-top: 10px;
-      border-top: 1px solid var(--border);
-      flex-wrap: wrap;
-    }
-    .copy-btn {
-      background: var(--item);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: 10px;
-      padding: 7px 12px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
-    }
-    .copy-btn:hover {
-      background: var(--item-hover);
-    }
-    .copy-status {
-      font-size: 12px;
-      color: var(--green);
-      font-weight: 600;
-    }
-    .empty-msg {
-      text-align: center;
-      padding: 12px;
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--muted);
-    }
-    .empty-msg.is-done {
-      color: var(--green);
-    }
-    .completed-meta {
-      font-size: 11px;
-      color: var(--muted);
-      white-space: nowrap;
-    }
-    .hour-clock {
-      font-size: 12px;
-      color: var(--blue);
-      font-weight: 600;
-      margin-top: -8px;
-      margin-bottom: 12px;
-    }
-    .prio-row-dot {
-      width: 18px;
-      height: 18px;
-      border-radius: 50%;
-      border: 2px solid var(--card);
-      box-shadow: 0 0 0 1px var(--border);
-      cursor: pointer;
-      flex-shrink: 0;
-      padding: 0;
-      transition: transform 0.15s ease;
-    }
-    .prio-row-dot:hover {
-      transform: scale(1.15);
-    }
-    .prio-choice-btn {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      border: 1px solid var(--border);
-      background: var(--card);
-      color: var(--text);
-      border-radius: 8px;
-      padding: 5px 10px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
-    }
-    .prio-choice-btn.is-current {
-      border-color: var(--text);
-      background: var(--item-hover);
-    }
-    .task-dur-btn {
-      font-size: 12px;
-      color: var(--text);
-      background: var(--card);
-      border: 1px solid var(--border);
-      flex-shrink: 0;
-      font-variant-numeric: tabular-nums;
-      padding: 3px 9px;
-      border-radius: 999px;
-      cursor: pointer;
-      font-family: inherit;
-      font-weight: 600;
-    }
-    .task-dur-btn:hover {
-      border-color: var(--blue);
-      color: var(--blue);
-    }
-    .trackers-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-      gap: 10px;
-    }
-    .tracker-card {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-      padding: 12px;
-      border-radius: 14px;
-      background: var(--item);
-      border: 1px solid var(--border);
-    }
-    .tracker-head {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .ring-wrap {
-      position: relative;
-      width: 52px;
-      height: 52px;
-      flex-shrink: 0;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .ring-text {
-      position: absolute;
-      font-size: 11px;
-      font-weight: 800;
-      font-variant-numeric: tabular-nums;
-      color: var(--text);
-    }
-    .tracker-meta {
-      flex: 1;
-      min-width: 0;
-    }
-    .tracker-name {
-      font-size: 14px;
-      font-weight: 700;
-      margin-bottom: 2px;
-    }
-    .tracker-val {
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--muted);
-      font-variant-numeric: tabular-nums;
-    }
-    .tracker-val.is-goal {
-      color: var(--green);
-      font-weight: 700;
-    }
-    .tracker-pills {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px;
-    }
-    .tracker-pill {
-      flex: 1;
-      min-width: 52px;
-      text-align: center;
-      border: 1px solid var(--border);
-      background: var(--card);
-      color: var(--text);
-      border-radius: 9px;
-      padding: 6px 8px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
-      transition: all 0.15s ease;
-    }
-    .tracker-pill.is-done {
-      background: var(--green);
-      border-color: var(--green);
-      color: #ffffff;
-    }
-    .tracker-bar-wrap {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 8px;
-    }
-    .tracker-step-btn {
-      flex: 1;
-      border: 1px solid var(--border);
-      background: var(--card);
-      color: var(--text);
-      border-radius: 9px;
-      padding: 7px 10px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      font-family: inherit;
-      white-space: nowrap;
-      text-align: center;
-    }
-    .tracker-step-btn.is-plus {
-      background: var(--blue);
-      border-color: var(--blue);
-      color: #ffffff;
-    }
-    .settings-btn {
-      border: 1px solid var(--border);
-      background: var(--card);
-      color: var(--muted);
-      border-radius: 7px;
-      padding: 2px 7px;
-      font-size: 11px;
-      font-weight: 600;
-      cursor: pointer;
-      font-family: inherit;
-      margin-right: 4px;
-    }
-    .routine-title-btn {
-      background: none;
-      border: none;
-      padding: 0;
-      margin: 0;
-      color: var(--text);
-      font-size: 14px;
-      font-weight: 500;
-      font-family: inherit;
-      text-align: right;
-      cursor: pointer;
-    }
-    .routine-title-btn:hover {
-      color: var(--blue);
-    }
-    .settings-btn.is-active {
-      background: var(--blue);
-      border-color: var(--blue);
-      color: #ffffff;
-    }
-    .setting-card {
-      background: var(--item);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .setting-row {
-      display: flex;
-      gap: 8px;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-    .setting-label {
-      font-size: 12px;
-      color: var(--muted);
-      font-weight: 600;
-      min-width: 65px;
-    }
-    .setting-input {
-      border: 1px solid var(--border);
-      background: var(--card);
-      color: var(--text);
-      border-radius: 8px;
-      padding: 6px 10px;
-      font-size: 16px;
-      font-family: inherit;
-      flex: 1;
-      min-width: 80px;
-    }
-    .today-summary {
-      font-size: 13px;
-      font-weight: 700;
-      color: var(--green);
-      background: var(--green-soft);
-      padding: 8px 12px;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-    }
-    .toast {
-      position: fixed;
-      bottom: 18px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: var(--toast-bg);
-      color: var(--toast-text);
-      padding: 10px 14px;
-      border-radius: 12px;
-      display: none;
-      align-items: center;
-      gap: 12px;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
-      z-index: 100;
-      max-width: 92vw;
-      font-size: 13px;
-    }
-    .toast.is-visible {
-      display: flex;
-    }
-    .toast.is-alarm {
-      background: var(--green);
-      color: #ffffff;
-      bottom: 72px;
-    }
-    .undo-btn {
-      background: var(--red);
-      color: #ffffff;
-      border: none;
-      border-radius: 8px;
-      padding: 6px 12px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      font-family: inherit;
-      white-space: nowrap;
-    }
-    .alarm-close {
-      background: rgba(255, 255, 255, 0.2);
-      color: #ffffff;
-      border: none;
-      border-radius: 8px;
-      padding: 5px 10px;
-      font-size: 12px;
-      font-weight: 700;
-      cursor: pointer;
-      font-family: inherit;
-    }
+      -webkit-font-smoothing: antialiased;
+    }
+    .container { max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
+    .tabs-bar { display: flex; gap: 8px; background: var(--card); padding: 5px; border-radius: 14px; border: 1px solid var(--card-border); }
+    .tab-btn { flex: 1; padding: 10px; border: none; background: transparent; color: var(--muted); font-size: 14px; font-weight: 700; border-radius: 10px; cursor: pointer; transition: 0.2s; }
+    .tab-btn.is-active { background: var(--blue); color: #fff; }
+    .card { background: var(--card); border: 1px solid var(--card-border); border-radius: 16px; padding: 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.25); display: flex; flex-direction: column; gap: 10px; }
+    .header-row { display: flex; justify-content: space-between; align-items: center; }
+    h1 { font-size: 16px; margin: 0; font-weight: 800; }
+    .time-badge { font-size: 13px; font-weight: 700; color: #fff; background: var(--blue); padding: 4px 10px; border-radius: 20px; }
+    .sub-stats { font-size: 13px; color: var(--muted); }
+    .hour-clock { font-size: 12px; color: var(--muted); }
+    .stacked-bar { display: flex; height: 16px; border-radius: 8px; overflow: hidden; background: var(--item); border: 1px solid var(--border); }
+    .task-list { display: flex; flex-direction: column; gap: 8px; }
+    .task-item { display: flex; align-items: center; justify-content: space-between; background: var(--item); padding: 10px 12px; border-radius: 12px; border: 1px solid var(--border); gap: 8px; }
+    .task-meta { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
+    .task-chk { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--muted); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
+    .task-title { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .add-bar { display: flex; gap: 8px; margin-top: 4px; }
+    input, select, textarea { font-size: 16px !important; }
+    .input-field { background: var(--item); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 9px 12px; outline: none; }
+    .input-name { flex: 1; }
+    .input-mins { width: 70px; text-align: center; }
+    .add-btn { background: var(--blue); color: #fff; border: none; border-radius: 10px; padding: 0 16px; font-weight: 700; cursor: pointer; }
+    .icon-btn { background: var(--item); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 6px 10px; font-size: 13px; cursor: pointer; }
+    .icon-btn.del { color: #f87171; }
+    .timer-btn { background: var(--blue-soft); border: 1px solid var(--blue); color: #fff; border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer; font-weight: 600; }
+    .inbox-modal-btn { width: 100%; padding: 12px; font-weight: 700; font-size: 15px; border-radius: 12px; background: var(--item); border: 1px solid var(--border); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: space-between; }
+    .footer-actions { display: flex; gap: 8px; justify-content: center; margin-top: 10px; }
+    .copy-btn { background: var(--item); border: 1px solid var(--border); color: var(--muted); border-radius: 10px; padding: 8px 14px; font-size: 13px; cursor: pointer; }
+    .trackers-box { background: var(--card); border: 1px solid var(--card-border); border-radius: 16px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+    .trackers-header { display: flex; justify-content: space-between; align-items: center; cursor: pointer; }
+    .tracker-row { display: flex; align-items: center; justify-content: space-between; background: var(--item); border: 1px solid var(--border); padding: 8px 10px; border-radius: 10px; gap: 8px; }
+    .tracker-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .tracker-ring { width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; flex-shrink: 0; }
+    .tracker-title { font-size: 14px; font-weight: 700; }
+    .tracker-sub { font-size: 11px; color: var(--muted); }
+    .tracker-actions { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
+    .pill-btn { background: var(--bg); border: 1px solid var(--border); color: var(--text); border-radius: 6px; padding: 4px 8px; font-size: 12px; font-weight: 600; cursor: pointer; }
+    .pill-btn.is-done { background: var(--green-soft); border-color: var(--green); color: #fff; }
+    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.65); backdrop-filter: blur(4px); display: flex; align-items: flex-end; z-index: 1000; }
+    .modal-sheet { background: var(--card); width: 100%; max-height: 85vh; border-radius: 20px 20px 0 0; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--card-border); }
+    .modal-head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+    .modal-title-wrap { display: flex; align-items: center; gap: 8px; }
+    .mini-gear-btn { background: var(--item); border: 1px solid var(--border); border-radius: 6px; font-size: 11px; padding: 3px 6px; cursor: pointer; color: var(--muted); }
+    .modal-close-btn { background: var(--item); border: 1px solid var(--border); color: var(--text); width: 28px; height: 28px; border-radius: 50%; font-size: 14px; cursor: pointer; }
     .hidden { display: none !important; }
-    .history-panel {
-      margin-top: 14px;
-      padding-top: 14px;
-      border-top: 1px solid var(--border);
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-    .history-day-card {
-      background: var(--item);
-      border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 12px;
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-    }
-    .history-day-head {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 13px;
-      font-weight: 700;
-      padding-bottom: 6px;
-      border-bottom: 1px dashed var(--border);
-    }
-    .history-items {
-      display: flex;
-      flex-direction: column;
-      gap: 5px;
-    }
-    .history-item-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-size: 12px;
-      gap: 8px;
-    }
-    .history-item-val.is-goal {
-      color: var(--green);
-      font-weight: 700;
-    }
-    #print-report {
-      display: none;
-    }
-    @media print {
-      body {
-        background: #ffffff !important;
-        color: #111827 !important;
-        padding: 16px !important;
-      }
-      .container, .toast {
-        display: none !important;
-      }
-      #print-report {
-        display: block !important;
-        direction: rtl;
-        font-family: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, sans-serif;
-      }
-      .print-day {
-        border: 1px solid #d1d5db;
-        border-radius: 10px;
-        padding: 12px;
-        margin-bottom: 12px;
-        page-break-inside: avoid;
-      }
-      .print-day h3 {
-        margin: 0 0 8px 0;
-        font-size: 15px;
-        border-bottom: 1px solid #e5e7eb;
-        padding-bottom: 6px;
-      }
-      .print-table {
-        width: 100%;
-        border-collapse: collapse;
-        font-size: 13px;
-      }
-      .print-table td {
-        padding: 5px 6px;
-        border-bottom: 1px solid #f3f4f6;
-      }
-    }
   </style>
 </head>
 <body>
   <div class="container">
     <div class="tabs-bar">
       <button type="button" class="tab-btn is-active" id="tab-live">الساعة الحالية</button>
-      <button type="button" class="tab-btn" id="tab-inbox">Inbox (٠)</button>
-      <button type="button" class="tab-btn" id="tab-routine">Routine (٠)</button>
+      <button type="button" class="tab-btn" id="tab-routine">Routine</button>
     </div>
 
     <!-- LIVE VIEW -->
-    <div id="view-live" class="container" style="margin:0; gap:14px;">
+    <div id="view-live" style="display:flex; flex-direction:column; gap:12px;">
       <div class="card">
         <div class="header-row">
-          <h1>مهام الساعة القادمة</h1>
+          <h1>مهام الساعة الحالية</h1>
           <div class="time-badge" id="remaining-badge">٦٠ دقيقة فراغ</div>
         </div>
         <div class="sub-stats" id="sub-stats">مفيش مهام حالياً</div>
         <div class="hour-clock" id="hour-clock-hint"></div>
-
-        <div class="graph-section-title">توزيع الساعة (المهمة المنتهية بتتشال تماماً ووقتها بيرجع للمتاح)</div>
         <div class="stacked-bar" id="stacked-bar"></div>
-        <div class="bars-list" id="bars-list"></div>
       </div>
 
+      <button type="button" class="inbox-modal-btn" id="open-inbox-btn">
+        <span>📥 صندوق المهام (Inbox)</span>
+        <span class="sub-stats" id="inbox-count-badge">٠ مهام</span>
+      </button>
+
       <div class="card">
-        <div class="graph-section-title">التشيك ليست (اضغط جوه الدائرة للإنهاء، والخط الجانبي يوضح الأولوية)</div>
         <div class="task-list" id="task-list"></div>
-
         <form class="add-bar" id="add-form">
-          <input type="text" class="input-field input-name" id="new-title" placeholder="اكتب اسم المهمة الجديدة..." required>
-          <div class="mins-wrap">
-            <input type="text" inputmode="numeric" class="input-field input-mins" id="new-mins" value="60" required>
-            <span class="max-hint" id="max-hint">أقصى وقت: ٦٠ د</span>
-          </div>
-          <button type="submit" class="add-btn" title="إضافة مهمة">+</button>
+          <input type="text" class="input-field input-name" id="new-title" placeholder="اسم المهمة للساعة..." required>
+          <input type="text" inputmode="numeric" class="input-field input-mins" id="new-mins" placeholder="دقيقة" required>
+          <button type="submit" class="add-btn">+</button>
         </form>
-
-        <div class="footer-actions">
-          <button type="button" class="copy-btn" id="copy-btn">نسخ الحالة لإرسالها في الشات</button>
-          <span class="copy-status" id="copy-status"></span>
-          <button type="button" class="icon-btn" id="refresh-app-btn" title="تحديث نسخة التطبيق">↻ تحديث</button>
-        </div>
       </div>
 
-      <!-- DAILY TRACKERS -->
-      <div class="prio-group" id="daily-trackers-box" style="margin-bottom:0;"></div>
+      <!-- DAILY TRACKERS COMPACT -->
+      <div class="trackers-box" id="daily-trackers-box"></div>
 
-      <!-- COMPLETED LOG (48h rolling) -->
-      <div class="prio-group" id="completed-box" style="margin-bottom:0;"></div>
-    </div>
-
-    <!-- INBOX VIEW -->
-    <div id="view-inbox" class="hidden">
-      <div class="card">
+      <!-- COMPLETED LOG -->
+      <div class="card" id="completed-box">
         <div class="header-row">
-          <h1>Inbox (مرتب حسب الأولوية)</h1>
+          <h1>المهام المكتملة (٤٨ ساعة)</h1>
+          <span class="sub-stats" id="completed-count">٠ مهام</span>
         </div>
-        <div class="sub-stats">اضغط على أي قائمة لفتحها، واضغط على الدايرة الملونة جنب أي مهمة لتغيير أولويتها.</div>
+        <div class="task-list" id="completed-list"></div>
+      </div>
 
-        <div id="inbox-groups"></div>
-
-        <form class="add-bar" id="inbox-form">
-          <input type="text" class="input-field input-name" id="inbox-title" placeholder="اكتب مهمة جديدة للـ Inbox..." required>
-          <div class="prio-picker" id="prio-picker" title="أولوية المهمة">
-            <button type="button" class="prio-dot-btn is-selected" data-color="#2563eb" style="background:#2563eb;" title="أولوية منخفضة"></button>
-            <button type="button" class="prio-dot-btn" data-color="#eab308" style="background:#eab308;" title="أولوية متوسطة"></button>
-            <button type="button" class="prio-dot-btn" data-color="#dc2626" style="background:#dc2626;" title="أولوية مرتفعة"></button>
-          </div>
-          <button type="submit" class="add-btn" title="إضافة للـ Inbox">+</button>
-        </form>
+      <!-- FOOTER BUTTONS AT VERY BOTTOM -->
+      <div class="footer-actions">
+        <button type="button" class="copy-btn" id="copy-btn">نسخ الحالة لإرسالها في الشات</button>
+        <button type="button" class="copy-btn" id="refresh-app-btn">↻ تحديث</button>
       </div>
     </div>
 
@@ -945,1519 +134,319 @@
       <div class="card">
         <div class="header-row">
           <h1>Routine (قالب المهام اليومية)</h1>
-          <button type="button" class="copy-btn" id="toggle-trackers-history-btn">📊 سجل العدادات</button>
+          <button type="button" class="icon-btn" id="toggle-trackers-history-btn">📊 سجل العدادات</button>
         </div>
-        <div class="sub-stats">مهام ثابتة بوقتها؛ اضغط على اسم المهمة أو وقتها لتعديله، ولما تضيف أي مهمة للساعة بتتنسخ بوقتها وتفضل موجودة هنا دايماً.</div>
-
+        <div class="sub-stats">اضغط على اسم أو وقت أي مهمة لتعديلها.</div>
         <div class="task-list" id="routine-list"></div>
-
         <form class="add-bar" id="routine-form">
           <input type="text" class="input-field input-name" id="routine-title" placeholder="اسم مهمة الروتين..." required>
           <input type="text" inputmode="numeric" class="input-field input-mins" id="routine-mins" placeholder="الدقائق" required>
-          <button type="submit" class="add-btn" title="إضافة للروتين">+</button>
+          <button type="submit" class="add-btn">+</button>
         </form>
-
-        <div id="trackers-history-panel" class="history-panel hidden"></div>
+        <div id="trackers-history-panel" class="hidden"></div>
       </div>
     </div>
   </div>
 
-  <div class="toast is-alarm" id="alarm-toast">
-    <span id="alarm-text">انتهى وقت المهمة!</span>
-    <button type="button" class="alarm-close" id="alarm-close">حسناً</button>
-  </div>
+  <!-- INBOX MODAL -->
+  <div class="modal-overlay hidden" id="inbox-modal">
+    <div class="modal-sheet">
+      <div class="modal-head">
+        <div class="modal-title-wrap">
+          <span style="font-weight:800; font-size:15px;">📥 صندوق المهام (Inbox)</span>
+          <button type="button" class="mini-gear-btn" id="open-sections-mgmt">⚙️ الأقسام</button>
+        </div>
+        <button type="button" class="modal-close-btn" id="close-inbox-btn">✕</button>
+      </div>
 
-  <div id="print-report"></div>
+      <div id="inbox-sections-container" style="display:flex; flex-direction:column; gap:10px;"></div>
 
-  <div class="toast" id="undo-toast">
-    <span id="undo-text">تم إنهاء المهمة</span>
-    <button type="button" class="undo-btn" id="undo-btn">تراجع (Undo)</button>
+      <form class="add-bar" id="inbox-form">
+        <input type="text" class="input-field input-name" id="inbox-title" placeholder="مهمة جديدة..." required>
+        <select class="input-field" id="inbox-section-select" style="max-width:140px;"></select>
+        <button type="submit" class="add-btn">+</button>
+      </form>
+    </div>
   </div>
 
   <script>
-    const STORAGE_KEY = 'hourly_tracker_standalone_v2';
-    const TWO_DAYS_MS = 48 * 60 * 60 * 1000;
-    const PALETTE = ['#2563eb', '#10b981', '#ec4899', '#f59e0b', '#8b5cf6', '#06b6d4', '#ef4444', '#84cc16'];
-    const PRIO_GROUPS = [
-      { key: '#dc2626', title: 'أولوية مرتفعة', color: '#dc2626' },
-      { key: '#eab308', title: 'أولوية متوسطة', color: '#eab308' },
-      { key: '#2563eb', title: 'أولوية منخفضة', color: '#2563eb' }
-    ];
-    const DEFAULT_TASKS = [];
-    const DEFAULT_INBOX = [];
-    const DEFAULT_ROUTINE = [];
+    const STORAGE_KEY = 'hourly_tracker_zen_v1';
+    let TASKS = JSON.parse(localStorage.getItem(STORAGE_KEY + '_tasks') || '[]');
+    let INBOX = JSON.parse(localStorage.getItem(STORAGE_KEY + '_inbox') || '[]');
+    let ROUTINE = JSON.parse(localStorage.getItem(STORAGE_KEY + '_routine') || '[]');
+    let COMPLETED = JSON.parse(localStorage.getItem(STORAGE_KEY + '_completed') || '[]');
+    let SECTIONS = JSON.parse(localStorage.getItem(STORAGE_KEY + '_sections') || JSON.stringify([
+      { id: 'sec_1', name: 'النصف الأول من اليوم', color: '#4f75ff' },
+      { id: 'sec_2', name: 'النصف الثاني من اليوم', color: '#e09f3e' }
+    ]));
+    let TRACKERS = JSON.parse(localStorage.getItem(STORAGE_KEY + '_trackers') || JSON.stringify([
+      { id: 'salat', name: 'الصلاة', type: 'checks', items: ['فجر', 'ظهر', 'عصر', 'مغرب', 'عشاء'], val: [false,false,false,false,false], color: '#2fb368' },
+      { id: 'water', name: 'المياه', type: 'num', step: 200, goal: 2500, unit: 'مل', val: 0, color: '#06b6d4' },
+      { id: 'steps', name: 'الخطوات', type: 'num', step: 500, goal: 5000, unit: 'خطوة', val: 0, color: '#f59e0b' },
+      { id: 'charity', name: 'الصدقات', type: 'checks', items: ['صدقة النهار', 'صدقة الليل'], val: [false,false], color: '#ec4899' },
+      { id: 'teeth', name: 'غسيل الأسنان', type: 'checks', items: ['الصبح', 'بالليل'], val: [false,false], color: '#8b5cf6' },
+      { id: 'quran', name: 'القرآن', type: 'num', step: 1, goal: 5, unit: 'صفحة', val: 0, color: '#10b981' }
+    ]));
 
-    function parseMins(val) {
-      const normalized = String(val || '')
-        .replace(/[\u0660-\u0669]/g, d => d.charCodeAt(0) - 0x0660)
-        .replace(/[\u06F0-\u06F9]/g, d => d.charCodeAt(0) - 0x06F0)
-        .replace(/[^\d]/g, '');
-      const num = parseInt(normalized, 10);
-      return Number.isFinite(num) ? num : 0;
+    function saveAll() {
+      localStorage.setItem(STORAGE_KEY + '_tasks', JSON.stringify(TASKS));
+      localStorage.setItem(STORAGE_KEY + '_inbox', JSON.stringify(INBOX));
+      localStorage.setItem(STORAGE_KEY + '_routine', JSON.stringify(ROUTINE));
+      localStorage.setItem(STORAGE_KEY + '_completed', JSON.stringify(COMPLETED));
+      localStorage.setItem(STORAGE_KEY + '_sections', JSON.stringify(SECTIONS));
+      localStorage.setItem(STORAGE_KEY + '_trackers', JSON.stringify(TRACKERS));
     }
 
-    function toAr(n) {
-      return String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
-    }
-
-    function updateHourClock() {
-      const el = document.getElementById('hour-clock-hint');
-      if (!el) return;
+    function checkDailyReset() {
       const now = new Date();
-      const minsLeft = 60 - now.getMinutes();
-      const nextHour24 = (now.getHours() + 1) % 24;
-      const ampm = nextHour24 >= 12 ? 'م' : 'ص';
-      const nextHour12 = nextHour24 % 12 || 12;
-      el.textContent = `الوقت الفعلي: باقي ${toAr(minsLeft)} د على الساعة ${toAr(nextHour12)}:٠٠ ${ampm}`;
-    }
-
-    function formatCompletedTime(ts) {
-      const d = new Date(ts);
-      const now = new Date();
-      const isToday = d.toDateString() === now.toDateString();
-      const dayLabel = isToday ? 'النهارده' : 'أمس';
-      let h = d.getHours();
-      const m = String(d.getMinutes()).padStart(2, '0');
-      const ampm = h >= 12 ? 'م' : 'ص';
-      h = h % 12 || 12;
-      return `${dayLabel} · ${toAr(h)}:${toAr(m)} ${ampm}`;
-    }
-
-    let audioCtx = null;
-    function unlockAudio() {
-      try {
-        const AC = window.AudioContext || window.webkitAudioContext;
-        if (!AC) return;
-        if (!audioCtx) audioCtx = new AC();
-        if (audioCtx.state === 'suspended') audioCtx.resume();
-      } catch (e) {}
-    }
-
-    function playChime() {
-      try {
-        unlockAudio();
-        if (!audioCtx) return;
-        const notes = [587.33, 783.99, 1046.5];
-        notes.forEach((freq, i) => {
-          const osc = audioCtx.createOscillator();
-          const gain = audioCtx.createGain();
-          osc.type = 'sine';
-          osc.frequency.value = freq;
-          const start = audioCtx.currentTime + i * 0.18;
-          gain.gain.setValueAtTime(0.001, start);
-          gain.gain.exponentialRampToValueAtTime(0.28, start + 0.03);
-          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
-          osc.connect(gain);
-          gain.connect(audioCtx.destination);
-          osc.start(start);
-          osc.stop(start + 0.36);
+      const lastReset = localStorage.getItem(STORAGE_KEY + '_last_reset');
+      const resetThreshold = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 3, 0, 0);
+      if (now < resetThreshold) resetThreshold.setDate(resetThreshold.getDate() - 1);
+      if (!lastReset || new Date(lastReset) < resetThreshold) {
+        TRACKERS.forEach(t => {
+          if (t.type === 'checks') t.val = t.items.map(() => false);
+          else t.val = 0;
         });
-      } catch (e) {}
-      try {
-        if (navigator.vibrate) navigator.vibrate([250, 120, 250]);
-      } catch (e) {}
-    }
-
-    let alarmTimeout = null;
-    function showAlarm(label) {
-      playChime();
-      const toast = document.getElementById('alarm-toast');
-      document.getElementById('alarm-text').textContent = `انتهى وقت «${label}»!`;
-      toast.classList.add('is-visible');
-      if (alarmTimeout) clearTimeout(alarmTimeout);
-      alarmTimeout = setTimeout(() => {
-        toast.classList.remove('is-visible');
-      }, 8000);
-    }
-
-    document.getElementById('alarm-close').addEventListener('click', () => {
-      if (alarmTimeout) clearTimeout(alarmTimeout);
-      document.getElementById('alarm-toast').classList.remove('is-visible');
-    });
-
-    function getTodayKey() {
-      // Logical day rolls over at 3:00 AM
-      const d = new Date(Date.now() - 3 * 60 * 60 * 1000);
-      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-    }
-
-    function buildTrackersSnapshot(cfg, vals) {
-      return cfg.map(c => {
-        if (c.type === 'checks') {
-          const arr = Array.isArray(vals[c.id]) ? vals[c.id] : [];
-          const doneList = c.items.filter((_, i) => Boolean(arr[i]));
-          return {
-            name: c.name,
-            type: 'checks',
-            done: doneList.length,
-            total: c.items.length,
-            doneList
-          };
-        }
-        const val = Number(vals[c.id]) || 0;
-        return {
-          name: c.name,
-          type: 'numeric',
-          val,
-          goal: Number(c.goal) || 1,
-          unit: c.unit || ''
-        };
-      });
-    }
-
-    function formatArabicDateKey(dateKey) {
-      try {
-        const [y, m, d] = dateKey.split('-').map(Number);
-        const dt = new Date(y, m - 1, d);
-        return dt.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
-      } catch (e) {
-        return dateKey;
+        localStorage.setItem(STORAGE_KEY + '_last_reset', now.toISOString());
+        saveAll();
       }
     }
-
-    function defaultTrackersConfig() {
-      return [
-        { id: 'prayers', name: 'الصلاة', type: 'checks', items: ['فجر', 'ظهر', 'عصر', 'مغرب', 'عشاء'], color: '#16a34a' },
-        { id: 'water', name: 'المياه', type: 'numeric', step: 200, goal: 2500, unit: 'مل', color: '#06b6d4' },
-        { id: 'steps', name: 'الخطوات', type: 'numeric', step: 500, goal: 5000, unit: 'خطوة', color: '#8b5cf6' },
-        { id: 'quran', name: 'القرآن', type: 'numeric', step: 1, goal: 5, unit: 'صفحة', color: '#10b981' },
-        { id: 'sadaqah', name: 'الصدقات', type: 'checks', items: ['صدقة النهار', 'صدقة الليل'], color: '#f59e0b' },
-        { id: 'brush', name: 'غسيل الأسنان', type: 'checks', items: ['الصبح', 'بالليل'], color: '#2563eb' }
-      ];
-    }
-
-    function emptyValuesForConfig(cfg) {
-      const vals = {};
-      cfg.forEach(c => {
-        vals[c.id] = c.type === 'checks' ? c.items.map(() => false) : 0;
-      });
-      return vals;
-    }
-
-    function migrateOldTrackers(oldObj, cfg) {
-      const vals = emptyValuesForConfig(cfg);
-      if (!oldObj) return vals;
-      if (Array.isArray(oldObj.prayers)) vals.prayers = oldObj.prayers;
-      if (typeof oldObj.water === 'number') vals.water = oldObj.water;
-      if (typeof oldObj.steps === 'number') vals.steps = oldObj.steps;
-      if (typeof oldObj.quran === 'number') vals.quran = oldObj.quran;
-      if (Array.isArray(oldObj.sadaqah)) vals.sadaqah = oldObj.sadaqah;
-      if (Array.isArray(oldObj.brush)) vals.brush = oldObj.brush;
-      return vals;
-    }
-
-    function loadState() {
-      const defCfg = defaultTrackersConfig();
-      try {
-        const raw = localStorage.getItem(STORAGE_KEY);
-        if (raw) {
-          const parsed = JSON.parse(raw);
-          const cfg = Array.isArray(parsed.trackersConfig) && parsed.trackersConfig.length > 0
-            ? parsed.trackersConfig
-            : defCfg;
-          const todayKey = getTodayKey();
-          const savedDate = parsed.trackersDate || todayKey;
-          const history = Array.isArray(parsed.trackersHistory) ? parsed.trackersHistory : [];
-          let vals = emptyValuesForConfig(cfg);
-          const oldVals = parsed.trackersValues
-            ? parsed.trackersValues
-            : (parsed.trackers ? migrateOldTrackers(parsed.trackers, cfg) : emptyValuesForConfig(cfg));
-
-          if (savedDate === todayKey) {
-            vals = oldVals;
-          } else {
-            // Day rolled over past 3:00 AM while app was closed -> archive previous day
-            if (!history.some(h => h.date === savedDate)) {
-              history.unshift({
-                date: savedDate,
-                savedAt: Date.now(),
-                items: buildTrackersSnapshot(cfg, oldVals)
-              });
-            }
-          }
-          return {
-            tasks: (parsed.tasks || []).map(t => ({
-              ...t,
-              remainingSec: typeof t.remainingSec === 'number' ? t.remainingSec : t.mins * 60,
-              running: Boolean(t.running && t.endAt),
-              endAt: t.endAt || null,
-              completing: false
-            })),
-            inbox: (parsed.inbox || []).map(i => ({ ...i, color: i.color || '#2563eb' })),
-            routine: parsed.routine || [],
-            completed: parsed.completed || [],
-            trackersConfig: cfg,
-            trackersDate: todayKey,
-            trackersValues: vals,
-            trackersHistory: history
-          };
-        }
-      } catch (e) {}
-      return {
-        tasks: DEFAULT_TASKS.map(t => ({ ...t, completing: false })),
-        inbox: DEFAULT_INBOX.map(i => ({ ...i })),
-        routine: DEFAULT_ROUTINE.map(r => ({ ...r })),
-        completed: [],
-        trackersConfig: defCfg,
-        trackersDate: getTodayKey(),
-        trackersValues: emptyValuesForConfig(defCfg),
-        trackersHistory: []
-      };
-    }
-
-    function pruneCompleted() {
-      const cutoff = Date.now() - TWO_DAYS_MS;
-      COMPLETED = COMPLETED.filter(c => c.completedAt >= cutoff);
-    }
-
-    function saveState() {
-      pruneCompleted();
-      try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify({
-          tasks: TASKS.map(({ completing, ...rest }) => rest),
-          inbox: INBOX,
-          routine: ROUTINE,
-          completed: COMPLETED,
-          trackersConfig: TRACKERS_CONFIG,
-          trackersDate: TRACKERS_DATE,
-          trackersValues: TRACKERS_VALUES,
-          trackersHistory: TRACKERS_HISTORY
-        }));
-      } catch (e) {}
-    }
-
-    const initialState = loadState();
-    let TASKS = initialState.tasks;
-    let INBOX = initialState.inbox;
-    let ROUTINE = initialState.routine;
-    let COMPLETED = initialState.completed;
-    let TRACKERS_CONFIG = initialState.trackersConfig;
-    let TRACKERS_DATE = initialState.trackersDate;
-    let TRACKERS_VALUES = initialState.trackersValues;
-    let TRACKERS_HISTORY = initialState.trackersHistory;
-    let trackersHistoryOpen = false;
-    let trackersOpen = true;
-    let trackersSettingsOpen = false;
-    let newTrackerType = 'numeric';
-    let completedOpen = false;
-    let selectedInboxColor = '#2563eb';
-    let openGroups = { '#dc2626': true, '#eab308': false, '#2563eb': false };
-    let currentTab = 'live';
-    let promotingInboxId = null;
-    let editingPrioInboxId = null;
-    let confirmDeleteInboxId = null;
-    let confirmDeleteRoutineId = null;
-    let editingRoutineMinsId = null;
-    let colorIdx = TASKS.length;
-    let dragSrcIdx = null;
-    let ticker = null;
-    let lastRemoved = null;
-    let undoTimeout = null;
-    const pendingDeletes = {};
-
-    function nextDistinctColor() {
-      const used = new Set(TASKS.map(t => t.color));
-      const free = PALETTE.find(c => !used.has(c));
-      if (free) return free;
-      const c = PALETTE[colorIdx % PALETTE.length];
-      colorIdx++;
-      return c;
-    }
-
-    document.querySelectorAll('#prio-picker .prio-dot-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        selectedInboxColor = btn.dataset.color;
-        document.querySelectorAll('#prio-picker .prio-dot-btn').forEach(b => b.classList.remove('is-selected'));
-        btn.classList.add('is-selected');
-      });
-    });
-
-    function switchTab(tab) {
-      currentTab = tab;
-      document.getElementById('tab-live').classList.toggle('is-active', tab === 'live');
-      document.getElementById('tab-inbox').classList.toggle('is-active', tab === 'inbox');
-      document.getElementById('tab-routine').classList.toggle('is-active', tab === 'routine');
-      document.getElementById('view-live').classList.toggle('hidden', tab !== 'live');
-      document.getElementById('view-inbox').classList.toggle('hidden', tab !== 'inbox');
-      document.getElementById('view-routine').classList.toggle('hidden', tab !== 'routine');
-      render();
-    }
-
-    document.getElementById('tab-live').addEventListener('click', () => switchTab('live'));
-    document.getElementById('tab-inbox').addEventListener('click', () => switchTab('inbox'));
-    document.getElementById('tab-routine').addEventListener('click', () => switchTab('routine'));
-
-    function showUndo(task, index, completedId) {
-      lastRemoved = { task, index, completedId };
-      const toast = document.getElementById('undo-toast');
-      document.getElementById('undo-text').textContent = `تم إنهاء «${task.label}»`;
-      toast.classList.add('is-visible');
-      if (undoTimeout) clearTimeout(undoTimeout);
-      undoTimeout = setTimeout(() => {
-        toast.classList.remove('is-visible');
-        lastRemoved = null;
-      }, 5000);
-    }
-
-    document.getElementById('undo-btn').addEventListener('click', () => {
-      if (!lastRemoved) return;
-      const { task, index, completedId } = lastRemoved;
-      TASKS.splice(Math.min(index, TASKS.length), 0, { ...task, completing: false });
-      COMPLETED = COMPLETED.filter(c => c.logId !== completedId);
-      lastRemoved = null;
-      if (undoTimeout) clearTimeout(undoTimeout);
-      document.getElementById('undo-toast').classList.remove('is-visible');
-      render();
-    });
-
-    function formatDuration(t) {
-      if (t.remainingSec <= 0) return '٠٠:٠٠';
-      if (!t.running && t.remainingSec === t.mins * 60) {
-        return `${toAr(t.mins)} د`;
-      }
-      const m = Math.floor(t.remainingSec / 60);
-      const s = t.remainingSec % 60;
-      return `${toAr(String(m).padStart(2, '0'))}:${toAr(String(s).padStart(2, '0'))}`;
-    }
-
-    function syncRunningTimers(doFullRender = false) {
-      const now = Date.now();
-      let finishedTask = null;
-      TASKS.forEach(t => {
-        if (t.running && t.endAt) {
-          const left = Math.max(0, Math.ceil((t.endAt - now) / 1000));
-          t.remainingSec = left;
-          if (left <= 0) {
-            t.running = false;
-            t.endAt = null;
-            finishedTask = t;
-          }
-          const durEl = document.getElementById(`dur-${t.id}`);
-          if (durEl) {
-            durEl.textContent = formatDuration(t);
-            durEl.className = `task-dur ${t.running ? 'is-running' : (t.remainingSec === 0 ? 'is-finished' : '')}`;
-          }
-        }
-      });
-      if (finishedTask) {
-        render();
-        showAlarm(finishedTask.label);
-      } else if (doFullRender) {
-        render();
-      } else {
-        saveState();
-      }
-    }
-
-    function ensureTicker() {
-      const anyRunning = TASKS.some(t => t.running);
-      if (anyRunning && !ticker) {
-        ticker = setInterval(() => {
-          syncRunningTimers(false);
-          if (!TASKS.some(t => t.running) && ticker) {
-            clearInterval(ticker);
-            ticker = null;
-          }
-        }, 500);
-      } else if (!anyRunning && ticker) {
-        clearInterval(ticker);
-        ticker = null;
-      }
-    }
-
-    document.addEventListener('visibilitychange', () => {
-      if (!document.hidden) syncRunningTimers(true);
-    });
-    window.addEventListener('focus', () => syncRunningTimers(true));
-    window.addEventListener('pageshow', () => syncRunningTimers(true));
-
-    function moveInList(arr, fromIdx, toIdx) {
-      if (toIdx < 0 || toIdx >= arr.length || fromIdx === toIdx) return;
-      const [moved] = arr.splice(fromIdx, 1);
-      arr.splice(toIdx, 0, moved);
-      render();
-    }
-
-    function moveInboxWithinGroup(itemId, dir) {
-      const item = INBOX.find(x => x.id === itemId);
-      if (!item) return;
-      const color = item.color || '#2563eb';
-      const sameGroupIndices = INBOX.map((x, idx) => ((x.color || '#2563eb') === color ? idx : -1)).filter(idx => idx !== -1);
-      const pos = sameGroupIndices.indexOf(INBOX.findIndex(x => x.id === itemId));
-      const targetPos = pos + dir;
-      if (targetPos < 0 || targetPos >= sameGroupIndices.length) return;
-      const fromIdx = sameGroupIndices[pos];
-      const toIdx = sameGroupIndices[targetPos];
-      const temp = INBOX[fromIdx];
-      INBOX[fromIdx] = INBOX[toIdx];
-      INBOX[toIdx] = temp;
-      render();
-    }
+    checkDailyReset();
 
     function render() {
-      saveState();
-      ensureTicker();
+      const minsUsed = TASKS.reduce((acc, t) => acc + (t.mins || 0), 0);
+      const minsLeft = Math.max(0, 60 - minsUsed);
+      document.getElementById('remaining-badge').textContent = `${minsLeft} دقيقة فراغ`;
+      document.getElementById('sub-stats').textContent = TASKS.length ? `${TASKS.length} مهام محددة` : 'مفيش مهام حالياً';
+      document.getElementById('inbox-count-badge').textContent = `${INBOX.length} مهام`;
 
-      document.getElementById('tab-inbox').textContent = `Inbox (${toAr(INBOX.length)})`;
-      document.getElementById('tab-routine').textContent = `Routine (${toAr(ROUTINE.length)})`;
+      const barEl = document.getElementById('stacked-bar');
+      barEl.innerHTML = TASKS.map(t => `<div style="flex:${t.mins}; background:var(--blue); border-left:1px solid var(--border);" title="${t.title}"></div>`).join('') +
+                        `<div style="flex:${minsLeft}; background:transparent;"></div>`;
 
-      const totalTasksMins = TASKS.reduce((s, t) => s + t.mins, 0);
-      const freeMins = Math.max(0, 60 - totalTasksMins);
-
-      const displayItems = [...TASKS];
-      if (freeMins > 0) {
-        displayItems.push({ id: 'free', label: 'وقت فراغ', mins: freeMins, color: '#64748b', isFree: true });
-      }
-
-      const badgeEl = document.getElementById('remaining-badge');
-      const statsEl = document.getElementById('sub-stats');
-      const stackedEl = document.getElementById('stacked-bar');
-      const barsEl = document.getElementById('bars-list');
-      const listEl = document.getElementById('task-list');
-      const newMinsEl = document.getElementById('new-mins');
-      const maxHintEl = document.getElementById('max-hint');
-
-      if (freeMins > 0) {
-        newMinsEl.value = freeMins;
-        maxHintEl.textContent = `أقصى وقت: ${toAr(freeMins)} د`;
-      } else {
-        newMinsEl.value = 5;
-        maxHintEl.textContent = 'الساعة مكتملة (٦٠ د)';
-      }
-
-      if (TASKS.length === 0) {
-        badgeEl.textContent = '٦٠ دقيقة فراغ';
-        statsEl.textContent = 'مفيش مهام حالياً';
-      } else {
-        badgeEl.textContent = freeMins > 0
-          ? `${toAr(totalTasksMins)} د مهام · ${toAr(freeMins)} د فراغ`
-          : `${toAr(totalTasksMins)} دقيقة مهام`;
-        const overNote = totalTasksMins > 60 ? ` (زيادة ${toAr(totalTasksMins - 60)} د عن الساعة)` : '';
-        statsEl.textContent = `المهام الحالية: ${toAr(TASKS.length)}${overNote}`;
-      }
-
-      const graphSum = displayItems.reduce((s, t) => s + t.mins, 0);
-      if (graphSum === 0) {
-        stackedEl.innerHTML = '';
-        barsEl.innerHTML = '<div class="empty-msg">مفيش مهام حالياً.</div>';
-      } else {
-        stackedEl.innerHTML = displayItems.map(t => {
-          const pct = (t.mins / graphSum) * 100;
-          return `<div class="stacked-seg" style="width:${pct}%; background:${t.color};" title="${t.label}"></div>`;
-        }).join('');
-
-        const peak = Math.max(...displayItems.map(t => t.mins));
-        barsEl.innerHTML = displayItems.map(t => {
-          const w = (t.mins / peak) * 100;
-          return `
-            <div class="bar-row">
-              <div class="bar-label">${t.label}</div>
-              <div class="bar-track">
-                <div class="bar-fill" style="width:${w}%; background:${t.color};"></div>
-              </div>
-              <div class="bar-mins">${toAr(t.mins)} د</div>
-            </div>
-          `;
-        }).join('');
-      }
-
-      listEl.innerHTML = TASKS.length === 0
-        ? '<div class="empty-msg is-done">كل المهام خلصت! تقدر تضيف مهمة جديدة من تحت أو تسحب من الـ Inbox أو الـ Routine.</div>'
-        : TASKS.map((t, idx) => {
-            const durClass = t.running ? 'is-running' : (t.remainingSec === 0 ? 'is-finished' : '');
-            const prioBorder = t.priorityColor ? `border-right: 4px solid ${t.priorityColor};` : '';
-            return `
-              <div class="task-row ${t.completing ? 'is-completing' : ''}" style="${prioBorder}" draggable="true" data-idx="${idx}">
-                <div class="task-circle" data-check="${t.id}" title="اضغط هنا لإنهاء المهمة">
-                  <svg viewBox="0 0 16 16" width="14" height="14">
-                    <path d="M3.2 8.4 L6.4 11.6 L12.8 4.4" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </div>
-                <span class="color-dot" style="background:${t.color};"></span>
-                <div class="task-info">
-                  <span class="task-title">${t.label}</span>
-                  <span class="task-dur ${durClass}" id="dur-${t.id}">${formatDuration(t)}</span>
-                </div>
-                <div class="row-actions">
-                  <button type="button" class="icon-btn" data-up="${idx}" ${idx === 0 ? 'disabled' : ''} title="تحريك لأعلى">▲</button>
-                  <button type="button" class="icon-btn" data-down="${idx}" ${idx === TASKS.length - 1 ? 'disabled' : ''} title="تحريك لأسفل">▼</button>
-                  <button type="button" class="icon-btn" data-to-inbox="${t.id}" title="تحويل للـ Inbox">للـ Inbox</button>
-                  <button type="button" class="timer-btn ${t.running ? 'is-stop' : ''}" data-timer="${t.id}">${t.running ? 'إيقاف' : 'بدء'}</button>
-                </div>
-              </div>
-            `;
-          }).join('');
-
-      updateHourClock();
-
-      // Archive & reset trackers if a new logical day started (3:00 AM)
-      const todayKey = getTodayKey();
-      if (TRACKERS_DATE !== todayKey) {
-        if (!TRACKERS_HISTORY.some(h => h.date === TRACKERS_DATE)) {
-          TRACKERS_HISTORY.unshift({
-            date: TRACKERS_DATE,
-            savedAt: Date.now(),
-            items: buildTrackersSnapshot(TRACKERS_CONFIG, TRACKERS_VALUES)
-          });
-        }
-        TRACKERS_DATE = todayKey;
-        TRACKERS_VALUES = emptyValuesForConfig(TRACKERS_CONFIG);
-      }
-
-      // Ensure every configured tracker has a valid value
-      TRACKERS_CONFIG.forEach(c => {
-        if (c.type === 'checks') {
-          const cur = Array.isArray(TRACKERS_VALUES[c.id]) ? TRACKERS_VALUES[c.id] : [];
-          TRACKERS_VALUES[c.id] = c.items.map((_, i) => Boolean(cur[i]));
-        } else {
-          if (typeof TRACKERS_VALUES[c.id] !== 'number') TRACKERS_VALUES[c.id] = 0;
-        }
-      });
-
-      const doneTrackersCount = TRACKERS_CONFIG.filter(c => {
-        if (c.type === 'checks') {
-          const arr = TRACKERS_VALUES[c.id] || [];
-          return arr.length > 0 && arr.every(Boolean);
-        }
-        return (TRACKERS_VALUES[c.id] || 0) >= (c.goal || 1);
-      }).length;
-
-      function buildRing(current, goal, color) {
-        const r = 21;
-        const circ = 2 * Math.PI * r;
-        const ratio = goal > 0 ? Math.min(1, current / goal) : 0;
-        const offset = circ * (1 - ratio);
-        const isGoal = goal > 0 && current >= goal;
-        const strokeColor = isGoal ? 'var(--green)' : (color || 'var(--blue)');
-        const centerLabel = goal <= 99 ? `${toAr(current)}/${toAr(goal)}` : `${toAr(Math.round(ratio * 100))}%`;
-        return `
-          <div class="ring-wrap">
-            <svg width="52" height="52" viewBox="0 0 52 52">
-              <circle cx="26" cy="26" r="${r}" fill="none" stroke="var(--border)" stroke-width="5" />
-              <circle cx="26" cy="26" r="${r}" fill="none" stroke="${strokeColor}" stroke-width="5"
-                stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}"
-                stroke-linecap="round" transform="rotate(-90 26 26)" />
-            </svg>
-            <span class="ring-text">${centerLabel}</span>
+      const taskList = document.getElementById('task-list');
+      taskList.innerHTML = TASKS.map((t, idx) => `
+        <div class="task-item">
+          <div class="task-meta">
+            <span class="task-chk" onclick="completeTask(${idx})"></span>
+            <span class="task-title">${t.title}</span>
           </div>
-        `;
-      }
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span class="sub-stats">${t.mins} د</span>
+            <button class="icon-btn del" onclick="removeTask(${idx})">×</button>
+          </div>
+        </div>
+      `).join('') || '<div class="sub-stats" style="text-align:center; padding:8px;">لا توجد مهام مضافة لهذه الساعة</div>';
 
       const trackersBox = document.getElementById('daily-trackers-box');
       trackersBox.innerHTML = `
-        <div class="prio-group-header" id="toggle-trackers">
-          <div class="prio-group-title">
-            <span class="color-dot" style="background:var(--blue);"></span>
-            <span>عدادات اليوم</span>
-            <button type="button" class="settings-btn ${trackersSettingsOpen ? 'is-active' : ''}" id="open-trackers-settings" title="إعدادات العدادات">⚙️</button>
-          </div>
-          <div class="prio-group-right">
-            <span class="count-pill">${toAr(doneTrackersCount)}/${toAr(TRACKERS_CONFIG.length)}</span>
-            <span class="group-arrow">${trackersOpen ? '▼' : '◀'}</span>
-          </div>
+        <div class="trackers-header">
+          <span style="font-weight:800; font-size:14px;">عدادات اليوم</span>
         </div>
-        ${trackersOpen ? `
-          <div class="prio-group-body">
-            ${trackersSettingsOpen ? `
-              <div style="display:flex; flex-direction:column; gap:10px;">
-                ${TRACKERS_CONFIG.map((c, idx) => `
-                  <div class="setting-card" data-setting-id="${c.id}">
-                    <div class="setting-row">
-                      <input type="text" class="setting-input" data-cfg-name="${c.id}" value="${c.name}" placeholder="اسم العداد">
-                      <select class="setting-input" data-cfg-type="${c.id}" style="flex:0 0 auto; min-width:120px;">
-                        <option value="numeric" ${c.type === 'numeric' ? 'selected' : ''}>رقم وهدف</option>
-                        <option value="checks" ${c.type === 'checks' ? 'selected' : ''}>أزرار / خيارات</option>
-                      </select>
-                    </div>
-                    ${c.type === 'numeric' ? `
-                      <div class="setting-row">
-                        <span class="setting-label">الضغطة:</span>
-                        <input type="text" inputmode="numeric" class="setting-input" data-cfg-step="${c.id}" value="${c.step}" style="max-width:85px;">
-                        <span class="setting-label">الهدف:</span>
-                        <input type="text" inputmode="numeric" class="setting-input" data-cfg-goal="${c.id}" value="${c.goal}" style="max-width:95px;">
-                        <span class="setting-label">الوحدة:</span>
-                        <input type="text" class="setting-input" data-cfg-unit="${c.id}" value="${c.unit || ''}" style="max-width:90px;">
-                      </div>
-                      <div class="setting-row">
-                        <span class="setting-label">الحالي اليوم:</span>
-                        <input type="text" inputmode="numeric" class="setting-input" data-cfg-val="${c.id}" value="${TRACKERS_VALUES[c.id] || 0}" style="max-width:100px;">
-                        <button type="button" class="icon-btn" data-cfg-reset="${c.id}">تصفير</button>
-                      </div>
-                    ` : `
-                      <div class="setting-row">
-                        <span class="setting-label">الخيارات:</span>
-                        <input type="text" class="setting-input" data-cfg-items="${c.id}" value="${c.items.join('، ')}" placeholder="مثال: فجر، ظهر، عصر">
-                        <button type="button" class="icon-btn" data-cfg-reset="${c.id}">تصفير اليوم</button>
-                      </div>
-                    `}
-                    <div class="setting-row" style="justify-content:space-between;">
-                      <div style="display:flex; gap:6px;">
-                        <button type="button" class="icon-btn" data-cfg-up="${idx}" ${idx === 0 ? 'disabled' : ''}>▲</button>
-                        <button type="button" class="icon-btn" data-cfg-down="${idx}" ${idx === TRACKERS_CONFIG.length - 1 ? 'disabled' : ''}>▼</button>
-                      </div>
-                      <div style="display:flex; gap:6px;">
-                        <button type="button" class="timer-btn" data-cfg-save="${c.id}">حفظ التعديل</button>
-                        <button type="button" class="icon-btn del" data-cfg-del="${c.id}">حذف</button>
-                      </div>
-                    </div>
-                  </div>
-                `).join('')}
-
-                <div class="setting-card" style="border-style:dashed;">
-                  <div style="font-size:13px; font-weight:700;">+ إضافة عداد جديد</div>
-                  <div class="setting-row">
-                    <input type="text" class="setting-input" id="new-tracker-name" placeholder="اسم العداد (مثلاً: قهوة، أذكار...)">
-                    <select class="setting-input" id="new-tracker-type" style="flex:0 0 auto; min-width:120px;">
-                      <option value="numeric" ${newTrackerType === 'numeric' ? 'selected' : ''}>رقم وهدف</option>
-                      <option value="checks" ${newTrackerType === 'checks' ? 'selected' : ''}>أزرار / خيارات</option>
-                    </select>
-                  </div>
-                  ${newTrackerType === 'numeric' ? `
-                    <div class="setting-row">
-                      <input type="text" inputmode="numeric" class="setting-input" id="new-tracker-step" placeholder="الضغطة (مثلاً 1)">
-                      <input type="text" inputmode="numeric" class="setting-input" id="new-tracker-goal" placeholder="الهدف (مثلاً 5)">
-                      <input type="text" class="setting-input" id="new-tracker-unit" placeholder="الوحدة (مثلاً مرة)">
-                    </div>
-                  ` : `
-                    <div class="setting-row">
-                      <input type="text" class="setting-input" id="new-tracker-items" placeholder="الخيارات مفصولة بفاصلة (مثلاً: الصبح، بالليل)">
-                    </div>
-                  `}
-                  <div class="setting-row" style="justify-content:flex-end;">
-                    <button type="button" class="add-btn" id="add-new-tracker-btn" style="padding:7px 14px; font-size:13px;">إضافة العداد</button>
-                  </div>
+        ${TRACKERS.map((t, tidx) => {
+          let ringText = '', isDone = false;
+          if (t.type === 'checks') {
+            const doneCount = t.val.filter(Boolean).length;
+            ringText = `${doneCount}/${t.items.length}`;
+            isDone = doneCount === t.items.length;
+          } else {
+            ringText = `${Math.min(100, Math.round((t.val/t.goal)*100))}%`;
+            isDone = t.val >= t.goal;
+          }
+          return `
+            <div class="tracker-row">
+              <div class="tracker-left">
+                <div class="tracker-ring" style="background:${isDone ? 'var(--green-soft)' : 'var(--bg)'}; border:1px solid ${isDone ? 'var(--green)' : 'var(--border)'}; color:${isDone ? 'var(--green)' : 'var(--text)'};">
+                  ${ringText}
+                </div>
+                <div>
+                  <div class="tracker-title">${t.name}</div>
+                  <div class="tracker-sub">${t.type === 'checks' ? '' : `${t.val} / ${t.goal} ${t.unit}`}</div>
                 </div>
               </div>
-            ` : `
-              <div class="trackers-grid">
-                ${TRACKERS_CONFIG.map(c => {
-                  if (c.type === 'checks') {
-                    const arr = TRACKERS_VALUES[c.id] || [];
-                    const done = arr.filter(Boolean).length;
-                    const total = c.items.length || 1;
-                    return `
-                      <div class="tracker-card">
-                        <div class="tracker-head">
-                          ${buildRing(done, total, c.color)}
-                          <div class="tracker-meta">
-                            <div class="tracker-name">${c.name}</div>
-                            <div class="tracker-val ${done === total ? 'is-goal' : ''}">${toAr(done)} من ${toAr(total)}</div>
-                          </div>
-                        </div>
-                        <div class="tracker-pills">
-                          ${c.items.map((label, i) => `
-                            <button type="button" class="tracker-pill ${arr[i] ? 'is-done' : ''}" data-chk-id="${c.id}" data-chk-idx="${i}">${label}</button>
-                          `).join('')}
-                        </div>
-                      </div>
-                    `;
-                  } else {
-                    const cur = Number(TRACKERS_VALUES[c.id]) || 0;
-                    const goal = Number(c.goal) || 1;
-                    const step = Number(c.step) || 1;
-                    const unit = c.unit ? ` ${c.unit}` : '';
-                    return `
-                      <div class="tracker-card">
-                        <div class="tracker-head">
-                          ${buildRing(cur, goal, c.color)}
-                          <div class="tracker-meta">
-                            <div class="tracker-name">${c.name}</div>
-                            <div class="tracker-val ${cur >= goal ? 'is-goal' : ''}">${toAr(cur)} / ${toAr(goal)}${unit}</div>
-                          </div>
-                        </div>
-                        <div class="tracker-bar-wrap">
-                          <button type="button" class="tracker-step-btn" data-num-id="${c.id}" data-num-delta="-${step}">-${toAr(step)}</button>
-                          <button type="button" class="tracker-step-btn is-plus" data-num-id="${c.id}" data-num-delta="${step}">+${toAr(step)}${unit}</button>
-                        </div>
-                      </div>
-                    `;
-                  }
-                }).join('')}
+              <div class="tracker-actions">
+                ${t.type === 'checks' ? t.items.map((it, i) => `
+                  <button class="pill-btn ${t.val[i] ? 'is-done' : ''}" onclick="toggleTrackerCheck(${tidx}, ${i})">${it}</button>
+                `).join('') : `
+                  <button class="pill-btn" onclick="stepTrackerNum(${tidx}, -${t.step})">-${t.step}</button>
+                  <button class="pill-btn is-done" onclick="stepTrackerNum(${tidx}, ${t.step})">+${t.step}</button>
+                `}
               </div>
-            `}
-          </div>
-        ` : ''}
-      `;
-
-      document.getElementById('toggle-trackers').addEventListener('click', () => {
-        trackersOpen = !trackersOpen;
-        render();
-      });
-
-      document.getElementById('open-trackers-settings').addEventListener('click', e => {
-        e.stopPropagation();
-        if (!trackersOpen) trackersOpen = true;
-        trackersSettingsOpen = !trackersSettingsOpen;
-        render();
-      });
-
-      if (!trackersSettingsOpen) {
-        trackersBox.querySelectorAll('[data-chk-id]').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const id = btn.dataset.chkId;
-            const idx = Number(btn.dataset.chkIdx);
-            if (!Array.isArray(TRACKERS_VALUES[id])) TRACKERS_VALUES[id] = [];
-            TRACKERS_VALUES[id][idx] = !TRACKERS_VALUES[id][idx];
-            render();
-          });
-        });
-
-        trackersBox.querySelectorAll('[data-num-id]').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const id = btn.dataset.numId;
-            const delta = Number(btn.dataset.numDelta);
-            TRACKERS_VALUES[id] = Math.max(0, (Number(TRACKERS_VALUES[id]) || 0) + delta);
-            render();
-          });
-        });
-      } else {
-        trackersBox.querySelectorAll('[data-cfg-type]').forEach(sel => {
-          sel.addEventListener('change', () => {
-            const id = sel.dataset.cfgType;
-            const c = TRACKERS_CONFIG.find(x => x.id === id);
-            if (!c) return;
-            c.type = sel.value;
-            if (c.type === 'checks' && !Array.isArray(c.items)) {
-              c.items = ['الصباح', 'المساء'];
-              TRACKERS_VALUES[id] = c.items.map(() => false);
-            } else if (c.type === 'numeric') {
-              c.step = c.step || 1;
-              c.goal = c.goal || 5;
-              c.unit = c.unit || '';
-              if (typeof TRACKERS_VALUES[id] !== 'number') TRACKERS_VALUES[id] = 0;
-            }
-            render();
-          });
-        });
-
-        trackersBox.querySelectorAll('[data-cfg-save]').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const id = btn.dataset.cfgSave;
-            const c = TRACKERS_CONFIG.find(x => x.id === id);
-            if (!c) return;
-            const nameEl = trackersBox.querySelector(`[data-cfg-name="${id}"]`);
-            if (nameEl && nameEl.value.trim()) c.name = nameEl.value.trim();
-            if (c.type === 'numeric') {
-              const stepEl = trackersBox.querySelector(`[data-cfg-step="${id}"]`);
-              const goalEl = trackersBox.querySelector(`[data-cfg-goal="${id}"]`);
-              const unitEl = trackersBox.querySelector(`[data-cfg-unit="${id}"]`);
-              const valEl = trackersBox.querySelector(`[data-cfg-val="${id}"]`);
-              const s = parseMins(stepEl ? stepEl.value : '1');
-              const g = parseMins(goalEl ? goalEl.value : '1');
-              if (s > 0) c.step = s;
-              if (g > 0) c.goal = g;
-              c.unit = unitEl ? unitEl.value.trim() : '';
-              if (valEl) TRACKERS_VALUES[id] = Math.max(0, parseMins(valEl.value));
-            } else {
-              const itemsEl = trackersBox.querySelector(`[data-cfg-items="${id}"]`);
-              const rawItems = (itemsEl ? itemsEl.value : '').split(/[،,]+/).map(s => s.trim()).filter(Boolean);
-              if (rawItems.length > 0) {
-                const oldArr = Array.isArray(TRACKERS_VALUES[id]) ? TRACKERS_VALUES[id] : [];
-                c.items = rawItems;
-                TRACKERS_VALUES[id] = rawItems.map((_, i) => Boolean(oldArr[i]));
-              }
-            }
-            render();
-          });
-        });
-
-        trackersBox.querySelectorAll('[data-cfg-reset]').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const id = btn.dataset.cfgReset;
-            const c = TRACKERS_CONFIG.find(x => x.id === id);
-            if (!c) return;
-            TRACKERS_VALUES[id] = c.type === 'checks' ? c.items.map(() => false) : 0;
-            render();
-          });
-        });
-
-        trackersBox.querySelectorAll('[data-cfg-up]').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const i = Number(btn.dataset.cfgUp);
-            moveInList(TRACKERS_CONFIG, i, i - 1);
-          });
-        });
-
-        trackersBox.querySelectorAll('[data-cfg-down]').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const i = Number(btn.dataset.cfgDown);
-            moveInList(TRACKERS_CONFIG, i, i + 1);
-          });
-        });
-
-        trackersBox.querySelectorAll('[data-cfg-del]').forEach(btn => {
-          btn.addEventListener('click', () => {
-            const id = btn.dataset.cfgDel;
-            TRACKERS_CONFIG = TRACKERS_CONFIG.filter(x => x.id !== id);
-            delete TRACKERS_VALUES[id];
-            render();
-          });
-        });
-
-        const newTypeSel = document.getElementById('new-tracker-type');
-        if (newTypeSel) {
-          newTypeSel.addEventListener('change', () => {
-            newTrackerType = newTypeSel.value;
-            render();
-          });
-        }
-
-        const addNewBtn = document.getElementById('add-new-tracker-btn');
-        if (addNewBtn) {
-          addNewBtn.addEventListener('click', () => {
-            const nameEl = document.getElementById('new-tracker-name');
-            const name = nameEl ? nameEl.value.trim() : '';
-            if (!name) return;
-            const id = 'trk_' + Date.now();
-            const color = PALETTE[TRACKERS_CONFIG.length % PALETTE.length];
-            if (newTrackerType === 'numeric') {
-              const step = Math.max(1, parseMins(document.getElementById('new-tracker-step')?.value || '1'));
-              const goal = Math.max(1, parseMins(document.getElementById('new-tracker-goal')?.value || '5'));
-              const unit = (document.getElementById('new-tracker-unit')?.value || '').trim();
-              TRACKERS_CONFIG.push({ id, name, type: 'numeric', step, goal, unit, color });
-              TRACKERS_VALUES[id] = 0;
-            } else {
-              const raw = (document.getElementById('new-tracker-items')?.value || '').split(/[،,]+/).map(s => s.trim()).filter(Boolean);
-              const items = raw.length > 0 ? raw : ['تم'];
-              TRACKERS_CONFIG.push({ id, name, type: 'checks', items, color });
-              TRACKERS_VALUES[id] = items.map(() => false);
-            }
-            render();
-          });
-        }
-      }
-
-      // Completed log accordion (rolling 48h)      // Completed log accordion (rolling 48h)
-      const todayStr = new Date().toDateString();
-      const todayItems = COMPLETED.filter(c => new Date(c.completedAt).toDateString() === todayStr);
-      const todayCount = todayItems.length;
-      const todayMins = todayItems.reduce((s, c) => s + (Number(c.mins) || 0), 0);
-
-      const completedBox = document.getElementById('completed-box');
-      completedBox.innerHTML = `
-        <div class="prio-group-header" id="toggle-completed">
-          <div class="prio-group-title">
-            <span class="color-dot" style="background:var(--green);"></span>
-            <span>المهام المكتملة (آخر ٤٨ ساعة)</span>
-          </div>
-          <div class="prio-group-right">
-            <span class="count-pill">${toAr(COMPLETED.length)}</span>
-            <span class="group-arrow">${completedOpen ? '▼' : '◀'}</span>
-          </div>
-        </div>
-        ${completedOpen ? `
-          <div class="prio-group-body">
-            <div class="today-summary">
-              <span>إنجاز اليوم</span>
-              <span>${toAr(todayCount)} ${todayCount === 1 ? 'مهمة' : 'مهام'} · ${toAr(todayMins)} دقيقة</span>
             </div>
-            ${COMPLETED.length === 0
-              ? '<div class="empty-msg">مفيش مهام مكتملة خلال آخر ٤٨ ساعة.</div>'
-              : COMPLETED.map(c => `
-                <div class="task-row" style="opacity:0.85;">
-                  <span class="color-dot" style="background:var(--green);"></span>
-                  <div class="task-info">
-                    <span class="task-title" style="text-decoration:line-through; color:var(--muted);">${c.label}</span>
-                    <span class="completed-meta">${toAr(c.mins)} د · ${formatCompletedTime(c.completedAt)}</span>
-                  </div>
-                </div>
-              `).join('')}
-          </div>
-        ` : ''}
+          `;
+        }).join('')}
       `;
 
-      document.getElementById('toggle-completed').addEventListener('click', () => {
-        completedOpen = !completedOpen;
-        render();
-      });
+      document.getElementById('completed-count').textContent = `${COMPLETED.length} مهام`;
+      document.getElementById('completed-list').innerHTML = COMPLETED.slice(0, 8).map(c => `
+        <div class="task-item" style="opacity:0.75;">
+          <span class="task-title" style="text-decoration:line-through;">${c.title}</span>
+          <span class="sub-stats">${c.mins} د</span>
+        </div>
+      `).join('') || '<div class="sub-stats" style="text-align:center;">لا توجد مهام مكتملة مؤخراً</div>';
 
-      const inboxGroupsEl = document.getElementById('inbox-groups');
-      inboxGroupsEl.innerHTML = PRIO_GROUPS.map(g => {
-        const items = INBOX.filter(item => (item.color || '#2563eb') === g.key);
-        const isOpen = Boolean(openGroups[g.key]);
+      const routineList = document.getElementById('routine-list');
+      routineList.innerHTML = ROUTINE.map((r, ridx) => `
+        <div class="task-item">
+          <div class="task-meta">
+            <span class="task-title" onclick="editRoutine(${ridx})">${r.title}</span>
+          </div>
+          <div style="display:flex; align-items:center; gap:6px;">
+            <span class="sub-stats" onclick="editRoutine(${ridx})">${r.mins} د</span>
+            <button class="timer-btn" onclick="addRoutineToLive(${ridx})">إضافة للساعة</button>
+            <button class="icon-btn del" onclick="removeRoutine(${ridx})">×</button>
+          </div>
+        </div>
+      `).join('') || '<div class="sub-stats" style="text-align:center;">لا توجد مهام روتين</div>';
+
+      renderInboxModal();
+    }
+
+    function renderInboxModal() {
+      const container = document.getElementById('inbox-sections-container');
+      const select = document.getElementById('inbox-section-select');
+      select.innerHTML = SECTIONS.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+
+      container.innerHTML = SECTIONS.map(s => {
+        const items = INBOX.filter(i => i.sectionId === s.id);
         return `
-          <div class="prio-group">
-            <div class="prio-group-header" data-toggle-group="${g.key}">
-              <div class="prio-group-title">
-                <span class="color-dot" style="background:${g.color};"></span>
-                <span>${g.title}</span>
-              </div>
-              <div class="prio-group-right">
-                <span class="count-pill">${toAr(items.length)}</span>
-                <span class="group-arrow">${isOpen ? '▼' : '◀'}</span>
-              </div>
+          <div style="background:var(--item); border:1px solid var(--border); border-radius:12px; padding:10px;">
+            <div style="font-weight:700; font-size:13px; color:${s.color}; margin-bottom:6px;">${s.name} (${items.length})</div>
+            <div style="display:flex; flex-direction:column; gap:6px;">
+              ${items.map(it => `
+                <div style="display:flex; align-items:center; justify-content:space-between; background:var(--bg); padding:6px 10px; border-radius:8px;">
+                  <span style="font-size:14px;">${it.title}</span>
+                  <div style="display:flex; gap:6px;">
+                    <button class="timer-btn" style="padding:3px 8px; font-size:11px;" onclick="addInboxToLive('${it.id}')">إضافة للساعة</button>
+                    <button class="icon-btn del" style="padding:2px 6px;" onclick="removeInbox('${it.id}')">×</button>
+                  </div>
+                </div>
+              `).join('') || '<span class="sub-stats" style="font-size:11px;">فارغ</span>'}
             </div>
-            ${isOpen ? `
-              <div class="prio-group-body">
-                ${items.length === 0
-                  ? '<div class="empty-msg">مفيش مهام في الأولوية دي حالياً.</div>'
-                  : items.map((item, idx) => `
-                    <div class="task-row">
-                      <button type="button" class="prio-row-dot" data-edit-prio="${item.id}" style="background:${g.color};" title="تغيير الأولوية"></button>
-                      <div class="task-info">
-                        <span class="task-title">${item.label}</span>
-                      </div>
-                      <div class="row-actions">
-                        <button type="button" class="icon-btn" data-inbox-up="${item.id}" ${idx === 0 ? 'disabled' : ''} title="تحريك لأعلى">▲</button>
-                        <button type="button" class="icon-btn" data-inbox-down="${item.id}" ${idx === items.length - 1 ? 'disabled' : ''} title="تحريك لأسفل">▼</button>
-                        <button type="button" class="timer-btn" data-promote="${item.id}">إضافة للساعة</button>
-                        <button type="button" class="icon-btn del" data-ask-del="${item.id}" title="حذف">×</button>
-                      </div>
-                      ${promotingInboxId === item.id ? `
-                        <div class="promote-box">
-                          <span class="max-hint">الوقت (دقائق):</span>
-                          <input type="text" inputmode="numeric" class="input-field input-mins" id="promote-mins-${item.id}" value="" placeholder="الدقائق">
-                          <button type="button" class="timer-btn" data-confirm-promote="${item.id}">تأكيد</button>
-                          <button type="button" class="icon-btn" data-cancel-promote="1">إلغاء</button>
-                        </div>
-                      ` : ''}
-                      ${editingPrioInboxId === item.id ? `
-                        <div class="promote-box">
-                          <span class="max-hint">تغيير الأولوية:</span>
-                          ${PRIO_GROUPS.map(pg => `
-                            <button type="button" class="prio-choice-btn ${(item.color || '#2563eb') === pg.key ? 'is-current' : ''}" data-set-prio="${item.id}" data-prio-color="${pg.key}">
-                              <span class="color-dot" style="background:${pg.color};"></span>
-                              <span>${pg.title.replace('أولوية ', '')}</span>
-                            </button>
-                          `).join('')}
-                          <button type="button" class="icon-btn" data-cancel-prio="1">إلغاء</button>
-                        </div>
-                      ` : ''}
-                      ${confirmDeleteInboxId === item.id ? `
-                        <div class="promote-box">
-                          <span class="confirm-text">هل تريد حذف المهمة بالفعل؟</span>
-                          <button type="button" class="timer-btn is-stop" data-confirm-del="${item.id}">حذف</button>
-                          <button type="button" class="icon-btn" data-cancel-del="1">إلغاء</button>
-                        </div>
-                      ` : ''}
-                    </div>
-                  `).join('')}
-              </div>
-            ` : ''}
           </div>
         `;
       }).join('');
-
-      const routineListEl = document.getElementById('routine-list');
-      routineListEl.innerHTML = ROUTINE.length === 0
-        ? '<div class="empty-msg">مفيش مهام روتين لسه. ضيف مهامك اليومية بالوقت بتاعها من تحت.</div>'
-        : ROUTINE.map((item, idx) => `
-            <div class="task-row">
-              <div class="task-info">
-                <button type="button" class="routine-title-btn" data-edit-routine-mins="${item.id}" title="تعديل الاسم أو الوقت">${item.label}</button>
-                <button type="button" class="task-dur-btn" data-edit-routine-mins="${item.id}" title="تعديل الاسم أو الوقت">${toAr(item.mins)} د</button>
-              </div>
-              <div class="row-actions">
-                <button type="button" class="icon-btn" data-routine-up="${idx}" ${idx === 0 ? 'disabled' : ''} title="تحريك لأعلى">▲</button>
-                <button type="button" class="icon-btn" data-routine-down="${idx}" ${idx === ROUTINE.length - 1 ? 'disabled' : ''} title="تحريك لأسفل">▼</button>
-                <button type="button" class="timer-btn" data-use-routine="${item.id}">إضافة للساعة</button>
-                <button type="button" class="icon-btn del" data-ask-del-routine="${item.id}" title="حذف من الروتين">×</button>
-              </div>
-              ${editingRoutineMinsId === item.id ? `
-                <div class="promote-box">
-                  <input type="text" class="input-field input-name" id="edit-routine-name-${item.id}" value="${item.label}" placeholder="اسم المهمة">
-                  <input type="text" inputmode="numeric" class="input-field input-mins" id="edit-routine-mins-${item.id}" value="" placeholder="${toAr(item.mins)} د">
-                  <button type="button" class="timer-btn" data-save-routine-mins="${item.id}">حفظ</button>
-                  <button type="button" class="icon-btn" data-cancel-routine-mins="1">إلغاء</button>
-                </div>
-              ` : ''}
-              ${confirmDeleteRoutineId === item.id ? `
-                <div class="promote-box">
-                  <span class="confirm-text">هل تريد حذف المهمة من الروتين؟</span>
-                  <button type="button" class="timer-btn is-stop" data-confirm-del-routine="${item.id}">حذف</button>
-                  <button type="button" class="icon-btn" data-cancel-del-routine="1">إلغاء</button>
-                </div>
-              ` : ''}
-            </div>
-          `).join('');
-
-      // Trackers history panel inside Routine
-      const histBtn = document.getElementById('toggle-trackers-history-btn');
-      const histPanel = document.getElementById('trackers-history-panel');
-      if (histBtn && histPanel) {
-        histBtn.textContent = trackersHistoryOpen ? '✕ إغلاق السجل' : `📊 سجل العدادات (${toAr(TRACKERS_HISTORY.length)})`;
-        histPanel.classList.toggle('hidden', !trackersHistoryOpen);
-        if (trackersHistoryOpen) {
-          const liveDayEntry = {
-            date: TRACKERS_DATE,
-            isLive: true,
-            items: buildTrackersSnapshot(TRACKERS_CONFIG, TRACKERS_VALUES)
-          };
-          const allDays = [liveDayEntry, ...TRACKERS_HISTORY];
-          histPanel.innerHTML = `
-            <div class="header-row" style="margin-bottom:4px;">
-              <div style="font-size:14px; font-weight:700;">سجل العدادات اليومي (يتصفر تلقائياً ٣:٠٠ ص)</div>
-              <button type="button" class="timer-btn" id="download-trackers-pdf-btn">📄 تنزيل PDF</button>
-            </div>
-            ${allDays.map(day => `
-              <div class="history-day-card">
-                <div class="history-day-head">
-                  <span>${day.isLive ? `اليوم الحالي (${formatArabicDateKey(day.date)})` : formatArabicDateKey(day.date)}</span>
-                  <span style="font-size:11px; color:var(--muted);">${day.isLive ? 'جاري التسجيل' : 'مكتمل'}</span>
-                </div>
-                <div class="history-items">
-                  ${day.items.map(it => {
-                    if (it.type === 'checks') {
-                      const isGoal = it.total > 0 && it.done >= it.total;
-                      const details = it.doneList && it.doneList.length > 0 ? ` (${it.doneList.join('، ')})` : '';
-                      return `
-                        <div class="history-item-row">
-                          <span>${it.name}</span>
-                          <span class="history-item-val ${isGoal ? 'is-goal' : ''}">${toAr(it.done)} / ${toAr(it.total)}${details}</span>
-                        </div>
-                      `;
-                    }
-                    const isGoal = it.goal > 0 && it.val >= it.goal;
-                    const unit = it.unit ? ` ${it.unit}` : '';
-                    return `
-                      <div class="history-item-row">
-                        <span>${it.name}</span>
-                        <span class="history-item-val ${isGoal ? 'is-goal' : ''}">${toAr(it.val)} / ${toAr(it.goal)}${unit}</span>
-                      </div>
-                    `;
-                  }).join('')}
-                </div>
-              </div>
-            `).join('')}
-          `;
-
-          document.getElementById('download-trackers-pdf-btn').addEventListener('click', () => {
-            const printEl = document.getElementById('print-report');
-            printEl.innerHTML = `
-              <h2 style="margin:0 0 12px 0;">سجل العدادات اليومي</h2>
-              ${allDays.map(day => `
-                <div class="print-day">
-                  <h3>${day.isLive ? `اليوم الحالي (${formatArabicDateKey(day.date)})` : formatArabicDateKey(day.date)}</h3>
-                  <table class="print-table">
-                    ${day.items.map(it => {
-                      if (it.type === 'checks') {
-                        const details = it.doneList && it.doneList.length > 0 ? ` (${it.doneList.join('، ')})` : '';
-                        return `<tr><td><strong>${it.name}</strong></td><td style="text-align:left;">${toAr(it.done)} / ${toAr(it.total)}${details}</td></tr>`;
-                      }
-                      const unit = it.unit ? ` ${it.unit}` : '';
-                      return `<tr><td><strong>${it.name}</strong></td><td style="text-align:left;">${toAr(it.val)} / ${toAr(it.goal)}${unit}</td></tr>`;
-                    }).join('')}
-                  </table>
-                </div>
-              `).join('')}
-            `;
-            window.print();
-          });
-        }
-      }
-
-      // Live listeners
-      listEl.querySelectorAll('[data-check]').forEach(circle => {
-        circle.addEventListener('click', e => {
-          e.stopPropagation();
-          const id = Number(circle.dataset.check);
-          const task = TASKS.find(x => x.id === id);
-          if (!task) return;
-
-          if (task.completing) {
-            task.completing = false;
-            if (pendingDeletes[id]) {
-              clearTimeout(pendingDeletes[id]);
-              delete pendingDeletes[id];
-            }
-            render();
-            return;
-          }
-
-          task.completing = true;
-          task.running = false;
-          task.endAt = null;
-          render();
-
-          pendingDeletes[id] = setTimeout(() => {
-            delete pendingDeletes[id];
-            const idx = TASKS.findIndex(x => x.id === id);
-            if (idx === -1) return;
-            const removed = { ...TASKS[idx], completing: false, running: false, endAt: null };
-            TASKS.splice(idx, 1);
-            const logId = Date.now() + Math.floor(Math.random() * 1000);
-            COMPLETED.unshift({ logId, label: removed.label, mins: removed.mins, completedAt: Date.now() });
-            showUndo(removed, idx, logId);
-            render();
-          }, 2000);
-        });
-      });
-
-      listEl.querySelectorAll('.task-row').forEach(row => {
-        row.addEventListener('dragstart', e => {
-          dragSrcIdx = Number(row.dataset.idx);
-          row.classList.add('is-dragging');
-          e.dataTransfer.effectAllowed = 'move';
-        });
-        row.addEventListener('dragend', () => {
-          row.classList.remove('is-dragging');
-          listEl.querySelectorAll('.drag-over').forEach(el => el.classList.remove('drag-over'));
-        });
-        row.addEventListener('dragover', e => {
-          e.preventDefault();
-          row.classList.add('drag-over');
-        });
-        row.addEventListener('dragleave', () => row.classList.remove('drag-over'));
-        row.addEventListener('drop', e => {
-          e.preventDefault();
-          const targetIdx = Number(row.dataset.idx);
-          if (dragSrcIdx !== null && dragSrcIdx !== targetIdx) moveInList(TASKS, dragSrcIdx, targetIdx);
-          dragSrcIdx = null;
-        });
-      });
-
-      listEl.querySelectorAll('[data-up]').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          const i = Number(btn.dataset.up);
-          moveInList(TASKS, i, i - 1);
-        });
-      });
-
-      listEl.querySelectorAll('[data-down]').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          const i = Number(btn.dataset.down);
-          moveInList(TASKS, i, i + 1);
-        });
-      });
-
-      listEl.querySelectorAll('[data-to-inbox]').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          const id = Number(btn.dataset.toInbox);
-          if (pendingDeletes[id]) {
-            clearTimeout(pendingDeletes[id]);
-            delete pendingDeletes[id];
-          }
-          const idx = TASKS.findIndex(x => x.id === id);
-          if (idx === -1) return;
-          const [moved] = TASKS.splice(idx, 1);
-          const prio = moved.priorityColor || '#2563eb';
-          INBOX.push({ id: moved.id, label: moved.label, color: prio });
-          openGroups[prio] = true;
-          render();
-        });
-      });
-
-      listEl.querySelectorAll('[data-timer]').forEach(btn => {
-        btn.addEventListener('click', e => {
-          e.stopPropagation();
-          unlockAudio();
-          const id = Number(btn.dataset.timer);
-          const task = TASKS.find(x => x.id === id);
-          if (!task || task.completing) return;
-          const now = Date.now();
-          if (task.running) {
-            task.remainingSec = task.endAt ? Math.max(0, Math.ceil((task.endAt - now) / 1000)) : task.remainingSec;
-            task.running = false;
-            task.endAt = null;
-          } else {
-            if (task.remainingSec <= 0) task.remainingSec = task.mins * 60;
-            TASKS.forEach(x => {
-              if (x.running && x.id !== id && x.endAt) {
-                x.remainingSec = Math.max(0, Math.ceil((x.endAt - now) / 1000));
-              }
-              x.running = (x.id === id);
-              x.endAt = (x.id === id) ? now + x.remainingSec * 1000 : null;
-            });
-          }
-          render();
-        });
-      });
-
-      inboxGroupsEl.querySelectorAll('[data-toggle-group]').forEach(header => {
-        header.addEventListener('click', () => {
-          const key = header.dataset.toggleGroup;
-          openGroups[key] = !openGroups[key];
-          render();
-        });
-      });
-
-      inboxGroupsEl.querySelectorAll('[data-inbox-up]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          moveInboxWithinGroup(Number(btn.dataset.inboxUp), -1);
-        });
-      });
-
-      inboxGroupsEl.querySelectorAll('[data-inbox-down]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          moveInboxWithinGroup(Number(btn.dataset.inboxDown), 1);
-        });
-      });
-
-      inboxGroupsEl.querySelectorAll('[data-edit-prio]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = Number(btn.dataset.editPrio);
-          promotingInboxId = null;
-          confirmDeleteInboxId = null;
-          editingPrioInboxId = (editingPrioInboxId === id) ? null : id;
-          render();
-        });
-      });
-
-      inboxGroupsEl.querySelectorAll('[data-set-prio]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = Number(btn.dataset.setPrio);
-          const newColor = btn.dataset.prioColor;
-          const item = INBOX.find(x => x.id === id);
-          if (!item) return;
-          item.color = newColor;
-          openGroups[newColor] = true;
-          editingPrioInboxId = null;
-          render();
-        });
-      });
-
-      inboxGroupsEl.querySelectorAll('[data-cancel-prio]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          editingPrioInboxId = null;
-          render();
-        });
-      });
-
-      inboxGroupsEl.querySelectorAll('[data-promote]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          confirmDeleteInboxId = null;
-          editingPrioInboxId = null;
-          promotingInboxId = Number(btn.dataset.promote);
-          render();
-          const inp = document.getElementById(`promote-mins-${promotingInboxId}`);
-          if (inp) inp.focus();
-        });
-      });
-
-      inboxGroupsEl.querySelectorAll('[data-cancel-promote]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          promotingInboxId = null;
-          render();
-        });
-      });
-
-      inboxGroupsEl.querySelectorAll('[data-confirm-promote]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = Number(btn.dataset.confirmPromote);
-          const minsInp = document.getElementById(`promote-mins-${id}`);
-          const rawMins = parseMins(minsInp ? minsInp.value : '0');
-          if (!(rawMins > 0)) return;
-          const mins = Math.min(60, rawMins);
-          const idx = INBOX.findIndex(x => x.id === id);
-          if (idx === -1) return;
-          const [item] = INBOX.splice(idx, 1);
-          TASKS.push({
-            id: Date.now(),
-            label: item.label,
-            mins,
-            color: nextDistinctColor(),
-            priorityColor: item.color || '#2563eb',
-            remainingSec: mins * 60,
-            running: false,
-            endAt: null,
-            completing: false
-          });
-          promotingInboxId = null;
-          switchTab('live');
-        });
-      });
-
-      inboxGroupsEl.querySelectorAll('[data-ask-del]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          promotingInboxId = null;
-          editingPrioInboxId = null;
-          confirmDeleteInboxId = Number(btn.dataset.askDel);
-          render();
-        });
-      });
-
-      inboxGroupsEl.querySelectorAll('[data-confirm-del]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = Number(btn.dataset.confirmDel);
-          INBOX = INBOX.filter(x => x.id !== id);
-          confirmDeleteInboxId = null;
-          render();
-        });
-      });
-
-      inboxGroupsEl.querySelectorAll('[data-cancel-del]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          confirmDeleteInboxId = null;
-          render();
-        });
-      });
-
-      routineListEl.querySelectorAll('[data-routine-up]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const i = Number(btn.dataset.routineUp);
-          moveInList(ROUTINE, i, i - 1);
-        });
-      });
-
-      routineListEl.querySelectorAll('[data-routine-down]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const i = Number(btn.dataset.routineDown);
-          moveInList(ROUTINE, i, i + 1);
-        });
-      });
-
-      routineListEl.querySelectorAll('[data-use-routine]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = Number(btn.dataset.useRoutine);
-          const item = ROUTINE.find(x => x.id === id);
-          if (!item) return;
-          TASKS.push({
-            id: Date.now() + Math.floor(Math.random() * 1000),
-            label: item.label,
-            mins: item.mins,
-            color: nextDistinctColor(),
-            remainingSec: item.mins * 60,
-            running: false,
-            endAt: null,
-            completing: false
-          });
-          switchTab('live');
-        });
-      });
-
-      routineListEl.querySelectorAll('[data-edit-routine-mins]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = Number(btn.dataset.editRoutineMins);
-          confirmDeleteRoutineId = null;
-          editingRoutineMinsId = (editingRoutineMinsId === id) ? null : id;
-          render();
-          if (editingRoutineMinsId === id) {
-            const inp = document.getElementById(`edit-routine-mins-${id}`);
-            if (inp) inp.focus();
-          }
-        });
-      });
-
-      routineListEl.querySelectorAll('[data-save-routine-mins]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = Number(btn.dataset.saveRoutineMins);
-          const item = ROUTINE.find(x => x.id === id);
-          if (!item) return;
-          const nameInp = document.getElementById(`edit-routine-name-${id}`);
-          const minsInp = document.getElementById(`edit-routine-mins-${id}`);
-          const newName = nameInp ? nameInp.value.trim() : '';
-          if (newName) item.label = newName;
-          const rawMins = parseMins(minsInp ? minsInp.value : '');
-          if (rawMins > 0) item.mins = Math.min(60, rawMins);
-          editingRoutineMinsId = null;
-          render();
-        });
-      });
-
-      routineListEl.querySelectorAll('[data-cancel-routine-mins]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          editingRoutineMinsId = null;
-          render();
-        });
-      });
-
-      routineListEl.querySelectorAll('[data-ask-del-routine]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          editingRoutineMinsId = null;
-          confirmDeleteRoutineId = Number(btn.dataset.askDelRoutine);
-          render();
-        });
-      });
-
-      routineListEl.querySelectorAll('[data-confirm-del-routine]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const id = Number(btn.dataset.confirmDelRoutine);
-          ROUTINE = ROUTINE.filter(x => x.id !== id);
-          confirmDeleteRoutineId = null;
-          render();
-        });
-      });
-
-      routineListEl.querySelectorAll('[data-cancel-del-routine]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          confirmDeleteRoutineId = null;
-          render();
-        });
-      });
     }
 
-    document.getElementById('add-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const titleInput = document.getElementById('new-title');
-      const minsInput = document.getElementById('new-mins');
-      const label = titleInput.value.trim();
-      const mins = parseMins(minsInput.value);
-      if (!label || !(mins > 0)) return;
-
-      TASKS.push({
-        id: Date.now(),
-        label,
-        mins,
-        color: nextDistinctColor(),
-        remainingSec: mins * 60,
-        running: false,
-        endAt: null,
-        completing: false
-      });
-      titleInput.value = '';
+    window.completeTask = (idx) => {
+      COMPLETED.unshift(TASKS[idx]);
+      TASKS.splice(idx, 1);
+      saveAll();
       render();
-    });
-
-    document.getElementById('inbox-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const input = document.getElementById('inbox-title');
-      const label = input.value.trim();
-      if (!label) return;
-      INBOX.push({ id: Date.now(), label, color: selectedInboxColor });
-      openGroups[selectedInboxColor] = true;
-      input.value = '';
+    };
+    window.removeTask = (idx) => {
+      TASKS.splice(idx, 1);
+      saveAll();
       render();
-    });
-
-    document.getElementById('routine-form').addEventListener('submit', e => {
-      e.preventDefault();
-      const titleInput = document.getElementById('routine-title');
-      const minsInput = document.getElementById('routine-mins');
-      const label = titleInput.value.trim();
-      const mins = parseMins(minsInput.value);
-      if (!label || !(mins > 0)) return;
-      ROUTINE.push({ id: Date.now(), label, mins });
-      titleInput.value = '';
-      minsInput.value = '';
+    };
+    window.toggleTrackerCheck = (tidx, i) => {
+      TRACKERS[tidx].val[i] = !TRACKERS[tidx].val[i];
+      saveAll();
       render();
-    });
+    };
+    window.stepTrackerNum = (tidx, delta) => {
+      TRACKERS[tidx].val = Math.max(0, TRACKERS[tidx].val + delta);
+      saveAll();
+      render();
+    };
+    window.removeRoutine = (idx) => {
+      ROUTINE.splice(idx, 1);
+      saveAll();
+      render();
+    };
+    window.editRoutine = (idx) => {
+      const title = prompt('تعديل اسم المهمة:', ROUTINE[idx].title);
+      const mins = prompt('تعديل المدة (بالدقائق):', ROUTINE[idx].mins);
+      if (title) ROUTINE[idx].title = title;
+      if (mins) ROUTINE[idx].mins = parseInt(mins, 10) || ROUTINE[idx].mins;
+      saveAll();
+      render();
+    };
+    window.addRoutineToLive = (idx) => {
+      const r = ROUTINE[idx];
+      TASKS.push({ title: r.title, mins: r.mins });
+      saveAll();
+      render();
+    };
+    window.removeInbox = (id) => {
+      INBOX = INBOX.filter(i => i.id !== id);
+      saveAll();
+      render();
+    };
+    window.addInboxToLive = (id) => {
+      const it = INBOX.find(i => i.id === id);
+      const mins = prompt(`كم دقيقة للمهمة "${it.title}"؟ (أقصى وقت 60 دقيقة)`, '15');
+      const parsed = Math.min(60, parseInt(mins, 10) || 15);
+      TASKS.push({ title: it.title, mins: parsed });
+      INBOX = INBOX.filter(i => i.id !== id);
+      saveAll();
+      render();
+    };
 
-    document.getElementById('copy-btn').addEventListener('click', async () => {
-      const statusEl = document.getElementById('copy-status');
-      let text = TASKS.length === 0
-        ? 'خلصت كل مهام الساعة القادمة.'
-        : 'المهام المتبقية في الساعة القادمة:\n' + TASKS.map(t => `- ${t.label} (${t.mins} د)`).join('\n');
-      if (INBOX.length > 0) {
-        text += '\n\nمهام الـ Inbox:\n' + INBOX.map(i => `- ${i.label}`).join('\n');
+    document.getElementById('add-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const title = document.getElementById('new-title').value.trim();
+      const mins = Math.min(60, parseInt(document.getElementById('new-mins').value, 10) || 15);
+      if (title) {
+        TASKS.push({ title, mins });
+        document.getElementById('new-title').value = '';
+        document.getElementById('new-mins').value = '';
+        saveAll();
+        render();
       }
-      try {
-        await navigator.clipboard.writeText(text);
-        statusEl.textContent = 'تم النسخ!';
-      } catch (e) {
-        statusEl.textContent = 'تعذر النسخ التلقائي.';
+    });
+
+    document.getElementById('inbox-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const title = document.getElementById('inbox-title').value.trim();
+      const sectionId = document.getElementById('inbox-section-select').value;
+      if (title) {
+        INBOX.push({ id: 'inb_' + Date.now(), title, sectionId });
+        document.getElementById('inbox-title').value = '';
+        saveAll();
+        render();
       }
-      setTimeout(() => { statusEl.textContent = ''; }, 3000);
     });
 
-    document.getElementById('toggle-trackers-history-btn').addEventListener('click', () => {
-      trackersHistoryOpen = !trackersHistoryOpen;
-      render();
+    document.getElementById('routine-form').addEventListener('submit', (e) => {
+      e.preventDefault();
+      const title = document.getElementById('routine-title').value.trim();
+      const mins = parseInt(document.getElementById('routine-mins').value, 10) || 15;
+      if (title) {
+        ROUTINE.push({ title, mins });
+        document.getElementById('routine-title').value = '';
+        document.getElementById('routine-mins').value = '';
+        saveAll();
+        render();
+      }
     });
 
-    document.getElementById('refresh-app-btn').addEventListener('click', () => {
-      saveState();
-      const base = window.location.href.split('?')[0];
-      window.location.replace(`${base}?v=${Date.now()}`);
+    const inboxModal = document.getElementById('inbox-modal');
+    document.getElementById('open-inbox-btn').addEventListener('click', () => inboxModal.classList.remove('hidden'));
+    document.getElementById('close-inbox-btn').addEventListener('click', () => inboxModal.classList.add('hidden'));
+
+    document.getElementById('tab-live').addEventListener('click', () => {
+      document.getElementById('tab-live').classList.add('is-active');
+      document.getElementById('tab-routine').classList.remove('is-active');
+      document.getElementById('view-live').classList.remove('hidden');
+      document.getElementById('view-routine').classList.add('hidden');
     });
 
-    syncRunningTimers(true);
-    setInterval(() => {
-      updateHourClock();
-      if (TRACKERS_DATE !== getTodayKey()) render();
-    }, 15000);
+    document.getElementById('tab-routine').addEventListener('click', () => {
+      document.getElementById('tab-routine').classList.add('is-active');
+      document.getElementById('tab-live').classList.remove('is-active');
+      document.getElementById('view-routine').classList.remove('hidden');
+      document.getElementById('view-live').classList.add('hidden');
+    });
+
+    document.getElementById('refresh-app-btn').addEventListener('click', () => location.reload());
+    document.getElementById('copy-btn').addEventListener('click', () => {
+      const txt = TASKS.map(t => `- ${t.title} (${t.mins} د)`).join('
+') || 'لا توجد مهام';
+      navigator.clipboard.writeText(txt).then(() => alert('تم نسخ حالة المهام'));
+    });
+
+    render();
   </script>
 </body>
 </html>
