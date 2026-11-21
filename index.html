@@ -33,7 +33,7 @@
       --card-border: 1px solid var(--border);
     }
     @media (prefers-color-scheme: dark) {
-      :root {
+      :root:not([data-theme="light"]) {
         --bg: #0a0c10;
         --card: #131720;
         --card-muted: #1a202c;
@@ -57,6 +57,30 @@
         --card-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.45);
         --card-border: 1px solid rgba(255, 255, 255, 0.08);
       }
+    }
+    :root[data-theme="dark"] {
+      --bg: #0a0c10;
+      --card: #131720;
+      --card-muted: #1a202c;
+      --item: #1b212d;
+      --item-hover: #232b3a;
+      --text: #f1f5f9;
+      --text-soft: #cbd5e1;
+      --muted: #8b99ae;
+      --border: #262e3d;
+      --border-focus: #5d82f7;
+      --red: #ef5350;
+      --red-soft: #351a1d;
+      --blue: #4f77f7;
+      --blue-soft: #141e38;
+      --amber: #f59e0b;
+      --green: #22c55e;
+      --green-soft: #0d281a;
+      --toast-bg: #19202c;
+      --toast-text: #f8fafc;
+      --bar-slate: #475569;
+      --card-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.45);
+      --card-border: 1px solid rgba(255, 255, 255, 0.08);
     }
     * { box-sizing: border-box; }
     html, body {
@@ -984,6 +1008,7 @@
     <div class="tabs-bar">
       <button type="button" class="tab-btn is-active" id="tab-live">الساعة الحالية</button>
       <button type="button" class="tab-btn" id="tab-routine">Routine (٠)</button>
+      <button type="button" class="tab-btn" id="theme-toggle-btn" title="تبديل الوضع الليلي / النهاري" style="flex:0 0 auto; padding:9px 12px; font-size:15px;">🌙</button>
     </div>
 
     <!-- 1. LIVE VIEW (الساعة الحالية) -->
@@ -1410,6 +1435,7 @@
 
     let currentTab = 'live';
     let promotingInboxId = null;
+    let editingInboxId = null;
     let movingInboxId = null;
     let addingToInboxSecId = null;
     let editingRoutineId = null;
@@ -1469,6 +1495,31 @@
       document.getElementById('view-routine').classList.toggle('hidden', tab !== 'routine');
       render();
     }
+
+    const THEME_KEY = 'hourly_tracker_theme_v1';
+    function isCurrentlyDark() {
+      const saved = document.documentElement.getAttribute('data-theme');
+      if (saved === 'dark') return true;
+      if (saved === 'light') return false;
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+    function applyTheme(theme) {
+      if (theme === 'dark' || theme === 'light') {
+        document.documentElement.setAttribute('data-theme', theme);
+        try { localStorage.setItem(THEME_KEY, theme); } catch (e) {}
+      }
+      const btn = document.getElementById('theme-toggle-btn');
+      if (btn) btn.textContent = isCurrentlyDark() ? '☀️' : '🌙';
+    }
+    try {
+      const savedTheme = localStorage.getItem(THEME_KEY);
+      if (savedTheme === 'dark' || savedTheme === 'light') applyTheme(savedTheme);
+      else applyTheme(null);
+    } catch (e) { applyTheme(null); }
+
+    document.getElementById('theme-toggle-btn').addEventListener('click', () => {
+      applyTheme(isCurrentlyDark() ? 'light' : 'dark');
+    });
 
     document.getElementById('tab-live').addEventListener('click', () => switchTab('live'));
     document.getElementById('tab-routine').addEventListener('click', () => switchTab('routine'));
@@ -2103,12 +2154,21 @@
                               <div class="unified-top">
                                 <span class="drag-handle inbox-task-drag-handle" title="اسحب للترتيب">⋮⋮</span>
                                 <span class="color-dot color-dot-clickable" style="background:${sec.color || '#4f75ff'};" data-move-sec="${item.id}" title="نقل لقسم آخر"></span>
-                                <div class="task-info">
+                                <div class="task-info" data-edit-inbox="${item.id}" style="cursor:pointer;" title="اضغط لتعديل الاسم أو الوقت">
                                   <span class="task-title">${item.label}</span>
+                                  ${item.mins > 0 ? `<span class="task-dur">${toAr(item.mins)} د</span>` : ''}
                                 </div>
                               </div>
                             </div>
                           </div>
+                          ${editingInboxId === item.id ? `
+                            <div class="promote-box" style="padding:8px 10px; background:var(--item); border-radius:12px; border:1px solid var(--border); margin-top:0;">
+                              <input type="text" class="input-field input-name" id="edit-inbox-name-${item.id}" value="${item.label}" placeholder="اسم المهمة">
+                              <input type="text" inputmode="numeric" class="input-field input-mins" id="edit-inbox-mins-${item.id}" value="" placeholder="${item.mins > 0 ? toAr(item.mins) + ' د' : 'الوقت'}">
+                              <button type="button" class="timer-btn" data-save-inbox="${item.id}">حفظ</button>
+                              <button type="button" class="icon-btn" data-cancel-inbox-edit="1">إلغاء</button>
+                            </div>
+                          ` : ''}
                           ${movingInboxId === item.id ? `
                             <div class="promote-box" style="padding:8px 10px; background:var(--item); border-radius:12px; border:1px solid var(--border); margin-top:0;">
                               <span class="max-hint">نقل إلى:</span>
@@ -2123,7 +2183,7 @@
                           ${promotingInboxId === item.id ? `
                             <div class="promote-box" style="padding:8px 10px; background:var(--item); border-radius:12px; border:1px solid var(--border); margin-top:0;">
                               <span class="max-hint">الوقت (دقائق - أقصى ٦٠):</span>
-                              <input type="text" inputmode="numeric" class="input-field input-mins" id="promote-mins-${item.id}" value="" placeholder="الدقائق" autofocus>
+                              <input type="text" inputmode="numeric" class="input-field input-mins" id="promote-mins-${item.id}" value="${item.mins > 0 ? item.mins : ''}" placeholder="الدقائق" autofocus>
                               <button type="button" class="timer-btn" data-confirm-promote="${item.id}">تأكيد</button>
                               <button type="button" class="icon-btn" data-cancel-promote="1">إلغاء</button>
                             </div>
@@ -2306,10 +2366,50 @@
         });
       });
 
+      inboxGroupsEl.querySelectorAll('[data-edit-inbox]').forEach(el => {
+        el.addEventListener('click', e => {
+          if (e.target.closest('button')) return;
+          const id = Number(el.dataset.editInbox);
+          if (swipedInboxId === id) {
+            swipedInboxId = null;
+            renderInboxInsideModal();
+            return;
+          }
+          movingInboxId = null;
+          promotingInboxId = null;
+          editingInboxId = (editingInboxId === id) ? null : id;
+          renderInboxInsideModal();
+        });
+      });
+
+      inboxGroupsEl.querySelectorAll('[data-save-inbox]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.saveInbox);
+          const item = INBOX.find(x => x.id === id);
+          if (!item) return;
+          const nameInp = document.getElementById(`edit-inbox-name-${id}`);
+          const minsInp = document.getElementById(`edit-inbox-mins-${id}`);
+          if (nameInp && nameInp.value.trim()) item.label = nameInp.value.trim();
+          const rawMins = parseMins(minsInp ? minsInp.value : '');
+          if (rawMins > 0) item.mins = Math.min(60, rawMins);
+          editingInboxId = null;
+          saveState();
+          renderInboxInsideModal();
+        });
+      });
+
+      inboxGroupsEl.querySelectorAll('[data-cancel-inbox-edit]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          editingInboxId = null;
+          renderInboxInsideModal();
+        });
+      });
+
       inboxGroupsEl.querySelectorAll('[data-move-sec]').forEach(btn => {
         btn.addEventListener('click', () => {
           const id = Number(btn.dataset.moveSec);
           promotingInboxId = null;
+          editingInboxId = null;
           movingInboxId = (movingInboxId === id) ? null : id;
           swipedInboxId = null;
           renderInboxInsideModal();
@@ -2350,6 +2450,8 @@
       inboxGroupsEl.querySelectorAll('[data-promote]').forEach(btn => {
         btn.addEventListener('click', () => {
           promotingInboxId = Number(btn.dataset.promote);
+          editingInboxId = null;
+          movingInboxId = null;
           swipedInboxId = null;
           renderInboxInsideModal();
           const inp = document.getElementById(`promote-mins-${promotingInboxId}`);
