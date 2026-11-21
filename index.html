@@ -556,6 +556,174 @@
       border-color: var(--blue);
       color: var(--blue);
     }
+    .trackers-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 10px;
+    }
+    .tracker-card {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      padding: 12px;
+      border-radius: 14px;
+      background: var(--item);
+      border: 1px solid var(--border);
+    }
+    .tracker-head {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .ring-wrap {
+      position: relative;
+      width: 52px;
+      height: 52px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .ring-text {
+      position: absolute;
+      font-size: 11px;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
+      color: var(--text);
+    }
+    .tracker-meta {
+      flex: 1;
+      min-width: 0;
+    }
+    .tracker-name {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+    .tracker-val {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+    }
+    .tracker-val.is-goal {
+      color: var(--green);
+      font-weight: 700;
+    }
+    .tracker-pills {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+    .tracker-pill {
+      flex: 1;
+      min-width: 52px;
+      text-align: center;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      border-radius: 9px;
+      padding: 6px 8px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s ease;
+    }
+    .tracker-pill.is-done {
+      background: var(--green);
+      border-color: var(--green);
+      color: #ffffff;
+    }
+    .tracker-bar-wrap {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .tracker-step-btn {
+      flex: 1;
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      border-radius: 9px;
+      padding: 7px 10px;
+      font-size: 12px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+      text-align: center;
+    }
+    .tracker-step-btn.is-plus {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #ffffff;
+    }
+    .settings-btn {
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--muted);
+      border-radius: 7px;
+      padding: 2px 7px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+      font-family: inherit;
+      margin-right: 4px;
+    }
+    .routine-title-btn {
+      background: none;
+      border: none;
+      padding: 0;
+      margin: 0;
+      color: var(--text);
+      font-size: 14px;
+      font-weight: 500;
+      font-family: inherit;
+      text-align: right;
+      cursor: pointer;
+    }
+    .routine-title-btn:hover {
+      color: var(--blue);
+    }
+    .settings-btn.is-active {
+      background: var(--blue);
+      border-color: var(--blue);
+      color: #ffffff;
+    }
+    .setting-card {
+      background: var(--item);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .setting-row {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .setting-label {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+      min-width: 65px;
+    }
+    .setting-input {
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      border-radius: 8px;
+      padding: 6px 10px;
+      font-size: 16px;
+      font-family: inherit;
+      flex: 1;
+      min-width: 80px;
+    }
     .today-summary {
       font-size: 13px;
       font-weight: 700;
@@ -616,6 +784,88 @@
       font-family: inherit;
     }
     .hidden { display: none !important; }
+    .history-panel {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .history-day-card {
+      background: var(--item);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .history-day-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 700;
+      padding-bottom: 6px;
+      border-bottom: 1px dashed var(--border);
+    }
+    .history-items {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .history-item-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 12px;
+      gap: 8px;
+    }
+    .history-item-val.is-goal {
+      color: var(--green);
+      font-weight: 700;
+    }
+    #print-report {
+      display: none;
+    }
+    @media print {
+      body {
+        background: #ffffff !important;
+        color: #111827 !important;
+        padding: 16px !important;
+      }
+      .container, .toast {
+        display: none !important;
+      }
+      #print-report {
+        display: block !important;
+        direction: rtl;
+        font-family: system-ui, -apple-system, "Segoe UI", Tahoma, Arial, sans-serif;
+      }
+      .print-day {
+        border: 1px solid #d1d5db;
+        border-radius: 10px;
+        padding: 12px;
+        margin-bottom: 12px;
+        page-break-inside: avoid;
+      }
+      .print-day h3 {
+        margin: 0 0 8px 0;
+        font-size: 15px;
+        border-bottom: 1px solid #e5e7eb;
+        padding-bottom: 6px;
+      }
+      .print-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+      }
+      .print-table td {
+        padding: 5px 6px;
+        border-bottom: 1px solid #f3f4f6;
+      }
+    }
   </style>
 </head>
 <body>
@@ -661,6 +911,9 @@
         </div>
       </div>
 
+      <!-- DAILY TRACKERS -->
+      <div class="prio-group" id="daily-trackers-box" style="margin-bottom:0;"></div>
+
       <!-- COMPLETED LOG (48h rolling) -->
       <div class="prio-group" id="completed-box" style="margin-bottom:0;"></div>
     </div>
@@ -692,8 +945,9 @@
       <div class="card">
         <div class="header-row">
           <h1>Routine (قالب المهام اليومية)</h1>
+          <button type="button" class="copy-btn" id="toggle-trackers-history-btn">📊 سجل العدادات</button>
         </div>
-        <div class="sub-stats">مهام ثابتة بوقتها؛ اضغط على الوقت لتعديله، ولما تضيف أي مهمة للساعة بتتنسخ بوقتها وتفضل موجودة هنا دايماً.</div>
+        <div class="sub-stats">مهام ثابتة بوقتها؛ اضغط على اسم المهمة أو وقتها لتعديله، ولما تضيف أي مهمة للساعة بتتنسخ بوقتها وتفضل موجودة هنا دايماً.</div>
 
         <div class="task-list" id="routine-list"></div>
 
@@ -702,6 +956,8 @@
           <input type="text" inputmode="numeric" class="input-field input-mins" id="routine-mins" placeholder="الدقائق" required>
           <button type="submit" class="add-btn" title="إضافة للروتين">+</button>
         </form>
+
+        <div id="trackers-history-panel" class="history-panel hidden"></div>
       </div>
     </div>
   </div>
@@ -710,6 +966,8 @@
     <span id="alarm-text">انتهى وقت المهمة!</span>
     <button type="button" class="alarm-close" id="alarm-close">حسناً</button>
   </div>
+
+  <div id="print-report"></div>
 
   <div class="toast" id="undo-toast">
     <span id="undo-text">تم إنهاء المهمة</span>
@@ -817,11 +1075,106 @@
       document.getElementById('alarm-toast').classList.remove('is-visible');
     });
 
+    function getTodayKey() {
+      // Logical day rolls over at 3:00 AM
+      const d = new Date(Date.now() - 3 * 60 * 60 * 1000);
+      return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    }
+
+    function buildTrackersSnapshot(cfg, vals) {
+      return cfg.map(c => {
+        if (c.type === 'checks') {
+          const arr = Array.isArray(vals[c.id]) ? vals[c.id] : [];
+          const doneList = c.items.filter((_, i) => Boolean(arr[i]));
+          return {
+            name: c.name,
+            type: 'checks',
+            done: doneList.length,
+            total: c.items.length,
+            doneList
+          };
+        }
+        const val = Number(vals[c.id]) || 0;
+        return {
+          name: c.name,
+          type: 'numeric',
+          val,
+          goal: Number(c.goal) || 1,
+          unit: c.unit || ''
+        };
+      });
+    }
+
+    function formatArabicDateKey(dateKey) {
+      try {
+        const [y, m, d] = dateKey.split('-').map(Number);
+        const dt = new Date(y, m - 1, d);
+        return dt.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      } catch (e) {
+        return dateKey;
+      }
+    }
+
+    function defaultTrackersConfig() {
+      return [
+        { id: 'prayers', name: 'الصلاة', type: 'checks', items: ['فجر', 'ظهر', 'عصر', 'مغرب', 'عشاء'], color: '#16a34a' },
+        { id: 'water', name: 'المياه', type: 'numeric', step: 200, goal: 2500, unit: 'مل', color: '#06b6d4' },
+        { id: 'steps', name: 'الخطوات', type: 'numeric', step: 500, goal: 5000, unit: 'خطوة', color: '#8b5cf6' },
+        { id: 'quran', name: 'القرآن', type: 'numeric', step: 1, goal: 5, unit: 'صفحة', color: '#10b981' },
+        { id: 'sadaqah', name: 'الصدقات', type: 'checks', items: ['صدقة النهار', 'صدقة الليل'], color: '#f59e0b' },
+        { id: 'brush', name: 'غسيل الأسنان', type: 'checks', items: ['الصبح', 'بالليل'], color: '#2563eb' }
+      ];
+    }
+
+    function emptyValuesForConfig(cfg) {
+      const vals = {};
+      cfg.forEach(c => {
+        vals[c.id] = c.type === 'checks' ? c.items.map(() => false) : 0;
+      });
+      return vals;
+    }
+
+    function migrateOldTrackers(oldObj, cfg) {
+      const vals = emptyValuesForConfig(cfg);
+      if (!oldObj) return vals;
+      if (Array.isArray(oldObj.prayers)) vals.prayers = oldObj.prayers;
+      if (typeof oldObj.water === 'number') vals.water = oldObj.water;
+      if (typeof oldObj.steps === 'number') vals.steps = oldObj.steps;
+      if (typeof oldObj.quran === 'number') vals.quran = oldObj.quran;
+      if (Array.isArray(oldObj.sadaqah)) vals.sadaqah = oldObj.sadaqah;
+      if (Array.isArray(oldObj.brush)) vals.brush = oldObj.brush;
+      return vals;
+    }
+
     function loadState() {
+      const defCfg = defaultTrackersConfig();
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (raw) {
           const parsed = JSON.parse(raw);
+          const cfg = Array.isArray(parsed.trackersConfig) && parsed.trackersConfig.length > 0
+            ? parsed.trackersConfig
+            : defCfg;
+          const todayKey = getTodayKey();
+          const savedDate = parsed.trackersDate || todayKey;
+          const history = Array.isArray(parsed.trackersHistory) ? parsed.trackersHistory : [];
+          let vals = emptyValuesForConfig(cfg);
+          const oldVals = parsed.trackersValues
+            ? parsed.trackersValues
+            : (parsed.trackers ? migrateOldTrackers(parsed.trackers, cfg) : emptyValuesForConfig(cfg));
+
+          if (savedDate === todayKey) {
+            vals = oldVals;
+          } else {
+            // Day rolled over past 3:00 AM while app was closed -> archive previous day
+            if (!history.some(h => h.date === savedDate)) {
+              history.unshift({
+                date: savedDate,
+                savedAt: Date.now(),
+                items: buildTrackersSnapshot(cfg, oldVals)
+              });
+            }
+          }
           return {
             tasks: (parsed.tasks || []).map(t => ({
               ...t,
@@ -832,7 +1185,11 @@
             })),
             inbox: (parsed.inbox || []).map(i => ({ ...i, color: i.color || '#2563eb' })),
             routine: parsed.routine || [],
-            completed: parsed.completed || []
+            completed: parsed.completed || [],
+            trackersConfig: cfg,
+            trackersDate: todayKey,
+            trackersValues: vals,
+            trackersHistory: history
           };
         }
       } catch (e) {}
@@ -840,7 +1197,11 @@
         tasks: DEFAULT_TASKS.map(t => ({ ...t, completing: false })),
         inbox: DEFAULT_INBOX.map(i => ({ ...i })),
         routine: DEFAULT_ROUTINE.map(r => ({ ...r })),
-        completed: []
+        completed: [],
+        trackersConfig: defCfg,
+        trackersDate: getTodayKey(),
+        trackersValues: emptyValuesForConfig(defCfg),
+        trackersHistory: []
       };
     }
 
@@ -856,7 +1217,11 @@
           tasks: TASKS.map(({ completing, ...rest }) => rest),
           inbox: INBOX,
           routine: ROUTINE,
-          completed: COMPLETED
+          completed: COMPLETED,
+          trackersConfig: TRACKERS_CONFIG,
+          trackersDate: TRACKERS_DATE,
+          trackersValues: TRACKERS_VALUES,
+          trackersHistory: TRACKERS_HISTORY
         }));
       } catch (e) {}
     }
@@ -866,6 +1231,14 @@
     let INBOX = initialState.inbox;
     let ROUTINE = initialState.routine;
     let COMPLETED = initialState.completed;
+    let TRACKERS_CONFIG = initialState.trackersConfig;
+    let TRACKERS_DATE = initialState.trackersDate;
+    let TRACKERS_VALUES = initialState.trackersValues;
+    let TRACKERS_HISTORY = initialState.trackersHistory;
+    let trackersHistoryOpen = false;
+    let trackersOpen = true;
+    let trackersSettingsOpen = false;
+    let newTrackerType = 'numeric';
     let completedOpen = false;
     let selectedInboxColor = '#2563eb';
     let openGroups = { '#dc2626': true, '#eab308': false, '#2563eb': false };
@@ -1117,7 +1490,344 @@
 
       updateHourClock();
 
-      // Completed log accordion (rolling 48h)
+      // Archive & reset trackers if a new logical day started (3:00 AM)
+      const todayKey = getTodayKey();
+      if (TRACKERS_DATE !== todayKey) {
+        if (!TRACKERS_HISTORY.some(h => h.date === TRACKERS_DATE)) {
+          TRACKERS_HISTORY.unshift({
+            date: TRACKERS_DATE,
+            savedAt: Date.now(),
+            items: buildTrackersSnapshot(TRACKERS_CONFIG, TRACKERS_VALUES)
+          });
+        }
+        TRACKERS_DATE = todayKey;
+        TRACKERS_VALUES = emptyValuesForConfig(TRACKERS_CONFIG);
+      }
+
+      // Ensure every configured tracker has a valid value
+      TRACKERS_CONFIG.forEach(c => {
+        if (c.type === 'checks') {
+          const cur = Array.isArray(TRACKERS_VALUES[c.id]) ? TRACKERS_VALUES[c.id] : [];
+          TRACKERS_VALUES[c.id] = c.items.map((_, i) => Boolean(cur[i]));
+        } else {
+          if (typeof TRACKERS_VALUES[c.id] !== 'number') TRACKERS_VALUES[c.id] = 0;
+        }
+      });
+
+      const doneTrackersCount = TRACKERS_CONFIG.filter(c => {
+        if (c.type === 'checks') {
+          const arr = TRACKERS_VALUES[c.id] || [];
+          return arr.length > 0 && arr.every(Boolean);
+        }
+        return (TRACKERS_VALUES[c.id] || 0) >= (c.goal || 1);
+      }).length;
+
+      function buildRing(current, goal, color) {
+        const r = 21;
+        const circ = 2 * Math.PI * r;
+        const ratio = goal > 0 ? Math.min(1, current / goal) : 0;
+        const offset = circ * (1 - ratio);
+        const isGoal = goal > 0 && current >= goal;
+        const strokeColor = isGoal ? 'var(--green)' : (color || 'var(--blue)');
+        const centerLabel = goal <= 99 ? `${toAr(current)}/${toAr(goal)}` : `${toAr(Math.round(ratio * 100))}%`;
+        return `
+          <div class="ring-wrap">
+            <svg width="52" height="52" viewBox="0 0 52 52">
+              <circle cx="26" cy="26" r="${r}" fill="none" stroke="var(--border)" stroke-width="5" />
+              <circle cx="26" cy="26" r="${r}" fill="none" stroke="${strokeColor}" stroke-width="5"
+                stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}"
+                stroke-linecap="round" transform="rotate(-90 26 26)" />
+            </svg>
+            <span class="ring-text">${centerLabel}</span>
+          </div>
+        `;
+      }
+
+      const trackersBox = document.getElementById('daily-trackers-box');
+      trackersBox.innerHTML = `
+        <div class="prio-group-header" id="toggle-trackers">
+          <div class="prio-group-title">
+            <span class="color-dot" style="background:var(--blue);"></span>
+            <span>عدادات اليوم</span>
+            <button type="button" class="settings-btn ${trackersSettingsOpen ? 'is-active' : ''}" id="open-trackers-settings" title="إعدادات العدادات">⚙️</button>
+          </div>
+          <div class="prio-group-right">
+            <span class="count-pill">${toAr(doneTrackersCount)}/${toAr(TRACKERS_CONFIG.length)}</span>
+            <span class="group-arrow">${trackersOpen ? '▼' : '◀'}</span>
+          </div>
+        </div>
+        ${trackersOpen ? `
+          <div class="prio-group-body">
+            ${trackersSettingsOpen ? `
+              <div style="display:flex; flex-direction:column; gap:10px;">
+                ${TRACKERS_CONFIG.map((c, idx) => `
+                  <div class="setting-card" data-setting-id="${c.id}">
+                    <div class="setting-row">
+                      <input type="text" class="setting-input" data-cfg-name="${c.id}" value="${c.name}" placeholder="اسم العداد">
+                      <select class="setting-input" data-cfg-type="${c.id}" style="flex:0 0 auto; min-width:120px;">
+                        <option value="numeric" ${c.type === 'numeric' ? 'selected' : ''}>رقم وهدف</option>
+                        <option value="checks" ${c.type === 'checks' ? 'selected' : ''}>أزرار / خيارات</option>
+                      </select>
+                    </div>
+                    ${c.type === 'numeric' ? `
+                      <div class="setting-row">
+                        <span class="setting-label">الضغطة:</span>
+                        <input type="text" inputmode="numeric" class="setting-input" data-cfg-step="${c.id}" value="${c.step}" style="max-width:85px;">
+                        <span class="setting-label">الهدف:</span>
+                        <input type="text" inputmode="numeric" class="setting-input" data-cfg-goal="${c.id}" value="${c.goal}" style="max-width:95px;">
+                        <span class="setting-label">الوحدة:</span>
+                        <input type="text" class="setting-input" data-cfg-unit="${c.id}" value="${c.unit || ''}" style="max-width:90px;">
+                      </div>
+                      <div class="setting-row">
+                        <span class="setting-label">الحالي اليوم:</span>
+                        <input type="text" inputmode="numeric" class="setting-input" data-cfg-val="${c.id}" value="${TRACKERS_VALUES[c.id] || 0}" style="max-width:100px;">
+                        <button type="button" class="icon-btn" data-cfg-reset="${c.id}">تصفير</button>
+                      </div>
+                    ` : `
+                      <div class="setting-row">
+                        <span class="setting-label">الخيارات:</span>
+                        <input type="text" class="setting-input" data-cfg-items="${c.id}" value="${c.items.join('، ')}" placeholder="مثال: فجر، ظهر، عصر">
+                        <button type="button" class="icon-btn" data-cfg-reset="${c.id}">تصفير اليوم</button>
+                      </div>
+                    `}
+                    <div class="setting-row" style="justify-content:space-between;">
+                      <div style="display:flex; gap:6px;">
+                        <button type="button" class="icon-btn" data-cfg-up="${idx}" ${idx === 0 ? 'disabled' : ''}>▲</button>
+                        <button type="button" class="icon-btn" data-cfg-down="${idx}" ${idx === TRACKERS_CONFIG.length - 1 ? 'disabled' : ''}>▼</button>
+                      </div>
+                      <div style="display:flex; gap:6px;">
+                        <button type="button" class="timer-btn" data-cfg-save="${c.id}">حفظ التعديل</button>
+                        <button type="button" class="icon-btn del" data-cfg-del="${c.id}">حذف</button>
+                      </div>
+                    </div>
+                  </div>
+                `).join('')}
+
+                <div class="setting-card" style="border-style:dashed;">
+                  <div style="font-size:13px; font-weight:700;">+ إضافة عداد جديد</div>
+                  <div class="setting-row">
+                    <input type="text" class="setting-input" id="new-tracker-name" placeholder="اسم العداد (مثلاً: قهوة، أذكار...)">
+                    <select class="setting-input" id="new-tracker-type" style="flex:0 0 auto; min-width:120px;">
+                      <option value="numeric" ${newTrackerType === 'numeric' ? 'selected' : ''}>رقم وهدف</option>
+                      <option value="checks" ${newTrackerType === 'checks' ? 'selected' : ''}>أزرار / خيارات</option>
+                    </select>
+                  </div>
+                  ${newTrackerType === 'numeric' ? `
+                    <div class="setting-row">
+                      <input type="text" inputmode="numeric" class="setting-input" id="new-tracker-step" placeholder="الضغطة (مثلاً 1)">
+                      <input type="text" inputmode="numeric" class="setting-input" id="new-tracker-goal" placeholder="الهدف (مثلاً 5)">
+                      <input type="text" class="setting-input" id="new-tracker-unit" placeholder="الوحدة (مثلاً مرة)">
+                    </div>
+                  ` : `
+                    <div class="setting-row">
+                      <input type="text" class="setting-input" id="new-tracker-items" placeholder="الخيارات مفصولة بفاصلة (مثلاً: الصبح، بالليل)">
+                    </div>
+                  `}
+                  <div class="setting-row" style="justify-content:flex-end;">
+                    <button type="button" class="add-btn" id="add-new-tracker-btn" style="padding:7px 14px; font-size:13px;">إضافة العداد</button>
+                  </div>
+                </div>
+              </div>
+            ` : `
+              <div class="trackers-grid">
+                ${TRACKERS_CONFIG.map(c => {
+                  if (c.type === 'checks') {
+                    const arr = TRACKERS_VALUES[c.id] || [];
+                    const done = arr.filter(Boolean).length;
+                    const total = c.items.length || 1;
+                    return `
+                      <div class="tracker-card">
+                        <div class="tracker-head">
+                          ${buildRing(done, total, c.color)}
+                          <div class="tracker-meta">
+                            <div class="tracker-name">${c.name}</div>
+                            <div class="tracker-val ${done === total ? 'is-goal' : ''}">${toAr(done)} من ${toAr(total)}</div>
+                          </div>
+                        </div>
+                        <div class="tracker-pills">
+                          ${c.items.map((label, i) => `
+                            <button type="button" class="tracker-pill ${arr[i] ? 'is-done' : ''}" data-chk-id="${c.id}" data-chk-idx="${i}">${label}</button>
+                          `).join('')}
+                        </div>
+                      </div>
+                    `;
+                  } else {
+                    const cur = Number(TRACKERS_VALUES[c.id]) || 0;
+                    const goal = Number(c.goal) || 1;
+                    const step = Number(c.step) || 1;
+                    const unit = c.unit ? ` ${c.unit}` : '';
+                    return `
+                      <div class="tracker-card">
+                        <div class="tracker-head">
+                          ${buildRing(cur, goal, c.color)}
+                          <div class="tracker-meta">
+                            <div class="tracker-name">${c.name}</div>
+                            <div class="tracker-val ${cur >= goal ? 'is-goal' : ''}">${toAr(cur)} / ${toAr(goal)}${unit}</div>
+                          </div>
+                        </div>
+                        <div class="tracker-bar-wrap">
+                          <button type="button" class="tracker-step-btn" data-num-id="${c.id}" data-num-delta="-${step}">-${toAr(step)}</button>
+                          <button type="button" class="tracker-step-btn is-plus" data-num-id="${c.id}" data-num-delta="${step}">+${toAr(step)}${unit}</button>
+                        </div>
+                      </div>
+                    `;
+                  }
+                }).join('')}
+              </div>
+            `}
+          </div>
+        ` : ''}
+      `;
+
+      document.getElementById('toggle-trackers').addEventListener('click', () => {
+        trackersOpen = !trackersOpen;
+        render();
+      });
+
+      document.getElementById('open-trackers-settings').addEventListener('click', e => {
+        e.stopPropagation();
+        if (!trackersOpen) trackersOpen = true;
+        trackersSettingsOpen = !trackersSettingsOpen;
+        render();
+      });
+
+      if (!trackersSettingsOpen) {
+        trackersBox.querySelectorAll('[data-chk-id]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const id = btn.dataset.chkId;
+            const idx = Number(btn.dataset.chkIdx);
+            if (!Array.isArray(TRACKERS_VALUES[id])) TRACKERS_VALUES[id] = [];
+            TRACKERS_VALUES[id][idx] = !TRACKERS_VALUES[id][idx];
+            render();
+          });
+        });
+
+        trackersBox.querySelectorAll('[data-num-id]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const id = btn.dataset.numId;
+            const delta = Number(btn.dataset.numDelta);
+            TRACKERS_VALUES[id] = Math.max(0, (Number(TRACKERS_VALUES[id]) || 0) + delta);
+            render();
+          });
+        });
+      } else {
+        trackersBox.querySelectorAll('[data-cfg-type]').forEach(sel => {
+          sel.addEventListener('change', () => {
+            const id = sel.dataset.cfgType;
+            const c = TRACKERS_CONFIG.find(x => x.id === id);
+            if (!c) return;
+            c.type = sel.value;
+            if (c.type === 'checks' && !Array.isArray(c.items)) {
+              c.items = ['الصباح', 'المساء'];
+              TRACKERS_VALUES[id] = c.items.map(() => false);
+            } else if (c.type === 'numeric') {
+              c.step = c.step || 1;
+              c.goal = c.goal || 5;
+              c.unit = c.unit || '';
+              if (typeof TRACKERS_VALUES[id] !== 'number') TRACKERS_VALUES[id] = 0;
+            }
+            render();
+          });
+        });
+
+        trackersBox.querySelectorAll('[data-cfg-save]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const id = btn.dataset.cfgSave;
+            const c = TRACKERS_CONFIG.find(x => x.id === id);
+            if (!c) return;
+            const nameEl = trackersBox.querySelector(`[data-cfg-name="${id}"]`);
+            if (nameEl && nameEl.value.trim()) c.name = nameEl.value.trim();
+            if (c.type === 'numeric') {
+              const stepEl = trackersBox.querySelector(`[data-cfg-step="${id}"]`);
+              const goalEl = trackersBox.querySelector(`[data-cfg-goal="${id}"]`);
+              const unitEl = trackersBox.querySelector(`[data-cfg-unit="${id}"]`);
+              const valEl = trackersBox.querySelector(`[data-cfg-val="${id}"]`);
+              const s = parseMins(stepEl ? stepEl.value : '1');
+              const g = parseMins(goalEl ? goalEl.value : '1');
+              if (s > 0) c.step = s;
+              if (g > 0) c.goal = g;
+              c.unit = unitEl ? unitEl.value.trim() : '';
+              if (valEl) TRACKERS_VALUES[id] = Math.max(0, parseMins(valEl.value));
+            } else {
+              const itemsEl = trackersBox.querySelector(`[data-cfg-items="${id}"]`);
+              const rawItems = (itemsEl ? itemsEl.value : '').split(/[،,]+/).map(s => s.trim()).filter(Boolean);
+              if (rawItems.length > 0) {
+                const oldArr = Array.isArray(TRACKERS_VALUES[id]) ? TRACKERS_VALUES[id] : [];
+                c.items = rawItems;
+                TRACKERS_VALUES[id] = rawItems.map((_, i) => Boolean(oldArr[i]));
+              }
+            }
+            render();
+          });
+        });
+
+        trackersBox.querySelectorAll('[data-cfg-reset]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const id = btn.dataset.cfgReset;
+            const c = TRACKERS_CONFIG.find(x => x.id === id);
+            if (!c) return;
+            TRACKERS_VALUES[id] = c.type === 'checks' ? c.items.map(() => false) : 0;
+            render();
+          });
+        });
+
+        trackersBox.querySelectorAll('[data-cfg-up]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const i = Number(btn.dataset.cfgUp);
+            moveInList(TRACKERS_CONFIG, i, i - 1);
+          });
+        });
+
+        trackersBox.querySelectorAll('[data-cfg-down]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const i = Number(btn.dataset.cfgDown);
+            moveInList(TRACKERS_CONFIG, i, i + 1);
+          });
+        });
+
+        trackersBox.querySelectorAll('[data-cfg-del]').forEach(btn => {
+          btn.addEventListener('click', () => {
+            const id = btn.dataset.cfgDel;
+            TRACKERS_CONFIG = TRACKERS_CONFIG.filter(x => x.id !== id);
+            delete TRACKERS_VALUES[id];
+            render();
+          });
+        });
+
+        const newTypeSel = document.getElementById('new-tracker-type');
+        if (newTypeSel) {
+          newTypeSel.addEventListener('change', () => {
+            newTrackerType = newTypeSel.value;
+            render();
+          });
+        }
+
+        const addNewBtn = document.getElementById('add-new-tracker-btn');
+        if (addNewBtn) {
+          addNewBtn.addEventListener('click', () => {
+            const nameEl = document.getElementById('new-tracker-name');
+            const name = nameEl ? nameEl.value.trim() : '';
+            if (!name) return;
+            const id = 'trk_' + Date.now();
+            const color = PALETTE[TRACKERS_CONFIG.length % PALETTE.length];
+            if (newTrackerType === 'numeric') {
+              const step = Math.max(1, parseMins(document.getElementById('new-tracker-step')?.value || '1'));
+              const goal = Math.max(1, parseMins(document.getElementById('new-tracker-goal')?.value || '5'));
+              const unit = (document.getElementById('new-tracker-unit')?.value || '').trim();
+              TRACKERS_CONFIG.push({ id, name, type: 'numeric', step, goal, unit, color });
+              TRACKERS_VALUES[id] = 0;
+            } else {
+              const raw = (document.getElementById('new-tracker-items')?.value || '').split(/[،,]+/).map(s => s.trim()).filter(Boolean);
+              const items = raw.length > 0 ? raw : ['تم'];
+              TRACKERS_CONFIG.push({ id, name, type: 'checks', items, color });
+              TRACKERS_VALUES[id] = items.map(() => false);
+            }
+            render();
+          });
+        }
+      }
+
+      // Completed log accordion (rolling 48h)      // Completed log accordion (rolling 48h)
       const todayStr = new Date().toDateString();
       const todayItems = COMPLETED.filter(c => new Date(c.completedAt).toDateString() === todayStr);
       const todayCount = todayItems.length;
@@ -1234,8 +1944,8 @@
         : ROUTINE.map((item, idx) => `
             <div class="task-row">
               <div class="task-info">
-                <span class="task-title">${item.label}</span>
-                <button type="button" class="task-dur-btn" data-edit-routine-mins="${item.id}" title="تعديل الوقت">${toAr(item.mins)} د</button>
+                <button type="button" class="routine-title-btn" data-edit-routine-mins="${item.id}" title="تعديل الاسم أو الوقت">${item.label}</button>
+                <button type="button" class="task-dur-btn" data-edit-routine-mins="${item.id}" title="تعديل الاسم أو الوقت">${toAr(item.mins)} د</button>
               </div>
               <div class="row-actions">
                 <button type="button" class="icon-btn" data-routine-up="${idx}" ${idx === 0 ? 'disabled' : ''} title="تحريك لأعلى">▲</button>
@@ -1245,8 +1955,8 @@
               </div>
               ${editingRoutineMinsId === item.id ? `
                 <div class="promote-box">
-                  <span class="max-hint">تعديل الوقت (دقائق):</span>
-                  <input type="text" inputmode="numeric" class="input-field input-mins" id="edit-routine-mins-${item.id}" value="" placeholder="${toAr(item.mins)}">
+                  <input type="text" class="input-field input-name" id="edit-routine-name-${item.id}" value="${item.label}" placeholder="اسم المهمة">
+                  <input type="text" inputmode="numeric" class="input-field input-mins" id="edit-routine-mins-${item.id}" value="" placeholder="${toAr(item.mins)} د">
                   <button type="button" class="timer-btn" data-save-routine-mins="${item.id}">حفظ</button>
                   <button type="button" class="icon-btn" data-cancel-routine-mins="1">إلغاء</button>
                 </div>
@@ -1260,6 +1970,81 @@
               ` : ''}
             </div>
           `).join('');
+
+      // Trackers history panel inside Routine
+      const histBtn = document.getElementById('toggle-trackers-history-btn');
+      const histPanel = document.getElementById('trackers-history-panel');
+      if (histBtn && histPanel) {
+        histBtn.textContent = trackersHistoryOpen ? '✕ إغلاق السجل' : `📊 سجل العدادات (${toAr(TRACKERS_HISTORY.length)})`;
+        histPanel.classList.toggle('hidden', !trackersHistoryOpen);
+        if (trackersHistoryOpen) {
+          const liveDayEntry = {
+            date: TRACKERS_DATE,
+            isLive: true,
+            items: buildTrackersSnapshot(TRACKERS_CONFIG, TRACKERS_VALUES)
+          };
+          const allDays = [liveDayEntry, ...TRACKERS_HISTORY];
+          histPanel.innerHTML = `
+            <div class="header-row" style="margin-bottom:4px;">
+              <div style="font-size:14px; font-weight:700;">سجل العدادات اليومي (يتصفر تلقائياً ٣:٠٠ ص)</div>
+              <button type="button" class="timer-btn" id="download-trackers-pdf-btn">📄 تنزيل PDF</button>
+            </div>
+            ${allDays.map(day => `
+              <div class="history-day-card">
+                <div class="history-day-head">
+                  <span>${day.isLive ? `اليوم الحالي (${formatArabicDateKey(day.date)})` : formatArabicDateKey(day.date)}</span>
+                  <span style="font-size:11px; color:var(--muted);">${day.isLive ? 'جاري التسجيل' : 'مكتمل'}</span>
+                </div>
+                <div class="history-items">
+                  ${day.items.map(it => {
+                    if (it.type === 'checks') {
+                      const isGoal = it.total > 0 && it.done >= it.total;
+                      const details = it.doneList && it.doneList.length > 0 ? ` (${it.doneList.join('، ')})` : '';
+                      return `
+                        <div class="history-item-row">
+                          <span>${it.name}</span>
+                          <span class="history-item-val ${isGoal ? 'is-goal' : ''}">${toAr(it.done)} / ${toAr(it.total)}${details}</span>
+                        </div>
+                      `;
+                    }
+                    const isGoal = it.goal > 0 && it.val >= it.goal;
+                    const unit = it.unit ? ` ${it.unit}` : '';
+                    return `
+                      <div class="history-item-row">
+                        <span>${it.name}</span>
+                        <span class="history-item-val ${isGoal ? 'is-goal' : ''}">${toAr(it.val)} / ${toAr(it.goal)}${unit}</span>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+            `).join('')}
+          `;
+
+          document.getElementById('download-trackers-pdf-btn').addEventListener('click', () => {
+            const printEl = document.getElementById('print-report');
+            printEl.innerHTML = `
+              <h2 style="margin:0 0 12px 0;">سجل العدادات اليومي</h2>
+              ${allDays.map(day => `
+                <div class="print-day">
+                  <h3>${day.isLive ? `اليوم الحالي (${formatArabicDateKey(day.date)})` : formatArabicDateKey(day.date)}</h3>
+                  <table class="print-table">
+                    ${day.items.map(it => {
+                      if (it.type === 'checks') {
+                        const details = it.doneList && it.doneList.length > 0 ? ` (${it.doneList.join('، ')})` : '';
+                        return `<tr><td><strong>${it.name}</strong></td><td style="text-align:left;">${toAr(it.done)} / ${toAr(it.total)}${details}</td></tr>`;
+                      }
+                      const unit = it.unit ? ` ${it.unit}` : '';
+                      return `<tr><td><strong>${it.name}</strong></td><td style="text-align:left;">${toAr(it.val)} / ${toAr(it.goal)}${unit}</td></tr>`;
+                    }).join('')}
+                  </table>
+                </div>
+              `).join('')}
+            `;
+            window.print();
+          });
+        }
+      }
 
       // Live listeners
       listEl.querySelectorAll('[data-check]').forEach(circle => {
@@ -1549,12 +2334,14 @@
       routineListEl.querySelectorAll('[data-save-routine-mins]').forEach(btn => {
         btn.addEventListener('click', () => {
           const id = Number(btn.dataset.saveRoutineMins);
-          const inp = document.getElementById(`edit-routine-mins-${id}`);
-          const rawMins = parseMins(inp ? inp.value : '0');
-          if (!(rawMins > 0)) return;
           const item = ROUTINE.find(x => x.id === id);
           if (!item) return;
-          item.mins = Math.min(60, rawMins);
+          const nameInp = document.getElementById(`edit-routine-name-${id}`);
+          const minsInp = document.getElementById(`edit-routine-mins-${id}`);
+          const newName = nameInp ? nameInp.value.trim() : '';
+          if (newName) item.label = newName;
+          const rawMins = parseMins(minsInp ? minsInp.value : '');
+          if (rawMins > 0) item.mins = Math.min(60, rawMins);
           editingRoutineMinsId = null;
           render();
         });
@@ -1655,6 +2442,11 @@
       setTimeout(() => { statusEl.textContent = ''; }, 3000);
     });
 
+    document.getElementById('toggle-trackers-history-btn').addEventListener('click', () => {
+      trackersHistoryOpen = !trackersHistoryOpen;
+      render();
+    });
+
     document.getElementById('refresh-app-btn').addEventListener('click', () => {
       saveState();
       const base = window.location.href.split('?')[0];
@@ -1662,7 +2454,10 @@
     });
 
     syncRunningTimers(true);
-    setInterval(updateHourClock, 15000);
+    setInterval(() => {
+      updateHourClock();
+      if (TRACKERS_DATE !== getTodayKey()) render();
+    }, 15000);
   </script>
 </body>
 </html>
