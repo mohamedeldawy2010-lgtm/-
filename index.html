@@ -59,6 +59,10 @@
       }
     }
     * { box-sizing: border-box; }
+    html, body {
+      overflow-x: hidden;
+      max-width: 100%;
+    }
     body {
       margin: 0;
       padding: env(safe-area-inset-top, 16px) 16px calc(76px + env(safe-area-inset-bottom, 0px));
@@ -69,6 +73,7 @@
       letter-spacing: -0.01em;
     }
     .container {
+      width: 100%;
       max-width: 660px;
       margin: 4px auto 0;
       display: flex;
@@ -109,10 +114,12 @@
 
     /* Modern Card Layout */
     .card {
+      width: 100%;
+      min-width: 0;
       background: var(--card);
       border: var(--card-border);
       border-radius: 20px;
-      padding: 18px 20px;
+      padding: 18px 16px;
       box-shadow: var(--card-shadow);
       position: relative;
     }
@@ -154,16 +161,6 @@
       align-items: center;
       gap: 6px;
     }
-    .graph-section-title {
-      font-size: 12px;
-      font-weight: 700;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
-      margin-bottom: 12px;
-      padding-bottom: 6px;
-      border-bottom: 1px dashed var(--border);
-    }
     .stacked-bar {
       display: flex;
       height: 12px;
@@ -189,25 +186,31 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 12px;
+      gap: 10px;
       background: var(--item);
       padding: 8px 12px;
       border-radius: 12px;
       border: 1px solid var(--border);
+      min-width: 0;
     }
     .bar-label {
       font-size: 13px;
       font-weight: 700;
       color: var(--text);
       white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 45%;
+      min-width: 0;
     }
     .bar-track {
       flex: 1;
+      min-width: 40px;
       height: 7px;
       background: var(--card-muted);
       border-radius: 999px;
       overflow: hidden;
-      margin: 0 6px;
+      margin: 0 4px;
     }
     .bar-fill {
       height: 100%;
@@ -267,6 +270,7 @@
       user-select: none;
       transition: all 0.2s ease;
       border: 1px solid var(--border);
+      flex-wrap: wrap;
     }
     .task-row:hover {
       background: var(--item-hover);
@@ -321,18 +325,19 @@
       transform: scale(1.3);
     }
     .task-info {
-      flex: 1;
+      flex: 1 1 150px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 10px;
-      min-width: 90px;
+      gap: 8px;
+      min-width: 0;
     }
     .task-title {
       font-size: 14px;
       font-weight: 700;
-      overflow: hidden;
-      text-overflow: ellipsis;
+      overflow-wrap: break-word;
+      word-break: break-word;
+      min-width: 0;
       color: var(--text);
     }
     .task-row.is-completing .task-title {
@@ -424,7 +429,7 @@
       color: var(--text);
       border-radius: 12px;
       padding: 10px 14px;
-      font-size: 16px; /* Prevents auto-zoom in iOS Safari */
+      font-size: 16px;
       font-family: inherit;
       outline: none;
       transition: all 0.2s ease;
@@ -435,8 +440,8 @@
       background: var(--card);
     }
     .input-name {
-      flex: 1;
-      min-width: 140px;
+      flex: 1 1 160px;
+      min-width: 0;
     }
     .mins-wrap {
       display: flex;
@@ -565,8 +570,8 @@
       background: var(--card);
       color: var(--muted);
       border-radius: 9px;
-      padding: 4px 8px;
-      font-size: 12px;
+      padding: 3px 8px;
+      font-size: 11px;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
@@ -585,45 +590,33 @@
       background: var(--card);
     }
 
-    /* Trackers Cards - 2027 Minimal Grid */
+    /* Trackers Cards - View Only in Live */
     .trackers-grid {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 8px;
     }
     .tracker-card {
       background: var(--item);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 8px 12px;
+      border-radius: 14px;
+      padding: 10px 12px;
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 8px;
-      transition: border-color 0.15s ease;
-    }
-    .tracker-card:hover {
-      border-color: rgba(79, 117, 255, 0.3);
+      gap: 10px;
     }
     .tracker-main {
       flex: 1;
       min-width: 0;
       display: flex;
       flex-direction: column;
-      gap: 4px;
-    }
-    .tracker-header-inline {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      gap: 8px;
+      gap: 3px;
     }
     .tracker-title-row {
-      display: flex;
-      align-items: center;
-      gap: 6px;
       font-size: 13.5px;
       font-weight: 800;
+      color: var(--text);
     }
     .tracker-status-line {
       font-size: 11.5px;
@@ -631,45 +624,19 @@
       font-weight: 700;
       font-variant-numeric: tabular-nums;
     }
-    .tracker-actions-row {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      flex-wrap: wrap;
-    }
-    .chip-btn {
-      border: 1px solid var(--border);
-      background: var(--card);
-      color: var(--text);
-      border-radius: 7px;
-      padding: 3px 8px;
-      font-size: 11.5px;
-      font-weight: 700;
-      cursor: pointer;
-      font-family: inherit;
-      transition: all 0.15s ease;
-      line-height: 1.3;
-    }
-    .chip-btn:hover {
-      background: var(--item-hover);
-      border-color: var(--muted);
-    }
-    .chip-btn.is-active {
-      background: var(--green);
-      color: #ffffff;
-      border-color: var(--green);
-      box-shadow: 0 1px 4px rgba(16, 185, 129, 0.3);
+    .tracker-status-line.is-goal {
+      color: var(--green);
     }
     .ring-wrap {
-      width: 38px;
-      height: 38px;
+      width: 42px;
+      height: 42px;
       position: relative;
       flex-shrink: 0;
     }
     .ring-svg {
       transform: rotate(-90deg);
-      width: 38px;
-      height: 38px;
+      width: 42px;
+      height: 42px;
     }
     .ring-bg {
       fill: none;
@@ -688,7 +655,7 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 9.5px;
+      font-size: 10px;
       font-weight: 800;
       color: var(--text);
     }
@@ -772,7 +739,6 @@
       background: var(--card-muted);
     }
 
-    /* Promote Form inside inbox */
     .promote-box {
       width: 100%;
       display: flex;
@@ -784,7 +750,6 @@
       flex-wrap: wrap;
     }
 
-    /* Select elements for iOS: set font-size 16px to prevent zoom */
     select.input-field {
       font-size: 16px !important;
     }
@@ -841,10 +806,11 @@
     }
     .hidden { display: none !important; }
 
+    #print-area { display: none; }
     @media print {
-      body * { visibility: hidden !important; }
-      #print-area, #print-area * { visibility: visible !important; }
-      #print-area { position: absolute; left: 0; top: 0; width: 100%; color: #000; background: #fff; }
+      body { background: #fff !important; color: #000 !important; padding: 16px !important; }
+      .container, .modal-overlay, .toast { display: none !important; }
+      #print-area { display: block !important; width: 100%; color: #000; background: #fff; }
     }
   </style>
 </head>
@@ -894,24 +860,6 @@
         </form>
       </div>
 
-      <!-- Card 4: Daily Trackers -->
-      <div class="prio-group">
-        <div class="prio-group-header">
-          <div class="prio-group-title">
-            <span class="color-dot" style="background:var(--blue);"></span>
-            <span>عدادات اليوم</span>
-            <button type="button" class="gear-btn" id="open-trackers-settings-btn" title="إعدادات العدادات">⚙️</button>
-          </div>
-          <div class="prio-group-right" id="toggle-trackers-btn" style="cursor: pointer;">
-            <span class="count-pill" id="trackers-overall-pill">٠ / ٦</span>
-            <span class="group-arrow" id="trackers-arrow">▼</span>
-          </div>
-        </div>
-        <div class="prio-group-body" id="trackers-body">
-          <div class="trackers-grid" id="trackers-grid"></div>
-        </div>
-      </div>
-
       <!-- Card 5: Completed Log (48h rolling) -->
       <div class="prio-group" id="completed-box" style="margin-bottom:0;"></div>
 
@@ -924,19 +872,45 @@
     </div>
 
     <!-- 2. ROUTINE VIEW -->
-    <div id="view-routine" class="hidden">
+    <div id="view-routine" class="hidden container" style="margin:0; gap:14px;">
+      <!-- Trackers Card inside Routine (Progress Rings + Next Up Controls) -->
+      <div class="prio-group" style="margin-bottom:0;">
+        <div class="prio-group-header">
+          <div class="prio-group-title">
+            <span class="color-dot" style="background:var(--blue);"></span>
+            <span>عدادات اليوم</span>
+            <button type="button" class="gear-btn" id="open-trackers-settings-btn-2" title="إعدادات العدادات">⚙️</button>
+          </div>
+          <div class="prio-group-right">
+            <span class="count-pill" id="trackers-overall-pill">٠ / ٦</span>
+            <button type="button" class="icon-btn" id="open-trackers-log-btn" style="background: var(--card); font-weight: 700; padding: 4px 10px;">📊 السجل</button>
+            <span class="group-arrow" id="toggle-trackers-btn" style="cursor:pointer; padding:2px 4px;">▼</span>
+          </div>
+        </div>
+        <div class="prio-group-body" id="trackers-body">
+          <div class="task-list" id="routine-trackers-list"></div>
+        </div>
+      </div>
+
+      <!-- Routine Templates Card -->
       <div class="card">
         <div class="header-row">
-          <h1>Routine (قالب المهام اليومية)</h1>
-          <button type="button" class="icon-btn" id="open-trackers-log-btn" style="background: var(--card-muted); font-weight: 700;">📊 سجل العدادات</button>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <h1>Routine (قالب المهام اليومية)</h1>
+            <button type="button" class="gear-btn" id="open-routine-sections-mgr-btn" title="إدارة أقسام الروتين" style="font-size: 11px; padding: 2px 7px; gap: 3px;">
+              <span>⚙️</span>
+              <span style="font-size: 10.5px;">الأقسام</span>
+            </button>
+          </div>
         </div>
-        <div class="sub-stats">مهام ثابتة بوقتها؛ اضغط على الاسم أو الوقت لتعديله، أو "إضافة للساعة" لنسخها فوراً.</div>
+        <div class="sub-stats">اضغط على الاسم لتعديله، على الدايرة لنقل القسم، أو استخدم ▲/▼ للترتيب.</div>
 
-        <div class="task-list" id="routine-list"></div>
+        <div id="routine-list"></div>
 
         <form class="add-bar" id="routine-form">
           <input type="text" class="input-field input-name" id="routine-title" placeholder="اسم مهمة الروتين..." required>
           <input type="text" inputmode="numeric" class="input-field input-mins" id="routine-mins" placeholder="الدقائق" required>
+          <select id="routine-section-select" class="input-field" style="padding:9px 10px; font-size:16px; font-weight:700; max-width:145px;"></select>
           <button type="submit" class="add-btn" title="إضافة للروتين">+</button>
         </form>
       </div>
@@ -960,13 +934,12 @@
         </div>
       </div>
       <div class="modal-body">
-        <div class="sub-stats" style="margin:0 0 4px 0;">مهام اليوم مقسمة حسب فتراتك (اضغط لنقل المهمة للساعة أو تغيير قسمها).</div>
+        <div class="sub-stats" style="margin:0 0 4px 0;">مهام اليوم مقسمة حسب فتراتك (اضغط على الدايرة لتغيير القسم).</div>
         <div id="inbox-groups"></div>
 
-        <!-- Add Inbox Task Form with Category Select -->
         <form class="add-bar" id="inbox-form" style="margin-top:8px;">
           <input type="text" class="input-field input-name" id="inbox-title" placeholder="اكتب مهمة جديدة للـ Inbox..." required>
-          <select id="inbox-section-select" class="input-field" style="padding:9px 10px; font-size:13px; font-weight:700; max-width:145px;"></select>
+          <select id="inbox-section-select" class="input-field" style="padding:9px 10px; font-size:16px; font-weight:700; max-width:145px;"></select>
           <button type="submit" class="add-btn" title="إضافة للـ Inbox">+</button>
         </form>
       </div>
@@ -996,6 +969,29 @@
       </div>
       <div class="modal-foot">
         <button type="button" class="timer-btn" id="close-inbox-sections-2">حفظ والعودة</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: ROUTINE SECTIONS MANAGER -->
+  <div class="modal-overlay hidden" id="modal-routine-sections">
+    <div class="modal-box" style="max-width: 500px;">
+      <div class="modal-head">
+        <h2>📁 إدارة أقسام الروتين</h2>
+        <button type="button" class="icon-btn" id="close-routine-sections">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="sub-stats">خصص أقسام الروتين بحرية (مثلاً: الصباح، العمل، المساء):</div>
+        <div id="routine-sections-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+
+        <form id="add-routine-section-form" style="display:flex; gap:8px; align-items:center; margin-top:8px; padding-top:10px; border-top:1px solid var(--border);">
+          <input type="text" class="input-field input-name" id="new-routine-section-name" placeholder="اسم القسم الجديد..." required>
+          <input type="color" id="new-routine-section-color" value="#4f75ff" style="width:38px; height:38px; border:none; border-radius:10px; cursor:pointer; background:transparent;">
+          <button type="submit" class="timer-btn">+ إضافة قسم</button>
+        </form>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="timer-btn" id="close-routine-sections-2">حفظ والعودة</button>
       </div>
     </div>
   </div>
@@ -1030,8 +1026,8 @@
     </div>
   </div>
 
-  <!-- Hidden Print Area for PDF Export -->
-  <div id="print-area" class="hidden"></div>
+  <!-- Print Area for PDF Export (shown only during @media print) -->
+  <div id="print-area"></div>
 
   <!-- Toasts -->
   <div class="toast is-alarm" id="alarm-toast">
@@ -1048,15 +1044,19 @@
     const STORAGE_KEY = 'hourly_tracker_standalone_v2';
     const TWO_DAYS_MS = 48 * 60 * 60 * 1000;
     const PALETTE = ['#4f75ff', '#22c55e', '#ec4899', '#e09f3e', '#8b5cf6', '#06b6d4', '#e25c5c', '#84cc16'];
-    
-    // Default Sections instead of fixed priorities
+
     const DEFAULT_INBOX_SECTIONS = [
       { id: 'sec-1', name: 'النصف الأول من اليوم', color: '#4f75ff' },
       { id: 'sec-2', name: 'النصف الثاني من اليوم', color: '#e09f3e' }
     ];
 
+    const DEFAULT_ROUTINE_SECTIONS = [
+      { id: 'rsec-1', name: 'الروتين الصباحي', color: '#4f75ff' },
+      { id: 'rsec-2', name: 'الروتين المسائي', color: '#8b5cf6' }
+    ];
+
     const DEFAULT_TRACKERS = [
-      { id: 'prayers', name: 'الصلاة', type: 'checks', items: ['فجر', 'ظهر', 'عصر', 'مغرب', 'عشاء'], done: ['فجر'], color: '#22c55e' },
+      { id: 'prayers', name: 'الصلاة', type: 'checks', items: ['فجر', 'ظهر', 'عصر', 'مغرب', 'عشاء'], done: [], color: '#22c55e' },
       { id: 'water', name: 'المياه', type: 'counter', val: 0, goal: 2500, step: 200, unit: 'مل', color: '#06b6d4' },
       { id: 'steps', name: 'الخطوات', type: 'counter', val: 0, goal: 5000, step: 500, unit: 'خطوة', color: '#e09f3e' },
       { id: 'sadaqah', name: 'الصدقات', type: 'checks', items: ['صدقة النهار', 'صدقة الليل'], done: [], color: '#8b5cf6' },
@@ -1181,21 +1181,18 @@
         });
 
         stateObj.lastReset = threshold.toISOString();
+        return true;
       }
+      return false;
     }
 
     function loadState() {
       let state = {
         tasks: [],
         inboxSections: JSON.parse(JSON.stringify(DEFAULT_INBOX_SECTIONS)),
-        inbox: [
-          { id: 1, label: 'مراجعة الإيميلات والرسائل', sectionId: 'sec-1' },
-          { id: 2, label: 'تجهيز ملف التقرير الأسبوعي', sectionId: 'sec-2' }
-        ],
-        routine: [
-          { id: 1, label: 'قراءة ورد القرآن', mins: 15 },
-          { id: 2, label: 'أذكار الصباح والمساء', mins: 10 }
-        ],
+        routineSections: JSON.parse(JSON.stringify(DEFAULT_ROUTINE_SECTIONS)),
+        inbox: [],
+        routine: [],
         completed: [],
         trackers: JSON.parse(JSON.stringify(DEFAULT_TRACKERS)),
         trackersLogs: [],
@@ -1209,16 +1206,23 @@
         }
       } catch (e) {}
 
-      // Backward compatibility check for inbox items and sections
       if (!state.inboxSections || state.inboxSections.length === 0) {
         state.inboxSections = JSON.parse(JSON.stringify(DEFAULT_INBOX_SECTIONS));
       }
       state.inbox = (state.inbox || []).map(item => {
-        if (!item.sectionId) {
-          item.sectionId = state.inboxSections[0].id;
-        }
+        if (!item.sectionId) item.sectionId = state.inboxSections[0].id;
         return item;
       });
+      if (!state.routineSections || state.routineSections.length === 0) {
+        state.routineSections = JSON.parse(JSON.stringify(DEFAULT_ROUTINE_SECTIONS));
+      }
+      state.routine = (state.routine || []).map(item => {
+        if (!item.sectionId) item.sectionId = state.routineSections[0].id;
+        return item;
+      });
+      if (!state.trackers || state.trackers.length === 0) {
+        state.trackers = JSON.parse(JSON.stringify(DEFAULT_TRACKERS));
+      }
 
       checkAndApplyDaily3AMReset(state);
 
@@ -1236,6 +1240,7 @@
     const state = loadState();
     let TASKS = state.tasks;
     let INBOX_SECTIONS = state.inboxSections;
+    let ROUTINE_SECTIONS = state.routineSections;
     let INBOX = state.inbox;
     let ROUTINE = state.routine;
     let COMPLETED = state.completed;
@@ -1246,9 +1251,12 @@
     let completedOpen = false;
     let openSections = {};
     INBOX_SECTIONS.forEach(s => { openSections[s.id] = true; });
+    let openRoutineSections = {};
+    ROUTINE_SECTIONS.forEach(s => { openRoutineSections[s.id] = true; });
 
     let currentTab = 'live';
     let promotingInboxId = null;
+    let editingRoutineId = null;
     let colorIdx = TASKS.length;
     let ticker = null;
     let lastRemoved = null;
@@ -1262,11 +1270,14 @@
 
     function saveState() {
       pruneCompleted();
+      state.trackers = TRACKERS;
+      state.trackersLogs = TRACKERS_LOGS;
       checkAndApplyDaily3AMReset(state);
       try {
         localStorage.setItem(STORAGE_KEY, JSON.stringify({
           tasks: TASKS.map(({ completing, ...rest }) => rest),
           inboxSections: INBOX_SECTIONS,
+          routineSections: ROUTINE_SECTIONS,
           inbox: INBOX,
           routine: ROUTINE,
           completed: COMPLETED,
@@ -1340,10 +1351,10 @@
     function renderSectionsManagerList() {
       const listEl = document.getElementById('inbox-sections-list');
       if (!listEl) return;
-      listEl.innerHTML = INBOX_SECTIONS.map((sec, idx) => `
+      listEl.innerHTML = INBOX_SECTIONS.map(sec => `
         <div style="background:var(--item); padding:10px 12px; border-radius:12px; border:1px solid var(--border); display:flex; align-items:center; gap:8px;">
           <input type="color" value="${sec.color || '#4f75ff'}" data-sec-color="${sec.id}" style="width:32px; height:32px; border:none; border-radius:8px; cursor:pointer; background:transparent;">
-          <input type="text" value="${sec.name}" data-sec-name="${sec.id}" class="input-field" style="flex:1; padding:6px 10px; font-size:13px; font-weight:700;">
+          <input type="text" value="${sec.name}" data-sec-name="${sec.id}" class="input-field" style="flex:1; padding:6px 10px; font-size:16px; font-weight:700;">
           <button type="button" class="icon-btn del" data-del-sec="${sec.id}" ${INBOX_SECTIONS.length <= 1 ? 'disabled title="لا يمكن حذف القسم الأخير"' : 'title="حذف القسم"'}>×</button>
         </div>
       `).join('');
@@ -1395,6 +1406,98 @@
       saveState();
       renderSectionsManagerList();
     });
+
+    // Routine Sections Manager Modal
+    const routineSectionsModal = document.getElementById('modal-routine-sections');
+    function openRoutineSectionsManager() {
+      renderRoutineSectionsManagerList();
+      routineSectionsModal.classList.remove('hidden');
+    }
+    function closeRoutineSectionsManager() {
+      routineSectionsModal.classList.add('hidden');
+      render();
+    }
+    document.getElementById('open-routine-sections-mgr-btn').addEventListener('click', openRoutineSectionsManager);
+    document.getElementById('close-routine-sections').addEventListener('click', closeRoutineSectionsManager);
+    document.getElementById('close-routine-sections-2').addEventListener('click', closeRoutineSectionsManager);
+    routineSectionsModal.addEventListener('click', e => {
+      if (e.target === routineSectionsModal) closeRoutineSectionsManager();
+    });
+
+    function renderRoutineSectionsManagerList() {
+      const listEl = document.getElementById('routine-sections-list');
+      if (!listEl) return;
+      listEl.innerHTML = ROUTINE_SECTIONS.map(sec => `
+        <div style="background:var(--item); padding:10px 12px; border-radius:12px; border:1px solid var(--border); display:flex; align-items:center; gap:8px;">
+          <input type="color" value="${sec.color || '#4f75ff'}" data-rsec-color="${sec.id}" style="width:32px; height:32px; border:none; border-radius:8px; cursor:pointer; background:transparent;">
+          <input type="text" value="${sec.name}" data-rsec-name="${sec.id}" class="input-field" style="flex:1; padding:6px 10px; font-size:16px; font-weight:700;">
+          <button type="button" class="icon-btn del" data-del-rsec="${sec.id}" ${ROUTINE_SECTIONS.length <= 1 ? 'disabled title="لا يمكن حذف القسم الأخير"' : 'title="حذف القسم"'}>×</button>
+        </div>
+      `).join('');
+
+      listEl.querySelectorAll('[data-rsec-name]').forEach(inp => {
+        inp.addEventListener('change', () => {
+          const id = inp.dataset.rsecName;
+          const s = ROUTINE_SECTIONS.find(x => x.id === id);
+          if (s && inp.value.trim()) s.name = inp.value.trim();
+          saveState();
+        });
+      });
+
+      listEl.querySelectorAll('[data-rsec-color]').forEach(inp => {
+        inp.addEventListener('change', () => {
+          const id = inp.dataset.rsecColor;
+          const s = ROUTINE_SECTIONS.find(x => x.id === id);
+          if (s) s.color = inp.value;
+          saveState();
+        });
+      });
+
+      listEl.querySelectorAll('[data-del-rsec]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (ROUTINE_SECTIONS.length <= 1) return;
+          const id = btn.dataset.delRsec;
+          const targetFallback = ROUTINE_SECTIONS.find(x => x.id !== id).id;
+          ROUTINE.forEach(item => {
+            if (item.sectionId === id) item.sectionId = targetFallback;
+          });
+          ROUTINE_SECTIONS = ROUTINE_SECTIONS.filter(x => x.id !== id);
+          saveState();
+          renderRoutineSectionsManagerList();
+        });
+      });
+    }
+
+    document.getElementById('add-routine-section-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const nameInput = document.getElementById('new-routine-section-name');
+      const colorInput = document.getElementById('new-routine-section-color');
+      const name = nameInput.value.trim();
+      if (!name) return;
+
+      const newId = 'rsec-' + Date.now();
+      ROUTINE_SECTIONS.push({ id: newId, name, color: colorInput.value || '#4f75ff' });
+      openRoutineSections[newId] = true;
+      nameInput.value = '';
+      saveState();
+      renderRoutineSectionsManagerList();
+    });
+
+    function moveRoutineWithinSection(itemId, dir) {
+      const item = ROUTINE.find(x => x.id === itemId);
+      if (!item) return;
+      const secId = item.sectionId || ROUTINE_SECTIONS[0].id;
+      const sameSecIndices = ROUTINE.map((x, idx) => ((x.sectionId || ROUTINE_SECTIONS[0].id) === secId ? idx : -1)).filter(idx => idx !== -1);
+      const pos = sameSecIndices.indexOf(ROUTINE.findIndex(x => x.id === itemId));
+      const targetPos = pos + dir;
+      if (targetPos < 0 || targetPos >= sameSecIndices.length) return;
+      const fromIdx = sameSecIndices[pos];
+      const toIdx = sameSecIndices[targetPos];
+      const temp = ROUTINE[fromIdx];
+      ROUTINE[fromIdx] = ROUTINE[toIdx];
+      ROUTINE[toIdx] = temp;
+      render();
+    }
 
     function showUndo(task, index, completedId) {
       lastRemoved = { task, index, completedId };
@@ -1474,109 +1577,112 @@
       }
     }
 
-    // Render Trackers Card
-    function renderTrackers() {
-      const grid = document.getElementById('trackers-grid');
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) syncRunningTimers(true);
+    });
+    window.addEventListener('focus', () => syncRunningTimers(true));
+    window.addEventListener('pageshow', () => syncRunningTimers(true));
+
+    // Render Trackers inside ROUTINE VIEW (Progress Rings + Done/Remaining + Next Up Controls)
+    function renderTrackersRoutineView() {
+      const listEl = document.getElementById('routine-trackers-list');
       const overallPill = document.getElementById('trackers-overall-pill');
-      if (!grid) return;
+      if (!listEl) return;
 
       let completedCount = 0;
-      const totalTrackers = TRACKERS.length;
 
-      grid.innerHTML = TRACKERS.map((tr, idx) => {
+      listEl.innerHTML = TRACKERS.map((tr, idx) => {
         let pct = 0;
         let statusStr = '';
         let isDone = false;
+        let ringLabel = '';
+        let actionHtml = '';
 
         if (tr.type === 'checks') {
           const items = tr.items || [];
           const done = tr.done || [];
+          const rem = Math.max(0, items.length - done.length);
+          const nextItem = items.find(it => !done.includes(it));
           pct = items.length > 0 ? Math.round((done.length / items.length) * 100) : 0;
-          statusStr = `${toAr(done.length)} من ${toAr(items.length)}`;
-          if (done.length >= items.length && items.length > 0) isDone = true;
+          isDone = !nextItem && items.length > 0;
+          statusStr = isDone ? `✓ مكتمل (${toAr(done.length)} من ${toAr(items.length)})` : `تم: ${toAr(done.length)} · فاضل: ${toAr(rem)}`;
+          ringLabel = `${toAr(done.length)}/${toAr(items.length)}`;
+          actionHtml = `
+            ${done.length > 0 ? `<button type="button" class="icon-btn" data-rtn-undo-chk="${idx}" title="تراجع عن آخر ضغطة">↩</button>` : ''}
+            ${!nextItem
+              ? '<span style="font-size:12px; font-weight:800; color:var(--green); padding:0 6px;">✓ مكتمل</span>'
+              : `<button type="button" class="timer-btn" data-rtn-next-chk="${idx}" data-item="${nextItem}">✓ ${nextItem}</button>`}
+          `;
         } else {
           const val = tr.val || 0;
           const goal = tr.goal || 1;
+          const step = tr.step || 1;
+          const rem = Math.max(0, goal - val);
+          const unit = tr.unit ? ` ${tr.unit}` : '';
           pct = Math.min(100, Math.round((val / goal) * 100));
-          statusStr = `${toAr(val)} / ${toAr(goal)} ${tr.unit || ''}`;
-          if (val >= goal) isDone = true;
+          isDone = rem === 0;
+          statusStr = isDone ? `✓ مكتمل (${toAr(val)}${unit})` : `تم: ${toAr(val)}${unit} · فاضل: ${toAr(rem)}${unit}`;
+          ringLabel = `${toAr(pct)}%`;
+          actionHtml = `
+            ${val > 0 ? `<button type="button" class="icon-btn" data-rtn-step="${idx}" data-delta="-${step}" title="إنقاص">-${toAr(step)}</button>` : ''}
+            <button type="button" class="timer-btn" data-rtn-step="${idx}" data-delta="${step}">+${toAr(step)}${unit}</button>
+          `;
         }
 
         if (isDone) completedCount++;
 
-        const radius = 15;
+        const radius = 17;
         const circ = 2 * Math.PI * radius;
         const offset = circ - (pct / 100) * circ;
 
         return `
           <div class="tracker-card">
-            <div class="tracker-main">
-              <div class="tracker-header-inline">
-                <div class="tracker-title-row">
-                  <span>${tr.name}</span>
-                </div>
-                <div class="tracker-status-line">${statusStr}</div>
-              </div>
-              <div class="tracker-actions-row">
-                ${tr.type === 'checks' ? (tr.items || []).map(item => {
-                  const checkDone = (tr.done || []).includes(item);
-                  return `
-                    <button type="button" class="chip-btn ${checkDone ? 'is-active' : ''}" data-tr-check="${idx}" data-item="${item}">
-                      ${item}
-                    </button>
-                  `;
-                }).join('') : `
-                  <button type="button" class="chip-btn" data-tr-step="${idx}" data-val="${tr.step}">+${toAr(tr.step)} ${tr.unit || ''}</button>
-                  <button type="button" class="chip-btn" data-tr-step="${idx}" data-val="${-tr.step}">-${toAr(tr.step)}</button>
-                  <button type="button" class="chip-btn" data-tr-reset="${idx}" title="تصفير">↺</button>
-                `}
-              </div>
-            </div>
             <div class="ring-wrap" title="${pct}%">
-              <svg class="ring-svg" viewBox="0 0 38 38">
-                <circle class="ring-bg" cx="19" cy="19" r="${radius}"></circle>
-                <circle class="ring-bar" cx="19" cy="19" r="${radius}" stroke="${isDone ? 'var(--green)' : (tr.color || 'var(--green)')}"
+              <svg class="ring-svg" viewBox="0 0 42 42">
+                <circle class="ring-bg" cx="21" cy="21" r="${radius}"></circle>
+                <circle class="ring-bar" cx="21" cy="21" r="${radius}" stroke="${isDone ? 'var(--green)' : (tr.color || 'var(--blue)')}"
                   stroke-dasharray="${circ}" stroke-dashoffset="${offset}"></circle>
               </svg>
-              <div class="ring-text">
-                ${tr.type === 'checks' ? `${toAr((tr.done || []).length)}/${toAr((tr.items || []).length)}` : `${toAr(pct)}%`}
-              </div>
+              <div class="ring-text">${ringLabel}</div>
             </div>
+            <div class="tracker-main">
+              <div class="tracker-title-row">${tr.name}</div>
+              <div class="tracker-status-line ${isDone ? 'is-goal' : ''}">${statusStr}</div>
+            </div>
+            <div class="row-actions">${actionHtml}</div>
           </div>
         `;
       }).join('');
 
-      if (overallPill) overallPill.textContent = `${toAr(completedCount)} / ${toAr(totalTrackers)}`;
+      if (overallPill) overallPill.textContent = `${toAr(completedCount)} / ${toAr(TRACKERS.length)}`;
 
-      grid.querySelectorAll('[data-tr-check]').forEach(btn => {
+      listEl.querySelectorAll('[data-rtn-next-chk]').forEach(btn => {
         btn.addEventListener('click', () => {
-          const tIdx = Number(btn.dataset.trCheck);
+          const idx = Number(btn.dataset.rtnNextChk);
           const item = btn.dataset.item;
-          const tr = TRACKERS[tIdx];
+          const tr = TRACKERS[idx];
           if (!tr.done) tr.done = [];
-          if (tr.done.includes(item)) {
-            tr.done = tr.done.filter(x => x !== item);
-          } else {
-            tr.done.push(item);
+          if (!tr.done.includes(item)) tr.done.push(item);
+          render();
+        });
+      });
+
+      listEl.querySelectorAll('[data-rtn-undo-chk]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = Number(btn.dataset.rtnUndoChk);
+          const tr = TRACKERS[idx];
+          if (tr.done && tr.done.length > 0) {
+            tr.done.pop();
+            render();
           }
-          render();
         });
       });
 
-      grid.querySelectorAll('[data-tr-step]').forEach(btn => {
+      listEl.querySelectorAll('[data-rtn-step]').forEach(btn => {
         btn.addEventListener('click', () => {
-          const tIdx = Number(btn.dataset.trStep);
-          const val = Number(btn.dataset.val);
-          const tr = TRACKERS[tIdx];
-          tr.val = Math.max(0, (tr.val || 0) + val);
-          render();
-        });
-      });
-
-      grid.querySelectorAll('[data-tr-reset]').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const tIdx = Number(btn.dataset.trReset);
-          TRACKERS[tIdx].val = 0;
+          const idx = Number(btn.dataset.rtnStep);
+          const delta = Number(btn.dataset.delta);
+          TRACKERS[idx].val = Math.max(0, (TRACKERS[idx].val || 0) + delta);
           render();
         });
       });
@@ -1585,7 +1691,7 @@
     document.getElementById('toggle-trackers-btn').addEventListener('click', () => {
       trackersOpen = !trackersOpen;
       document.getElementById('trackers-body').classList.toggle('hidden', !trackersOpen);
-      document.getElementById('trackers-arrow').textContent = trackersOpen ? '▼' : '◀';
+      document.getElementById('toggle-trackers-btn').textContent = trackersOpen ? '▼' : '◀';
     });
 
     // Render Inbox Modal List
@@ -1657,7 +1763,6 @@
         });
       });
 
-      // Quick Cycle Section on dot click
       inboxGroupsEl.querySelectorAll('[data-cycle-sec]').forEach(dot => {
         dot.addEventListener('click', () => {
           const id = Number(dot.dataset.cycleSec);
@@ -1732,7 +1837,7 @@
       saveState();
       ensureTicker();
 
-      document.getElementById('tab-routine').textContent = `(${toAr(ROUTINE.length)}) Routine`;
+      document.getElementById('tab-routine').textContent = `Routine (${toAr(ROUTINE.length)})`;
       const inboxLauncherPill = document.getElementById('inbox-launcher-pill');
       if (inboxLauncherPill) inboxLauncherPill.textContent = `${toAr(INBOX.length)} مهام`;
 
@@ -1823,7 +1928,7 @@
           }).join('');
 
       updateHourClock();
-      renderTrackers();
+      renderTrackersRoutineView();
 
       // Completed Log
       const todayStr = new Date().toDateString();
@@ -1869,22 +1974,66 @@
         render();
       });
 
-      // Routine List
+      // Routine section selector
+      const rtnSecSelect = document.getElementById('routine-section-select');
+      if (rtnSecSelect) {
+        const prevVal = rtnSecSelect.value;
+        rtnSecSelect.innerHTML = ROUTINE_SECTIONS.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
+        if (prevVal && ROUTINE_SECTIONS.some(s => s.id === prevVal)) rtnSecSelect.value = prevVal;
+      }
+
+      // Routine List grouped by sections with ▲/▼ reordering
       const routineListEl = document.getElementById('routine-list');
-      routineListEl.innerHTML = ROUTINE.length === 0
-        ? '<div class="empty-msg">مفيش مهام روتين لسه. ضيف مهامك اليومية من النموذج بالأسفل.</div>'
-        : ROUTINE.map(item => `
-            <div class="task-row">
-              <div class="task-info" style="cursor: pointer;" data-edit-routine="${item.id}" title="اضغط لتعديل الاسم أو الوقت">
-                <span class="task-title">✏️ ${item.label}</span>
-                <span class="task-dur">${toAr(item.mins)} د</span>
+      routineListEl.innerHTML = ROUTINE_SECTIONS.map(sec => {
+        const items = ROUTINE.filter(item => (item.sectionId || ROUTINE_SECTIONS[0].id) === sec.id);
+        const isOpen = openRoutineSections[sec.id] !== false;
+        return `
+          <div class="prio-group" style="margin-bottom:10px; border-radius:16px;">
+            <div class="prio-group-header" data-toggle-rsec="${sec.id}" style="cursor:pointer; padding:11px 14px;">
+              <div class="prio-group-title">
+                <span class="color-dot" style="background:${sec.color || '#4f75ff'};"></span>
+                <span>${sec.name}</span>
               </div>
-              <div class="row-actions">
-                <button type="button" class="timer-btn" data-use-routine="${item.id}">إضافة للساعة</button>
-                <button type="button" class="icon-btn del" data-del-routine="${item.id}" title="حذف من الروتين">×</button>
+              <div class="prio-group-right">
+                <span class="count-pill">${toAr(items.length)}</span>
+                <span class="group-arrow">${isOpen ? '▼' : '◀'}</span>
               </div>
             </div>
-          `).join('');
+            ${isOpen ? `
+              <div class="prio-group-body" style="padding:10px; gap:8px;">
+                ${items.length === 0
+                  ? '<div class="empty-msg" style="padding:10px;">لا توجد مهام في هذا القسم بعد.</div>'
+                  : items.map((item, idx) => `
+                    <div class="task-row">
+                      <span class="color-dot color-dot-clickable" style="background:${sec.color || '#4f75ff'};" data-cycle-rsec="${item.id}" title="اضغط لنقل المهمة للقسم التالي"></span>
+                      <div class="task-info" style="cursor: pointer;" data-edit-routine="${item.id}" title="اضغط لتعديل الاسم أو الوقت">
+                        <span class="task-title">✏️ ${item.label}</span>
+                        <span class="task-dur">${toAr(item.mins)} د</span>
+                      </div>
+                      <div class="row-actions">
+                        <button type="button" class="icon-btn" data-rtn-up="${item.id}" ${idx === 0 ? 'disabled' : ''} title="تحريك لأعلى">▲</button>
+                        <button type="button" class="icon-btn" data-rtn-down="${item.id}" ${idx === items.length - 1 ? 'disabled' : ''} title="تحريك لأسفل">▼</button>
+                        <button type="button" class="timer-btn" data-use-routine="${item.id}">إضافة للساعة</button>
+                        <button type="button" class="icon-btn del" data-del-routine="${item.id}" title="حذف من الروتين">×</button>
+                      </div>
+                      ${editingRoutineId === item.id ? `
+                        <div class="promote-box">
+                          <input type="text" class="input-field input-name" id="edit-rtn-name-${item.id}" value="${item.label}" placeholder="اسم المهمة">
+                          <input type="text" inputmode="numeric" class="input-field input-mins" id="edit-rtn-mins-${item.id}" value="" placeholder="${toAr(item.mins)} د">
+                          <select id="edit-rtn-sec-${item.id}" class="input-field" style="padding:8px 10px; font-size:16px; font-weight:700;">
+                            ${ROUTINE_SECTIONS.map(s => `<option value="${s.id}" ${s.id === (item.sectionId || ROUTINE_SECTIONS[0].id) ? 'selected' : ''}>${s.name}</option>`).join('')}
+                          </select>
+                          <button type="button" class="timer-btn" data-save-rtn="${item.id}">حفظ</button>
+                          <button type="button" class="icon-btn" data-cancel-rtn="1">إلغاء</button>
+                        </div>
+                      ` : ''}
+                    </div>
+                  `).join('')}
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
 
       // Live tasks listeners
       listEl.querySelectorAll('[data-check]').forEach(circle => {
@@ -1973,6 +2122,39 @@
       });
 
       // Routine listeners
+      routineListEl.querySelectorAll('[data-toggle-rsec]').forEach(header => {
+        header.addEventListener('click', () => {
+          const id = header.dataset.toggleRsec;
+          openRoutineSections[id] = !(openRoutineSections[id] !== false);
+          render();
+        });
+      });
+
+      routineListEl.querySelectorAll('[data-cycle-rsec]').forEach(dot => {
+        dot.addEventListener('click', () => {
+          const id = Number(dot.dataset.cycleRsec);
+          const item = ROUTINE.find(x => x.id === id);
+          if (!item || ROUTINE_SECTIONS.length <= 1) return;
+          const currentIdx = ROUTINE_SECTIONS.findIndex(s => s.id === (item.sectionId || ROUTINE_SECTIONS[0].id));
+          const nextSec = ROUTINE_SECTIONS[(currentIdx + 1) % ROUTINE_SECTIONS.length];
+          item.sectionId = nextSec.id;
+          openRoutineSections[nextSec.id] = true;
+          render();
+        });
+      });
+
+      routineListEl.querySelectorAll('[data-rtn-up]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          moveRoutineWithinSection(Number(btn.dataset.rtnUp), -1);
+        });
+      });
+
+      routineListEl.querySelectorAll('[data-rtn-down]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          moveRoutineWithinSection(Number(btn.dataset.rtnDown), 1);
+        });
+      });
+
       routineListEl.querySelectorAll('[data-use-routine]').forEach(btn => {
         btn.addEventListener('click', () => {
           const id = Number(btn.dataset.useRoutine);
@@ -1995,14 +2177,34 @@
       routineListEl.querySelectorAll('[data-edit-routine]').forEach(el => {
         el.addEventListener('click', () => {
           const id = Number(el.dataset.editRoutine);
+          editingRoutineId = (editingRoutineId === id) ? null : id;
+          render();
+        });
+      });
+
+      routineListEl.querySelectorAll('[data-save-rtn]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.saveRtn);
           const item = ROUTINE.find(x => x.id === id);
           if (!item) return;
-          const newName = prompt('تعديل اسم المهمة الروتينية:', item.label);
-          if (newName === null) return;
-          const newMins = prompt('المدة بالدقائق (أقصى وقت ٦٠):', item.mins);
-          if (newMins === null) return;
-          item.label = newName.trim() || item.label;
-          item.mins = Math.min(60, Math.max(1, parseMins(newMins) || item.mins));
+          const nameInp = document.getElementById(`edit-rtn-name-${id}`);
+          const minsInp = document.getElementById(`edit-rtn-mins-${id}`);
+          if (nameInp && nameInp.value.trim()) item.label = nameInp.value.trim();
+          const rawMins = parseMins(minsInp ? minsInp.value : '');
+          if (rawMins > 0) item.mins = Math.min(60, rawMins);
+          const secInp = document.getElementById(`edit-rtn-sec-${id}`);
+          if (secInp && secInp.value) {
+            item.sectionId = secInp.value;
+            openRoutineSections[secInp.value] = true;
+          }
+          editingRoutineId = null;
+          render();
+        });
+      });
+
+      routineListEl.querySelectorAll('[data-cancel-rtn]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          editingRoutineId = null;
           render();
         });
       });
@@ -2047,7 +2249,10 @@
       const label = titleInput.value.trim();
       const mins = parseMins(minsInput.value);
       if (!label || !(mins > 0)) return;
-      ROUTINE.push({ id: Date.now(), label, mins: Math.min(60, mins) });
+      const secSelect = document.getElementById('routine-section-select');
+      const sectionId = secSelect && secSelect.value ? secSelect.value : ROUTINE_SECTIONS[0].id;
+      ROUTINE.push({ id: Date.now(), label, mins: Math.min(60, mins), sectionId });
+      openRoutineSections[sectionId] = true;
       titleInput.value = '';
       minsInput.value = '';
       render();
@@ -2067,15 +2272,6 @@
       saveState();
       render();
       renderInboxInsideModal();
-    });
-
-    // Priority picker for inbox modal
-    document.querySelectorAll('#prio-picker .color-dot-clickable').forEach(btn => {
-      btn.addEventListener('click', () => {
-        selectedInboxColor = btn.dataset.color;
-        document.querySelectorAll('#prio-picker .color-dot-clickable').forEach(b => b.classList.remove('is-selected'));
-        btn.classList.add('is-selected');
-      });
     });
 
     // Copy Status
@@ -2104,39 +2300,195 @@
     });
 
     // Trackers Settings Modal
-    function openTrackersSettings() {
-      const body = document.getElementById('trackers-settings-body');
-      body.innerHTML = TRACKERS.map((tr, idx) => `
-        <div style="background:var(--item); padding:10px 12px; border-radius:12px; border:1px solid var(--border); display:flex; flex-direction:column; gap:6px;">
-          <div style="font-size:12px; font-weight:700; color:${tr.color};">العداد: ${tr.name}</div>
-          <div style="display:flex; gap:8px;">
-            <input type="text" id="tr-name-${idx}" value="${tr.name}" class="input-field" style="flex:1; padding:6px 10px; font-size:13px;" placeholder="اسم العداد">
-            ${tr.type === 'counter' ? `
-              <input type="number" id="tr-goal-${idx}" value="${tr.goal}" class="input-field" style="width:80px; padding:6px 10px; font-size:13px;" placeholder="الهدف">
-              <input type="number" id="tr-step-${idx}" value="${tr.step}" class="input-field" style="width:70px; padding:6px 10px; font-size:13px;" placeholder="الضغطة">
-            ` : ''}
-          </div>
-        </div>
-      `).join('');
-      document.getElementById('modal-trackers-settings').classList.remove('hidden');
-    }
+    let newTrackerType = 'counter';
 
-    document.getElementById('open-trackers-settings-btn').addEventListener('click', openTrackersSettings);
-    document.getElementById('close-trackers-settings').addEventListener('click', () => {
-      document.getElementById('modal-trackers-settings').classList.add('hidden');
-    });
-
-    document.getElementById('save-trackers-settings').addEventListener('click', () => {
+    function syncTrackerInputsToState() {
       TRACKERS.forEach((tr, idx) => {
         const nameEl = document.getElementById(`tr-name-${idx}`);
         if (nameEl && nameEl.value.trim()) tr.name = nameEl.value.trim();
         if (tr.type === 'counter') {
           const goalEl = document.getElementById(`tr-goal-${idx}`);
           const stepEl = document.getElementById(`tr-step-${idx}`);
+          const unitEl = document.getElementById(`tr-unit-${idx}`);
+          const valEl = document.getElementById(`tr-val-${idx}`);
           if (goalEl && parseMins(goalEl.value) > 0) tr.goal = parseMins(goalEl.value);
           if (stepEl && parseMins(stepEl.value) > 0) tr.step = parseMins(stepEl.value);
+          if (unitEl) tr.unit = unitEl.value.trim();
+          if (valEl) tr.val = Math.max(0, parseMins(valEl.value));
+        } else {
+          const itemsEl = document.getElementById(`tr-items-${idx}`);
+          if (itemsEl) {
+            const arr = itemsEl.value.split(/[،,]+/).map(s => s.trim()).filter(Boolean);
+            if (arr.length > 0) {
+              tr.items = arr;
+              tr.done = (tr.done || []).filter(x => arr.includes(x));
+            }
+          }
         }
       });
+    }
+
+    function openTrackersSettings() {
+      const body = document.getElementById('trackers-settings-body');
+      body.innerHTML = `
+        ${TRACKERS.map((tr, idx) => `
+          <div style="background:var(--item); padding:10px 12px; border-radius:14px; border:1px solid var(--border); display:flex; flex-direction:column; gap:8px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <span style="font-size:12.5px; font-weight:800; color:${tr.color || 'var(--blue)'};">العداد: ${tr.name}</span>
+              <div style="display:flex; gap:5px; align-items:center;">
+                <button type="button" class="icon-btn" data-tr-up="${idx}" ${idx === 0 ? 'disabled' : ''} title="تحريك لأعلى">▲</button>
+                <button type="button" class="icon-btn" data-tr-down="${idx}" ${idx === TRACKERS.length - 1 ? 'disabled' : ''} title="تحريك لأسفل">▼</button>
+                <button type="button" class="icon-btn del" data-tr-del="${idx}" title="حذف العداد">×</button>
+              </div>
+            </div>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <input type="text" id="tr-name-${idx}" value="${tr.name}" class="input-field" style="flex:1; min-width:120px; padding:6px 10px; font-size:16px;" placeholder="اسم العداد">
+              <select class="input-field" data-tr-type="${idx}" style="padding:6px 10px; font-size:16px; font-weight:700;">
+                <option value="counter" ${tr.type === 'counter' ? 'selected' : ''}>رقم وهدف</option>
+                <option value="checks" ${tr.type === 'checks' ? 'selected' : ''}>أزرار / خيارات</option>
+              </select>
+            </div>
+            ${tr.type === 'counter' ? `
+              <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+                <input type="text" inputmode="numeric" id="tr-step-${idx}" value="${tr.step}" class="input-field" style="width:72px; padding:6px 8px; font-size:16px;" placeholder="الضغطة" title="قيمة الضغطة">
+                <input type="text" inputmode="numeric" id="tr-goal-${idx}" value="${tr.goal}" class="input-field" style="width:82px; padding:6px 8px; font-size:16px;" placeholder="الهدف" title="الهدف">
+                <input type="text" id="tr-unit-${idx}" value="${tr.unit || ''}" class="input-field" style="width:76px; padding:6px 8px; font-size:16px;" placeholder="الوحدة" title="الوحدة">
+                <input type="text" inputmode="numeric" id="tr-val-${idx}" value="${tr.val || 0}" class="input-field" style="width:78px; padding:6px 8px; font-size:16px;" placeholder="الحالي" title="القيمة الحالية اليوم">
+              </div>
+            ` : `
+              <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                <input type="text" id="tr-items-${idx}" value="${(tr.items || []).join('، ')}" class="input-field" style="flex:1; min-width:160px; padding:6px 10px; font-size:16px;" placeholder="الخيارات مفصولة بفاصلة">
+              </div>
+            `}
+          </div>
+        `).join('')}
+
+        <div style="background:var(--item); padding:12px; border-radius:14px; border:1px dashed var(--border); display:flex; flex-direction:column; gap:8px;">
+          <div style="font-size:13px; font-weight:800;">+ إضافة عداد جديد</div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <input type="text" id="new-tr-name" class="input-field" style="flex:1; min-width:130px; padding:6px 10px; font-size:16px;" placeholder="اسم العداد (مثلاً: قهوة، أذكار...)">
+            <select id="new-tr-type" class="input-field" style="padding:6px 10px; font-size:16px; font-weight:700;">
+              <option value="counter" ${newTrackerType === 'counter' ? 'selected' : ''}>رقم وهدف</option>
+              <option value="checks" ${newTrackerType === 'checks' ? 'selected' : ''}>أزرار / خيارات</option>
+            </select>
+          </div>
+          ${newTrackerType === 'counter' ? `
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <input type="text" inputmode="numeric" id="new-tr-step" class="input-field" style="width:82px; padding:6px 8px; font-size:16px;" placeholder="الضغطة">
+              <input type="text" inputmode="numeric" id="new-tr-goal" class="input-field" style="width:82px; padding:6px 8px; font-size:16px;" placeholder="الهدف">
+              <input type="text" id="new-tr-unit" class="input-field" style="flex:1; min-width:80px; padding:6px 8px; font-size:16px;" placeholder="الوحدة (مثلاً مرة)">
+            </div>
+          ` : `
+            <div style="display:flex; gap:8px;">
+              <input type="text" id="new-tr-items" class="input-field" style="flex:1; padding:6px 10px; font-size:16px;" placeholder="الخيارات مفصولة بفاصلة (مثلاً: الصبح، بالليل)">
+            </div>
+          `}
+          <div style="display:flex; justify-content:flex-end;">
+            <button type="button" class="add-btn" id="add-new-tr-btn" style="padding:7px 14px; font-size:13px;">+ إضافة العداد</button>
+          </div>
+        </div>
+      `;
+
+      body.querySelectorAll('[data-tr-up]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          syncTrackerInputsToState();
+          const i = Number(btn.dataset.trUp);
+          if (i > 0) {
+            const tmp = TRACKERS[i];
+            TRACKERS[i] = TRACKERS[i - 1];
+            TRACKERS[i - 1] = tmp;
+            render();
+            openTrackersSettings();
+          }
+        });
+      });
+
+      body.querySelectorAll('[data-tr-down]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          syncTrackerInputsToState();
+          const i = Number(btn.dataset.trDown);
+          if (i < TRACKERS.length - 1) {
+            const tmp = TRACKERS[i];
+            TRACKERS[i] = TRACKERS[i + 1];
+            TRACKERS[i + 1] = tmp;
+            render();
+            openTrackersSettings();
+          }
+        });
+      });
+
+      body.querySelectorAll('[data-tr-del]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          syncTrackerInputsToState();
+          const i = Number(btn.dataset.trDel);
+          TRACKERS.splice(i, 1);
+          render();
+          openTrackersSettings();
+        });
+      });
+
+      body.querySelectorAll('[data-tr-type]').forEach(sel => {
+        sel.addEventListener('change', () => {
+          syncTrackerInputsToState();
+          const i = Number(sel.dataset.trType);
+          const tr = TRACKERS[i];
+          if (!tr) return;
+          tr.type = sel.value;
+          if (tr.type === 'checks') {
+            tr.items = tr.items && tr.items.length ? tr.items : ['الصباح', 'المساء'];
+            tr.done = tr.done || [];
+          } else {
+            tr.val = tr.val || 0;
+            tr.goal = tr.goal || 5;
+            tr.step = tr.step || 1;
+            tr.unit = tr.unit || '';
+          }
+          render();
+          openTrackersSettings();
+        });
+      });
+
+      const newTypeSel = document.getElementById('new-tr-type');
+      if (newTypeSel) {
+        newTypeSel.addEventListener('change', () => {
+          syncTrackerInputsToState();
+          newTrackerType = newTypeSel.value;
+          openTrackersSettings();
+        });
+      }
+
+      const addBtn = document.getElementById('add-new-tr-btn');
+      if (addBtn) {
+        addBtn.addEventListener('click', () => {
+          syncTrackerInputsToState();
+          const name = (document.getElementById('new-tr-name')?.value || '').trim();
+          if (!name) return;
+          const color = PALETTE[TRACKERS.length % PALETTE.length];
+          if (newTrackerType === 'counter') {
+            const step = Math.max(1, parseMins(document.getElementById('new-tr-step')?.value || '1'));
+            const goal = Math.max(1, parseMins(document.getElementById('new-tr-goal')?.value || '5'));
+            const unit = (document.getElementById('new-tr-unit')?.value || '').trim();
+            TRACKERS.push({ id: 'trk_' + Date.now(), name, type: 'counter', val: 0, goal, step, unit, color });
+          } else {
+            const raw = (document.getElementById('new-tr-items')?.value || '').split(/[،,]+/).map(s => s.trim()).filter(Boolean);
+            const items = raw.length > 0 ? raw : ['تم'];
+            TRACKERS.push({ id: 'trk_' + Date.now(), name, type: 'checks', items, done: [], color });
+          }
+          render();
+          openTrackersSettings();
+        });
+      }
+
+      document.getElementById('modal-trackers-settings').classList.remove('hidden');
+    }
+
+    document.getElementById('open-trackers-settings-btn-2').addEventListener('click', openTrackersSettings);
+    document.getElementById('close-trackers-settings').addEventListener('click', () => {
+      document.getElementById('modal-trackers-settings').classList.add('hidden');
+    });
+
+    document.getElementById('save-trackers-settings').addEventListener('click', () => {
+      syncTrackerInputsToState();
       document.getElementById('modal-trackers-settings').classList.add('hidden');
       render();
     });
@@ -2193,7 +2545,7 @@
         <div style="direction:rtl; font-family:system-ui, sans-serif; padding:24px; color:#111;">
           <h1 style="text-align:center; font-size:18px; margin-bottom:20px;">تقرير سجل العدادات اليومية</h1>
           ${allDays.map(day => `
-            <div style="border:1px solid #ddd; border-radius:8px; padding:12px; margin-bottom:16px;">
+            <div style="border:1px solid #ddd; border-radius:8px; padding:12px; margin-bottom:16px; page-break-inside:avoid;">
               <h3 style="margin:0 0 10px 0; font-size:14px; color:#15803d;">${day.label}</h3>
               <table style="width:100%; border-collapse:collapse; font-size:13px;">
                 ${(day.trackers || []).map(t => `
@@ -2215,8 +2567,8 @@
     render();
     setInterval(updateHourClock, 15000);
     setInterval(() => {
-      checkAndApplyDaily3AMReset(state);
-    }, 60000);
+      if (checkAndApplyDaily3AMReset(state)) render();
+    }, 30000);
   </script>
 </body>
 </html>
