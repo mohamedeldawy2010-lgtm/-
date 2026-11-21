@@ -132,19 +132,29 @@
       margin-bottom: 8px;
     }
     h1 {
-      font-size: 17px;
+      font-size: 15.5px;
       margin: 0;
       font-weight: 800;
       letter-spacing: -0.02em;
+      white-space: nowrap;
     }
     .time-badge {
       background: var(--red-soft);
       color: var(--red);
-      padding: 5px 14px;
+      padding: 4px 10px;
       border-radius: 999px;
-      font-size: 12.5px;
+      font-size: 11.5px;
       font-weight: 800;
       border: 1px solid rgba(235, 77, 75, 0.2);
+      white-space: nowrap;
+    }
+    .meta-strip {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 12px;
+      flex-wrap: wrap;
     }
     .sub-stats {
       font-size: 13px;
@@ -313,6 +323,80 @@
     .task-row:hover {
       background: var(--item-hover);
       border-color: rgba(79, 117, 255, 0.35);
+    }
+    /* Unified Task Row with Inline Bar & Swipe Actions */
+    .swipe-wrap {
+      position: relative;
+      overflow: hidden;
+      border-radius: 15px;
+      border: 1px solid var(--border);
+      background: var(--card-muted);
+    }
+    .swipe-wrap.is-dragging {
+      opacity: 0.92;
+      transition: none !important;
+      box-shadow: 0 10px 26px rgba(15, 23, 42, 0.18);
+      border-color: var(--blue);
+    }
+    .swipe-actions {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 0;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 0 10px;
+      background: var(--card-muted);
+      z-index: 1;
+    }
+    .swipe-content {
+      position: relative;
+      z-index: 2;
+      background: var(--item);
+      padding: 11px 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 7px;
+      transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+      user-select: none;
+    }
+    .swipe-wrap.is-swiping .swipe-content {
+      transition: none !important;
+    }
+    .unified-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      min-width: 0;
+    }
+    .unified-bar-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-right: 26px;
+    }
+    .unified-bar-track {
+      flex: 1;
+      height: 7px;
+      background: var(--card-muted);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+    .unified-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+    .free-summary-row {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 9px 12px;
+      border-radius: 13px;
+      background: var(--item);
+      border: 1px dashed var(--border);
+      opacity: 0.85;
     }
     .task-row.is-completing {
       opacity: 0.45;
@@ -893,10 +977,10 @@
 
     <!-- 1. LIVE VIEW (الساعة الحالية) -->
     <div id="view-live" class="container" style="margin:0; gap:14px;">
-      <!-- Card 1: Hour Allocation -->
+      <!-- Unified Card: Hour Allocation + Bar + Checklist (Swipe left/right for actions) -->
       <div class="card">
-        <div class="header-row">
-          <div style="display:flex; align-items:center; gap:10px;">
+        <div class="header-row" style="flex-wrap:nowrap; gap:8px;">
+          <div style="display:flex; align-items:center; gap:8px; min-width:0;">
             <button type="button" class="inbox-mini-btn" id="open-inbox-modal-btn" title="صندوق المهام (Inbox)">
               <span class="inbox-mini-circle">📥</span>
               <span class="inbox-mini-count" id="inbox-launcher-pill">٠</span>
@@ -905,15 +989,13 @@
           </div>
           <div class="time-badge" id="remaining-badge">٦٠ دقيقة فراغ</div>
         </div>
-        <div class="sub-stats" id="sub-stats">مفيش مهام حالياً</div>
-        <div class="hour-clock" id="hour-clock-hint"></div>
+        <div class="meta-strip">
+          <div class="sub-stats" id="sub-stats" style="margin:0;">مفيش مهام حالياً</div>
+          <div class="hour-clock" id="hour-clock-hint" style="margin:0;"></div>
+        </div>
 
         <div class="stacked-bar" id="stacked-bar"></div>
-        <div class="bars-list" id="bars-list"></div>
-      </div>
 
-      <!-- Card 3: Checklist & Direct Task Addition -->
-      <div class="card">
         <div class="task-list" id="task-list"></div>
 
         <form class="add-bar" id="add-form">
@@ -1140,7 +1222,7 @@
       const nextHour24 = (now.getHours() + 1) % 24;
       const ampm = nextHour24 >= 12 ? 'م' : 'ص';
       const nextHour12 = nextHour24 % 12 || 12;
-      el.textContent = `الوقت الفعلي: باقي ${toAr(minsLeft)} د على الساعة ${toAr(nextHour12)}:٠٠ ${ampm}`;
+      el.textContent = `باقي ${toAr(minsLeft)} د على ${toAr(nextHour12)}:٠٠ ${ampm}`;
     }
 
     function formatCompletedTime(ts) {
@@ -1317,6 +1399,7 @@
     let movingInboxId = null;
     let addingToInboxSecId = null;
     let editingRoutineId = null;
+    let swipedTaskId = null;
     let movingRoutineId = null;
     let addingToRoutineSecId = null;
     let colorIdx = TASKS.length;
@@ -2219,7 +2302,6 @@
       const badgeEl = document.getElementById('remaining-badge');
       const statsEl = document.getElementById('sub-stats');
       const stackedEl = document.getElementById('stacked-bar');
-      const barsEl = document.getElementById('bars-list');
       const listEl = document.getElementById('task-list');
 
 
@@ -2234,57 +2316,60 @@
         statsEl.textContent = `المهام الحالية: ${toAr(TASKS.length)}${overNote}`;
       }
 
-      const graphSum = displayItems.reduce((s, t) => s + t.mins, 0);
-      if (graphSum === 0) {
-        stackedEl.innerHTML = '';
-        barsEl.innerHTML = '<div class="empty-msg">مفيش مهام حالياً.</div>';
-      } else {
-        stackedEl.innerHTML = displayItems.map(t => {
-          const pct = (t.mins / graphSum) * 100;
-          return `<div class="stacked-seg" style="width:${pct}%; background:${t.color};" title="${t.label}"></div>`;
-        }).join('');
+      const graphSum = Math.max(60, displayItems.reduce((s, t) => s + t.mins, 0));
+      stackedEl.innerHTML = displayItems.map(t => {
+        const pct = (t.mins / graphSum) * 100;
+        return `<div class="stacked-seg" style="width:${pct}%; background:${t.color};" title="${t.label}"></div>`;
+      }).join('');
 
-        const peak = Math.max(...displayItems.map(t => t.mins));
-        barsEl.innerHTML = displayItems.map(t => {
-          const w = (t.mins / peak) * 100;
-          return `
-            <div class="bar-row">
-              <div class="bar-mins">${toAr(t.mins)} د</div>
-              <div class="bar-track">
-                <div class="bar-fill" style="width:${w}%; background:${t.color};"></div>
-              </div>
-              <div class="bar-label">${t.label}</div>
-            </div>
-          `;
-        }).join('');
-      }
+      const freeRowHtml = freeMins > 0 ? `
+        <div class="free-summary-row">
+          <span class="bar-label" style="color:var(--muted); max-width:none;">وقت فراغ</span>
+          <div class="unified-bar-track">
+            <div class="unified-bar-fill" style="width:${(freeMins / graphSum) * 100}%; background:var(--bar-slate);"></div>
+          </div>
+          <span class="bar-mins">${toAr(freeMins)} د</span>
+        </div>
+      ` : '';
 
-      listEl.innerHTML = TASKS.length === 0
+      listEl.innerHTML = (TASKS.length === 0
         ? '<div class="empty-msg is-done">كل المهام خلصت! تقدر تضيف مهمة جديدة من تحت أو تسحب من الـ Inbox أو الـ Routine.</div>'
         : TASKS.map((t, idx) => {
             const durClass = t.running ? 'is-running' : (t.remainingSec === 0 ? 'is-finished' : '');
             const prioBorder = t.priorityColor ? `border-right: 4px solid ${t.priorityColor};` : '';
+            const barPct = Math.min(100, (t.mins / graphSum) * 100);
+            const isSwiped = swipedTaskId === t.id;
             return `
-              <div class="task-row ${t.completing ? 'is-completing' : ''}" style="${prioBorder}" data-live-idx="${idx}">
-                <span class="drag-handle" data-drag-idx="${idx}" title="اسحب للترتيب">⋮⋮</span>
-                <div class="task-circle" data-check="${t.id}" title="اضغط هنا لإنهاء المهمة">
-                  <svg viewBox="0 0 16 16" width="14" height="14">
-                    <path d="M3.2 8.4 L6.4 11.6 L12.8 4.4" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
-                  </svg>
-                </div>
-                <span class="color-dot" style="background:${t.color};"></span>
-                <div class="task-info">
-                  <span class="task-title">${t.label}</span>
-                  <span class="task-dur ${durClass}" id="dur-${t.id}">${formatDuration(t)}</span>
-                </div>
-                <div class="row-actions">
-                  <button type="button" class="icon-btn" data-to-inbox="${t.id}" title="تحويل للـ Inbox">للـ Inbox</button>
+              <div class="swipe-wrap ${t.completing ? 'is-completing' : ''}" style="${prioBorder}" data-live-idx="${idx}" data-task-id="${t.id}">
+                <div class="swipe-actions">
                   <button type="button" class="timer-btn ${t.running ? 'is-stop' : ''}" data-timer="${t.id}">${t.running ? 'إيقاف' : 'بدء'}</button>
+                  <button type="button" class="icon-btn" data-to-inbox="${t.id}" title="تحويل للـ Inbox">للـ Inbox</button>
                   <button type="button" class="icon-btn del" data-del-live="${t.id}" title="حذف">×</button>
+                </div>
+                <div class="swipe-content" style="transform: translate3d(${isSwiped ? '176px' : '0px'}, 0, 0);">
+                  <div class="unified-top">
+                    <span class="drag-handle" data-drag-idx="${idx}" title="اسحب للترتيب">⋮⋮</span>
+                    <div class="task-circle" data-check="${t.id}" title="اضغط هنا لإنهاء المهمة">
+                      <svg viewBox="0 0 16 16" width="14" height="14">
+                        <path d="M3.2 8.4 L6.4 11.6 L12.8 4.4" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                      </svg>
+                    </div>
+                    <span class="color-dot" style="background:${t.color};"></span>
+                    <div class="task-info">
+                      <span class="task-title">${t.label}</span>
+                      ${t.running ? `<button type="button" class="timer-btn is-stop" data-timer="${t.id}" style="padding:2px 8px; font-size:11px;">إيقاف</button>` : ''}
+                      <span class="task-dur ${durClass}" id="dur-${t.id}">${formatDuration(t)}</span>
+                    </div>
+                  </div>
+                  <div class="unified-bar-row">
+                    <div class="unified-bar-track">
+                      <div class="unified-bar-fill" style="width:${barPct}%; background:${t.color};"></div>
+                    </div>
+                  </div>
                 </div>
               </div>
             `;
-          }).join('');
+          }).join('')) + freeRowHtml;
 
       updateHourClock();
       renderTrackersRoutineView();
@@ -2421,7 +2506,7 @@
 
       function updateDragPosition(clientY) {
         if (activeDragIdx === null || !dragSrcRow) return;
-        const rows = Array.from(listEl.querySelectorAll('.task-row'));
+        const rows = Array.from(listEl.querySelectorAll('.swipe-wrap'));
 
         // Check swap with previous row (moving up)
         if (activeDragIdx > 0) {
@@ -2442,7 +2527,7 @@
         }
 
         // Check swap with next row (moving down)
-        const updatedRows = Array.from(listEl.querySelectorAll('.task-row'));
+        const updatedRows = Array.from(listEl.querySelectorAll('.swipe-wrap'));
         if (activeDragIdx < updatedRows.length - 1) {
           const nextRow = updatedRows[activeDragIdx + 1];
           const nextRect = nextRow.getBoundingClientRect();
@@ -2486,7 +2571,7 @@
           activeDragIdx = Number(handle.dataset.dragIdx);
           activeDropIdx = activeDragIdx;
           dragStartY = e.touches[0].clientY;
-          dragSrcRow = handle.closest('.task-row');
+          dragSrcRow = handle.closest('.swipe-wrap');
           if (dragSrcRow) {
             dragSrcRow.classList.add('is-dragging');
             dragSrcRow.style.zIndex = '20';
@@ -2509,7 +2594,7 @@
           activeDragIdx = Number(handle.dataset.dragIdx);
           activeDropIdx = activeDragIdx;
           dragStartY = e.clientY;
-          dragSrcRow = handle.closest('.task-row');
+          dragSrcRow = handle.closest('.swipe-wrap');
           if (dragSrcRow) {
             dragSrcRow.classList.add('is-dragging');
             dragSrcRow.style.zIndex = '20';
@@ -2523,6 +2608,91 @@
           };
           document.addEventListener('mousemove', onMouseMove);
           document.addEventListener('mouseup', onMouseUp);
+        });
+      });
+
+      // Horizontal swipe to reveal actions (بدء / للـ Inbox / ×)
+      listEl.querySelectorAll('.swipe-wrap').forEach(wrap => {
+        const content = wrap.querySelector('.swipe-content');
+        const tId = Number(wrap.dataset.taskId);
+        if (!content) return;
+
+        let sX = 0, sY = 0, baseOffset = 0, swiping = false, lockChecked = false;
+
+        function onStart(cx, cy, target) {
+          if (target.closest('.drag-handle') || target.closest('.task-circle') || target.closest('button')) return false;
+          sX = cx;
+          sY = cy;
+          baseOffset = (swipedTaskId === tId) ? 176 : 0;
+          swiping = false;
+          lockChecked = false;
+          return true;
+        }
+
+        function onMove(cx, cy, ev) {
+          const dx = cx - sX;
+          const dy = cy - sY;
+          if (!lockChecked) {
+            if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+            lockChecked = true;
+            if (Math.abs(dx) > Math.abs(dy)) {
+              swiping = true;
+              wrap.classList.add('is-swiping');
+            }
+          }
+          if (swiping) {
+            if (ev && ev.cancelable) ev.preventDefault();
+            const nextX = Math.max(0, Math.min(186, baseOffset + dx));
+            content.style.transform = `translate3d(${nextX}px, 0, 0)`;
+          }
+        }
+
+        function onEnd(cx) {
+          wrap.classList.remove('is-swiping');
+          if (!swiping) return;
+          const dx = cx - sX;
+          const finalX = baseOffset + dx;
+          if (finalX > 65) {
+            swipedTaskId = tId;
+            content.style.transform = 'translate3d(176px, 0, 0)';
+            listEl.querySelectorAll('.swipe-wrap').forEach(other => {
+              if (other !== wrap) {
+                const oc = other.querySelector('.swipe-content');
+                if (oc) oc.style.transform = 'translate3d(0px, 0, 0)';
+              }
+            });
+          } else {
+            if (swipedTaskId === tId) swipedTaskId = null;
+            content.style.transform = 'translate3d(0px, 0, 0)';
+          }
+          swiping = false;
+        }
+
+        content.addEventListener('touchstart', e => {
+          if (!e.touches || !e.touches[0]) return;
+          onStart(e.touches[0].clientX, e.touches[0].clientY, e.target);
+        }, { passive: true });
+
+        content.addEventListener('touchmove', e => {
+          if (!e.touches || !e.touches[0]) return;
+          onMove(e.touches[0].clientX, e.touches[0].clientY, e);
+        }, { passive: false });
+
+        content.addEventListener('touchend', e => {
+          const cx = (e.changedTouches && e.changedTouches[0]) ? e.changedTouches[0].clientX : sX;
+          onEnd(cx);
+        });
+
+        content.addEventListener('mousedown', e => {
+          if (!onStart(e.clientX, e.clientY, e.target)) return;
+          const mm = ev => onMove(ev.clientX, ev.clientY, ev);
+          const mu = ev => {
+            document.removeEventListener('mousemove', mm);
+            document.removeEventListener('mouseup', mu);
+            onEnd(ev.clientX);
+          };
+          document.addEventListener('mousemove', mm);
+          document.addEventListener('mouseup', mu);
         });
       });
 
