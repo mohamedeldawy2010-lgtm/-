@@ -1415,6 +1415,7 @@
     let editingRoutineId = null;
     let swipedTaskId = null;
     let movingLiveToInboxId = null;
+    let editingLiveTaskId = null;
     let swipedInboxId = null;
     let swipedRoutineId = null;
     let movingRoutineId = null;
@@ -2469,7 +2470,7 @@
                         </svg>
                       </div>
                       <span class="color-dot" style="background:${t.color};"></span>
-                      <div class="task-info">
+                      <div class="task-info" data-edit-live="${t.id}" style="cursor:pointer;" title="اضغط لتعديل الاسم أو الوقت">
                         <span class="task-title">${t.label}</span>
                         ${t.running ? `<button type="button" class="timer-btn is-stop" data-timer="${t.id}" style="padding:2px 8px; font-size:11px;">إيقاف</button>` : ''}
                         <span class="task-dur ${durClass}" id="dur-${t.id}">${formatDuration(t)}</span>
@@ -2482,6 +2483,14 @@
                     </div>
                   </div>
                 </div>
+                ${editingLiveTaskId === t.id ? `
+                  <div class="promote-box" style="padding:8px 10px; background:var(--item); border-radius:12px; border:1px solid var(--border); margin-top:0;">
+                    <input type="text" class="input-field input-name" id="edit-live-name-${t.id}" value="${t.label}" placeholder="اسم المهمة">
+                    <input type="text" inputmode="numeric" class="input-field input-mins" id="edit-live-mins-${t.id}" value="" placeholder="${toAr(t.mins)} د">
+                    <button type="button" class="timer-btn" data-save-live="${t.id}">حفظ</button>
+                    <button type="button" class="icon-btn" data-cancel-live-edit="1">إلغاء</button>
+                  </div>
+                ` : ''}
                 ${movingLiveToInboxId === t.id ? `
                   <div class="promote-box" style="padding:8px 10px; background:var(--item); border-radius:12px; border:1px solid var(--border); margin-top:0;">
                     <span class="max-hint">نقل إلى Inbox:</span>
@@ -2828,6 +2837,51 @@
           };
           document.addEventListener('mousemove', mm);
           document.addEventListener('mouseup', mu);
+        });
+      });
+
+      // Tap on Live Hour task to edit name & duration (capped at 60 mins total)
+      listEl.querySelectorAll('[data-edit-live]').forEach(el => {
+        el.addEventListener('click', e => {
+          if (e.target.closest('button')) return;
+          const id = Number(el.dataset.editLive);
+          if (swipedTaskId === id) {
+            swipedTaskId = null;
+            render();
+            return;
+          }
+          movingLiveToInboxId = null;
+          editingLiveTaskId = (editingLiveTaskId === id) ? null : id;
+          render();
+        });
+      });
+
+      listEl.querySelectorAll('[data-save-live]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const id = Number(btn.dataset.saveLive);
+          const task = TASKS.find(x => x.id === id);
+          if (!task) return;
+          const nameInp = document.getElementById(`edit-live-name-${id}`);
+          const minsInp = document.getElementById(`edit-live-mins-${id}`);
+          if (nameInp && nameInp.value.trim()) task.label = nameInp.value.trim();
+          const rawMins = parseMins(minsInp ? minsInp.value : '');
+          if (rawMins > 0) {
+            const otherMins = TASKS.reduce((s, x) => x.id === id ? s : s + x.mins, 0);
+            const maxAllowed = Math.max(1, 60 - otherMins);
+            task.mins = Math.min(maxAllowed, rawMins);
+            if (!task.running) task.remainingSec = task.mins * 60;
+          }
+          editingLiveTaskId = null;
+          render();
+        });
+      });
+
+      listEl.querySelectorAll('[data-cancel-live-edit]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          editingLiveTaskId = null;
+          render();
         });
       });
 
