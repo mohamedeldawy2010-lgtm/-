@@ -404,11 +404,10 @@
       display: flex;
       align-items: center;
       gap: 10px;
-      padding: 9px 12px;
-      border-radius: 13px;
-      background: var(--item);
-      border: 1px dashed var(--border);
-      opacity: 0.85;
+      padding: 10px 14px;
+      border-radius: 14px;
+      background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(56, 189, 248, 0.12));
+      border: 1px solid rgba(16, 185, 129, 0.32);
     }
     .task-row.is-completing, .swipe-wrap.is-completing {
       opacity: 0.45;
@@ -1415,6 +1414,7 @@
     let addingToInboxSecId = null;
     let editingRoutineId = null;
     let swipedTaskId = null;
+    let movingLiveToInboxId = null;
     let swipedInboxId = null;
     let swipedRoutineId = null;
     let movingRoutineId = null;
@@ -2409,7 +2409,7 @@
 
       const displayItems = [...TASKS];
       if (freeMins > 0) {
-        displayItems.push({ id: 'free', label: 'وقت فراغ', mins: freeMins, color: 'var(--bar-slate)', isFree: true });
+        displayItems.push({ id: 'free', label: 'وقت فراغ', mins: freeMins, color: 'linear-gradient(90deg, #34d399, #38bdf8)', isFree: true });
       }
 
       const badgeEl = document.getElementById('remaining-badge');
@@ -2437,11 +2437,11 @@
 
       const freeRowHtml = freeMins > 0 ? `
         <div class="free-summary-row">
-          <span class="bar-label" style="color:var(--muted); max-width:none;">وقت فراغ</span>
-          <div class="unified-bar-track">
-            <div class="unified-bar-fill" style="width:${(freeMins / graphSum) * 100}%; background:var(--bar-slate);"></div>
+          <span class="bar-label" style="color:var(--green); max-width:none;">✨ وقت فراغ</span>
+          <div class="unified-bar-track" style="background:rgba(16, 185, 129, 0.15);">
+            <div class="unified-bar-fill" style="width:${(freeMins / graphSum) * 100}%; background:linear-gradient(90deg, #34d399, #38bdf8);"></div>
           </div>
-          <span class="bar-mins">${toAr(freeMins)} د</span>
+          <span class="bar-mins" style="color:var(--green); font-weight:800;">${toAr(freeMins)} د</span>
         </div>
       ` : '';
 
@@ -2453,33 +2453,46 @@
             const barPct = Math.min(100, (t.mins / graphSum) * 100);
             const isSwiped = swipedTaskId === t.id;
             return `
-              <div class="swipe-wrap ${t.completing ? 'is-completing' : ''}" style="${prioBorder}" data-live-idx="${idx}" data-task-id="${t.id}">
-                <div class="swipe-actions">
-                  <button type="button" class="timer-btn ${t.running ? 'is-stop' : ''}" data-timer="${t.id}">${t.running ? 'إيقاف' : 'بدء'}</button>
-                  <button type="button" class="icon-btn" data-to-inbox="${t.id}" title="تحويل للـ Inbox">للـ Inbox</button>
-                  <button type="button" class="icon-btn del" data-del-live="${t.id}" title="حذف">×</button>
-                </div>
-                <div class="swipe-content" style="transform: translate3d(${isSwiped ? '176px' : '0px'}, 0, 0);">
-                  <div class="unified-top">
-                    <span class="drag-handle" data-drag-idx="${idx}" title="اسحب للترتيب">⋮⋮</span>
-                    <div class="task-circle" data-check="${t.id}" title="اضغط هنا لإنهاء المهمة">
-                      <svg viewBox="0 0 16 16" width="14" height="14">
-                        <path d="M3.2 8.4 L6.4 11.6 L12.8 4.4" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
-                      </svg>
+              <div class="inbox-item-outer" data-live-idx="${idx}">
+                <div class="swipe-wrap ${t.completing ? 'is-completing' : ''}" style="${prioBorder}" data-task-id="${t.id}">
+                  <div class="swipe-actions">
+                    <button type="button" class="timer-btn ${t.running ? 'is-stop' : ''}" data-timer="${t.id}">${t.running ? 'إيقاف' : 'بدء'}</button>
+                    <button type="button" class="icon-btn" data-to-inbox="${t.id}" title="تحويل للـ Inbox">للـ Inbox</button>
+                    <button type="button" class="icon-btn del" data-del-live="${t.id}" title="حذف">×</button>
+                  </div>
+                  <div class="swipe-content" style="transform: translate3d(${isSwiped ? '176px' : '0px'}, 0, 0);">
+                    <div class="unified-top">
+                      <span class="drag-handle" data-drag-idx="${idx}" title="اسحب للترتيب">⋮⋮</span>
+                      <div class="task-circle" data-check="${t.id}" title="اضغط هنا لإنهاء المهمة">
+                        <svg viewBox="0 0 16 16" width="14" height="14">
+                          <path d="M3.2 8.4 L6.4 11.6 L12.8 4.4" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                        </svg>
+                      </div>
+                      <span class="color-dot" style="background:${t.color};"></span>
+                      <div class="task-info">
+                        <span class="task-title">${t.label}</span>
+                        ${t.running ? `<button type="button" class="timer-btn is-stop" data-timer="${t.id}" style="padding:2px 8px; font-size:11px;">إيقاف</button>` : ''}
+                        <span class="task-dur ${durClass}" id="dur-${t.id}">${formatDuration(t)}</span>
+                      </div>
                     </div>
-                    <span class="color-dot" style="background:${t.color};"></span>
-                    <div class="task-info">
-                      <span class="task-title">${t.label}</span>
-                      ${t.running ? `<button type="button" class="timer-btn is-stop" data-timer="${t.id}" style="padding:2px 8px; font-size:11px;">إيقاف</button>` : ''}
-                      <span class="task-dur ${durClass}" id="dur-${t.id}">${formatDuration(t)}</span>
+                    <div class="unified-bar-row">
+                      <div class="unified-bar-track">
+                        <div class="unified-bar-fill" style="width:${barPct}%; background:${t.color};"></div>
+                      </div>
                     </div>
                   </div>
-                  <div class="unified-bar-row">
-                    <div class="unified-bar-track">
-                      <div class="unified-bar-fill" style="width:${barPct}%; background:${t.color};"></div>
-                    </div>
-                  </div>
                 </div>
+                ${movingLiveToInboxId === t.id ? `
+                  <div class="promote-box" style="padding:8px 10px; background:var(--item); border-radius:12px; border:1px solid var(--border); margin-top:0;">
+                    <span class="max-hint">نقل إلى Inbox:</span>
+                    ${INBOX_SECTIONS.map(s => `
+                      <button type="button" class="chip-btn" data-confirm-to-inbox="${t.id}" data-target-sec="${s.id}">
+                        <span class="color-dot" style="background:${s.color || '#4f75ff'}; width:8px; height:8px;"></span> ${s.name}
+                      </button>
+                    `).join('')}
+                    <button type="button" class="icon-btn" data-cancel-to-inbox="1">إلغاء</button>
+                  </div>
+                ` : ''}
               </div>
             `;
           }).join('')) + freeRowHtml;
@@ -2628,7 +2641,7 @@
 
       function updateDragPosition(clientY) {
         if (activeDragIdx === null || !dragSrcRow) return;
-        const rows = Array.from(listEl.querySelectorAll('.swipe-wrap'));
+        const rows = Array.from(listEl.querySelectorAll('.inbox-item-outer'));
 
         // Check swap with previous row (moving up)
         if (activeDragIdx > 0) {
@@ -2649,7 +2662,7 @@
         }
 
         // Check swap with next row (moving down)
-        const updatedRows = Array.from(listEl.querySelectorAll('.swipe-wrap'));
+        const updatedRows = Array.from(listEl.querySelectorAll('.inbox-item-outer'));
         if (activeDragIdx < updatedRows.length - 1) {
           const nextRow = updatedRows[activeDragIdx + 1];
           const nextRect = nextRow.getBoundingClientRect();
@@ -2693,7 +2706,7 @@
           activeDragIdx = Number(handle.dataset.dragIdx);
           activeDropIdx = activeDragIdx;
           dragStartY = e.touches[0].clientY;
-          dragSrcRow = handle.closest('.swipe-wrap');
+          dragSrcRow = handle.closest('.inbox-item-outer');
           if (dragSrcRow) {
             dragSrcRow.classList.add('is-dragging');
             dragSrcRow.style.zIndex = '20';
@@ -2859,13 +2872,31 @@
         btn.addEventListener('click', e => {
           e.stopPropagation();
           const id = Number(btn.dataset.toInbox);
+          swipedTaskId = null;
+          movingLiveToInboxId = (movingLiveToInboxId === id) ? null : id;
+          render();
+        });
+      });
+
+      listEl.querySelectorAll('[data-confirm-to-inbox]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const id = Number(btn.dataset.confirmToInbox);
+          const targetSec = btn.dataset.targetSec;
           const idx = TASKS.findIndex(x => x.id === id);
           if (idx === -1) return;
-          swipedTaskId = null;
           const [moved] = TASKS.splice(idx, 1);
-          const targetSec = INBOX_SECTIONS[0] ? INBOX_SECTIONS[0].id : 'sec-1';
           INBOX.push({ id: moved.id, label: moved.label, sectionId: targetSec });
           openSections[targetSec] = true;
+          movingLiveToInboxId = null;
+          render();
+        });
+      });
+
+      listEl.querySelectorAll('[data-cancel-to-inbox]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          movingLiveToInboxId = null;
           render();
         });
       });
