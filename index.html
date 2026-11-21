@@ -1,101 +1,864 @@
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-  <title>منظم الساعات</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="مهام الساعة">
+  <title>مهام الساعة القادمة</title>
   <style>
     :root {
-      --bg: #0f1115;
-      --card: #181a20;
-      --card-border: #262a36;
-      --item: #22252e;
-      --item-hover: #2a2e39;
-      --text: #f3f4f6;
-      --muted: #9ca3af;
-      --border: #2d313d;
-      --red: #ef4444;
-      --red-soft: #3f1515;
-      --blue: #3b82f6;
-      --blue-soft: #1d283a;
-      --green: #22c55e;
-      --green-soft: #143320;
-      --toast-bg: #2a2e39;
-      --toast-text: #f3f4f6;
+      --bg: #f4f6fa;
+      --card: #ffffff;
+      --card-muted: #edf1f7;
+      --item: #f8fafc;
+      --item-hover: #eef2f7;
+      --text: #0f172a;
+      --text-soft: #334155;
+      --muted: #64748b;
+      --border: #dbe2ea;
+      --border-focus: #4f75ff;
+      --red: #eb4d4b;
+      --red-soft: #fee2e2;
+      --blue: #3b66f5;
+      --blue-soft: #e8edff;
+      --amber: #f59e0b;
+      --green: #10b981;
+      --green-soft: #d1fae5;
+      --toast-bg: #0f172a;
+      --toast-text: #f8fafc;
+      --bar-slate: #64748b;
+      --card-shadow: 0 4px 16px -2px rgba(15, 23, 42, 0.05), 0 1px 3px rgba(15, 23, 42, 0.04);
+      --card-border: 1px solid var(--border);
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #0a0c10;
+        --card: #131720;
+        --card-muted: #1a202c;
+        --item: #1b212d;
+        --item-hover: #232b3a;
+        --text: #f1f5f9;
+        --text-soft: #cbd5e1;
+        --muted: #8b99ae;
+        --border: #262e3d;
+        --border-focus: #5d82f7;
+        --red: #ef5350;
+        --red-soft: #351a1d;
+        --blue: #4f77f7;
+        --blue-soft: #141e38;
+        --amber: #f59e0b;
+        --green: #22c55e;
+        --green-soft: #0d281a;
+        --toast-bg: #19202c;
+        --toast-text: #f8fafc;
+        --bar-slate: #475569;
+        --card-shadow: 0 8px 24px -4px rgba(0, 0, 0, 0.45);
+        --card-border: 1px solid rgba(255, 255, 255, 0.08);
+      }
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
-      padding: env(safe-area-inset-top, 16px) 16px calc(60px + env(safe-area-inset-bottom, 0px));
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+      padding: env(safe-area-inset-top, 16px) 16px calc(76px + env(safe-area-inset-bottom, 0px));
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", system-ui, sans-serif;
       background: var(--bg);
       color: var(--text);
-      -webkit-font-smoothing: antialiased;
+      -webkit-tap-highlight-color: transparent;
+      letter-spacing: -0.01em;
     }
-    .container { max-width: 600px; margin: 0 auto; display: flex; flex-direction: column; gap: 12px; }
-    .tabs-bar { display: flex; gap: 8px; background: var(--card); padding: 5px; border-radius: 14px; border: 1px solid var(--card-border); }
-    .tab-btn { flex: 1; padding: 10px; border: none; background: transparent; color: var(--muted); font-size: 14px; font-weight: 700; border-radius: 10px; cursor: pointer; transition: 0.2s; font-family: inherit; }
-    .tab-btn.is-active { background: var(--blue); color: #ffffff; }
-    .card { background: var(--card); border: 1px solid var(--card-border); border-radius: 16px; padding: 14px; box-shadow: 0 4px 16px rgba(0,0,0,0.25); display: flex; flex-direction: column; gap: 10px; }
-    .header-row { display: flex; justify-content: space-between; align-items: center; }
-    h1 { font-size: 16px; margin: 0; font-weight: 800; }
-    .time-badge { font-size: 13px; font-weight: 700; color: #ffffff; background: var(--blue); padding: 4px 10px; border-radius: 20px; }
-    .sub-stats { font-size: 13px; color: var(--muted); }
-    .hour-clock { font-size: 12px; color: var(--muted); }
-    .stacked-bar { display: flex; height: 16px; border-radius: 8px; overflow: hidden; background: var(--item); border: 1px solid var(--border); }
-    .task-list { display: flex; flex-direction: column; gap: 8px; }
-    .task-item { display: flex; align-items: center; justify-content: space-between; background: var(--item); padding: 9px 12px; border-radius: 12px; border: 1px solid var(--border); gap: 8px; }
-    .task-meta { display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; }
-    .task-chk { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--muted); display: inline-flex; align-items: center; justify-content: center; cursor: pointer; flex-shrink: 0; }
-    .task-title { font-size: 15px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    .add-bar { display: flex; gap: 8px; margin-top: 4px; }
-    input, select, textarea { font-size: 16px !important; font-family: inherit; }
-    .input-field { background: var(--item); border: 1px solid var(--border); color: var(--text); border-radius: 10px; padding: 9px 12px; outline: none; }
-    .input-name { flex: 1; }
-    .input-mins { width: 75px; text-align: center; }
-    .add-btn { background: var(--blue); color: #fff; border: none; border-radius: 10px; padding: 0 16px; font-weight: 700; cursor: pointer; font-family: inherit; }
-    .icon-btn { background: var(--item); border: 1px solid var(--border); color: var(--text); border-radius: 8px; padding: 6px 10px; font-size: 13px; cursor: pointer; font-family: inherit; }
-    .icon-btn.del { color: var(--red); }
-    .timer-btn { background: var(--blue-soft); border: 1px solid var(--blue); color: #fff; border-radius: 8px; padding: 6px 12px; font-size: 13px; cursor: pointer; font-weight: 600; font-family: inherit; }
-    .inbox-modal-btn { width: 100%; padding: 12px 14px; font-weight: 700; font-size: 15px; border-radius: 12px; background: var(--item); border: 1px solid var(--border); color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: space-between; font-family: inherit; }
-    .footer-actions { display: flex; gap: 8px; justify-content: center; margin-top: 14px; }
-    .copy-btn { background: var(--item); border: 1px solid var(--border); color: var(--muted); border-radius: 10px; padding: 8px 14px; font-size: 13px; cursor: pointer; font-family: inherit; }
-    .prio-group { background: var(--card); border: 1px solid var(--card-border); border-radius: 16px; overflow: hidden; }
-    .prio-group-header { display: flex; align-items: center; justify-content: space-between; padding: 12px 14px; cursor: pointer; }
-    .prio-group-title { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 15px; }
-    .prio-group-right { display: flex; align-items: center; gap: 8px; }
-    .count-pill { font-size: 12px; padding: 2px 8px; border-radius: 12px; background: var(--item); color: var(--muted); font-weight: 600; }
-    .trackers-compact-list { display: flex; flex-direction: column; gap: 8px; padding: 0 14px 14px; }
-    .tracker-row { display: flex; align-items: center; justify-content: space-between; background: var(--item); border: 1px solid var(--border); padding: 8px 10px; border-radius: 12px; gap: 8px; }
-    .tracker-left { display: flex; align-items: center; gap: 10px; min-width: 0; }
-    .ring-wrap { position: relative; width: 38px; height: 38px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
-    .ring-text { position: absolute; font-size: 10px; font-weight: 800; color: var(--text); }
-    .tracker-name { font-size: 14px; font-weight: 700; }
-    .tracker-val { font-size: 11px; color: var(--muted); }
-    .tracker-val.is-goal { color: var(--green); font-weight: 700; }
-    .tracker-actions { display: flex; gap: 5px; flex-wrap: wrap; justify-content: flex-end; }
-    .pill-btn { background: var(--card); border: 1px solid var(--border); color: var(--text); border-radius: 7px; padding: 5px 9px; font-size: 12px; font-weight: 600; cursor: pointer; font-family: inherit; }
-    .pill-btn.is-done { background: var(--green); border-color: var(--green); color: #fff; }
-    .pill-step { min-width: 44px; text-align: center; }
-    .settings-btn { border: 1px solid var(--border); background: var(--card); color: var(--muted); border-radius: 6px; padding: 3px 6px; font-size: 12px; cursor: pointer; margin-right: 6px; }
-    .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.7); backdrop-filter: blur(4px); display: flex; align-items: flex-end; z-index: 1000; }
-    .modal-sheet { background: var(--card); width: 100%; max-height: 85vh; border-radius: 20px 20px 0 0; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--card-border); }
-    .modal-head { display: flex; justify-content: space-between; align-items: center; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
-    .modal-title-wrap { display: flex; align-items: center; gap: 8px; }
-    .mini-gear-btn { background: var(--item); border: 1px solid var(--border); border-radius: 6px; font-size: 11px; padding: 4px 8px; cursor: pointer; color: var(--muted); font-family: inherit; }
-    .modal-close-btn { background: var(--item); border: 1px solid var(--border); color: var(--text); width: 28px; height: 28px; border-radius: 50%; font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+    .container {
+      max-width: 660px;
+      margin: 4px auto 0;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    /* Top Navigation Tabs */
+    .tabs-bar {
+      display: flex;
+      gap: 6px;
+      background: var(--card);
+      border: var(--card-border);
+      border-radius: 18px;
+      padding: 5px;
+      box-shadow: var(--card-shadow);
+    }
+    .tab-btn {
+      flex: 1;
+      border: none;
+      background: transparent;
+      color: var(--muted);
+      padding: 11px 14px;
+      border-radius: 14px;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+      white-space: nowrap;
+      text-align: center;
+    }
+    .tab-btn.is-active {
+      background: var(--red);
+      color: #ffffff;
+      box-shadow: 0 4px 12px rgba(235, 77, 75, 0.35);
+    }
+
+    /* Modern Card Layout */
+    .card {
+      background: var(--card);
+      border: var(--card-border);
+      border-radius: 20px;
+      padding: 18px 20px;
+      box-shadow: var(--card-shadow);
+      position: relative;
+    }
+    .header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    h1 {
+      font-size: 17px;
+      margin: 0;
+      font-weight: 800;
+      letter-spacing: -0.02em;
+    }
+    .time-badge {
+      background: var(--red-soft);
+      color: var(--red);
+      padding: 5px 14px;
+      border-radius: 999px;
+      font-size: 12.5px;
+      font-weight: 800;
+      border: 1px solid rgba(235, 77, 75, 0.2);
+    }
+    .sub-stats {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 4px;
+      font-weight: 500;
+    }
+    .hour-clock {
+      font-size: 12.5px;
+      color: var(--blue);
+      font-weight: 700;
+      margin-bottom: 14px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .graph-section-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      margin-bottom: 12px;
+      padding-bottom: 6px;
+      border-bottom: 1px dashed var(--border);
+    }
+    .stacked-bar {
+      display: flex;
+      height: 12px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: var(--card-muted);
+      gap: 2px;
+      margin-bottom: 16px;
+      padding: 2px;
+      border: 1px solid var(--border);
+    }
+    .stacked-seg {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.3s ease;
+    }
+    .bars-list {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .bar-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      background: var(--item);
+      padding: 8px 12px;
+      border-radius: 12px;
+      border: 1px solid var(--border);
+    }
+    .bar-label {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text);
+      white-space: nowrap;
+    }
+    .bar-track {
+      flex: 1;
+      height: 7px;
+      background: var(--card-muted);
+      border-radius: 999px;
+      overflow: hidden;
+      margin: 0 6px;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      transition: width 0.3s ease;
+      background: var(--bar-slate);
+    }
+    .bar-mins {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      white-space: nowrap;
+    }
+
+    /* Inbox Launcher Button */
+    .inbox-launcher-btn {
+      width: 100%;
+      border: var(--card-border);
+      background: linear-gradient(135deg, var(--card) 0%, var(--item) 100%);
+      color: var(--text);
+      padding: 14px 18px;
+      border-radius: 18px;
+      font-size: 14px;
+      font-weight: 800;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      font-family: inherit;
+      box-shadow: var(--card-shadow);
+      transition: all 0.2s ease;
+    }
+    .inbox-launcher-btn:hover {
+      transform: translateY(-1px);
+      border-color: var(--blue);
+    }
+    .inbox-launcher-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    /* Tasks Checklist */
+    .task-list {
+      display: flex;
+      flex-direction: column;
+      gap: 9px;
+    }
+    .task-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 11px 14px;
+      border-radius: 15px;
+      background: var(--item);
+      user-select: none;
+      transition: all 0.2s ease;
+      border: 1px solid var(--border);
+    }
+    .task-row:hover {
+      background: var(--item-hover);
+      border-color: rgba(79, 117, 255, 0.35);
+    }
+    .task-row.is-completing {
+      opacity: 0.45;
+    }
+    .task-circle {
+      width: 24px;
+      height: 24px;
+      border-radius: 8px;
+      border: 2px solid var(--muted);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      background: var(--card);
+    }
+    .task-circle:hover {
+      border-color: var(--green);
+      transform: scale(1.05);
+    }
+    .task-row.is-completing .task-circle {
+      background: var(--green);
+      border-color: var(--green);
+    }
+    .task-circle svg {
+      opacity: 0;
+      transform: scale(0.65);
+      transition: all 0.2s ease;
+    }
+    .task-row.is-completing .task-circle svg {
+      opacity: 1;
+      transform: scale(1);
+    }
+    .color-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 4px;
+      flex-shrink: 0;
+      display: inline-block;
+    }
+    .color-dot-clickable {
+      cursor: pointer;
+      transition: transform 0.2s ease;
+      border-radius: 50%;
+    }
+    .color-dot-clickable:hover {
+      transform: scale(1.3);
+    }
+    .task-info {
+      flex: 1;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      min-width: 90px;
+    }
+    .task-title {
+      font-size: 14px;
+      font-weight: 700;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text);
+    }
+    .task-row.is-completing .task-title {
+      text-decoration: line-through;
+      color: var(--muted);
+    }
+    .task-dur {
+      font-size: 11.5px;
+      color: var(--text-soft);
+      flex-shrink: 0;
+      font-variant-numeric: tabular-nums;
+      padding: 3px 9px;
+      border-radius: 8px;
+      font-weight: 800;
+      background: var(--card);
+      border: 1px solid var(--border);
+    }
+    .task-dur.is-running {
+      background: var(--red-soft);
+      color: var(--red);
+      border-color: rgba(235, 77, 75, 0.3);
+    }
+    .task-dur.is-finished {
+      background: var(--green-soft);
+      color: var(--green);
+      border-color: rgba(16, 185, 129, 0.3);
+    }
+    .row-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      flex-shrink: 0;
+    }
+    .icon-btn {
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      font-family: inherit;
+      font-weight: 700;
+      transition: all 0.15s ease;
+    }
+    .icon-btn:hover {
+      background: var(--item-hover);
+      border-color: var(--muted);
+    }
+    .icon-btn.del:hover {
+      color: var(--red);
+      border-color: var(--red);
+      background: var(--red-soft);
+    }
+    .timer-btn {
+      border: none;
+      border-radius: 10px;
+      padding: 6px 13px;
+      font-size: 12px;
+      font-weight: 800;
+      cursor: pointer;
+      font-family: inherit;
+      background: var(--blue);
+      color: #ffffff;
+      box-shadow: 0 2px 8px rgba(59, 102, 245, 0.25);
+      transition: all 0.15s ease;
+    }
+    .timer-btn:hover {
+      filter: brightness(1.08);
+    }
+    .timer-btn.is-stop {
+      background: var(--red);
+      box-shadow: 0 2px 8px rgba(235, 77, 75, 0.25);
+    }
+
+    /* Fixed iOS Zoom Issue: font-size 16px explicitly on inputs */
+    .add-bar {
+      display: flex;
+      gap: 8px;
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--border);
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .input-field {
+      border: 1px solid var(--border);
+      background: var(--bg);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 14px;
+      font-size: 16px; /* Prevents auto-zoom in iOS Safari */
+      font-family: inherit;
+      outline: none;
+      transition: all 0.2s ease;
+    }
+    .input-field:focus {
+      border-color: var(--border-focus);
+      box-shadow: 0 0 0 3px rgba(79, 117, 255, 0.15);
+      background: var(--card);
+    }
+    .input-name {
+      flex: 1;
+      min-width: 140px;
+    }
+    .mins-wrap {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .input-mins {
+      width: 76px;
+      text-align: center;
+      font-weight: 800;
+    }
+    .max-hint {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+    .add-btn {
+      background: var(--red);
+      color: #ffffff;
+      border: none;
+      border-radius: 12px;
+      padding: 10px 18px;
+      font-size: 18px;
+      font-weight: 800;
+      cursor: pointer;
+      font-family: inherit;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      box-shadow: 0 3px 10px rgba(235, 77, 75, 0.3);
+      transition: transform 0.15s ease;
+    }
+    .add-btn:active {
+      transform: scale(0.96);
+    }
+    .footer-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 8px;
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px dashed var(--border);
+      flex-wrap: wrap;
+    }
+    .copy-btn {
+      background: var(--item);
+      color: var(--text);
+      border: 1px solid var(--border);
+      border-radius: 11px;
+      padding: 8px 14px;
+      font-size: 12.5px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s ease;
+    }
+    .copy-btn:hover {
+      background: var(--item-hover);
+      border-color: var(--muted);
+    }
+    .copy-status {
+      font-size: 12px;
+      color: var(--green);
+      font-weight: 800;
+    }
+    .empty-msg {
+      text-align: center;
+      padding: 18px;
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--muted);
+      line-height: 1.5;
+      background: var(--item);
+      border-radius: 14px;
+      border: 1px dashed var(--border);
+    }
+    .empty-msg.is-done {
+      color: var(--green);
+      background: var(--green-soft);
+      border: 1px solid rgba(16, 185, 129, 0.25);
+    }
+
+    /* Accordion Groups (Daily Trackers / Completed) */
+    .prio-group {
+      border: var(--card-border);
+      border-radius: 20px;
+      overflow: hidden;
+      margin-bottom: 4px;
+      background: var(--card);
+      box-shadow: var(--card-shadow);
+    }
+    .prio-group-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 18px;
+      background: var(--card-muted);
+      border-bottom: 1px solid var(--border);
+      user-select: none;
+    }
+    .prio-group-title {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+      font-weight: 800;
+    }
+    .prio-group-right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .count-pill {
+      font-size: 12px;
+      font-weight: 800;
+      padding: 3px 11px;
+      border-radius: 999px;
+      background: var(--card);
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .gear-btn {
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--muted);
+      border-radius: 9px;
+      padding: 4px 8px;
+      font-size: 12px;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.15s ease;
+    }
+    .gear-btn:hover {
+      color: var(--text);
+      border-color: var(--muted);
+    }
+    .prio-group-body {
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: var(--card);
+    }
+
+    /* Trackers Cards - 2027 Minimal Grid */
+    .trackers-grid {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .tracker-card {
+      background: var(--item);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 8px 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      transition: border-color 0.15s ease;
+    }
+    .tracker-card:hover {
+      border-color: rgba(79, 117, 255, 0.3);
+    }
+    .tracker-main {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .tracker-header-inline {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    .tracker-title-row {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13.5px;
+      font-weight: 800;
+    }
+    .tracker-status-line {
+      font-size: 11.5px;
+      color: var(--muted);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+    }
+    .tracker-actions-row {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+    .chip-btn {
+      border: 1px solid var(--border);
+      background: var(--card);
+      color: var(--text);
+      border-radius: 7px;
+      padding: 3px 8px;
+      font-size: 11.5px;
+      font-weight: 700;
+      cursor: pointer;
+      font-family: inherit;
+      transition: all 0.15s ease;
+      line-height: 1.3;
+    }
+    .chip-btn:hover {
+      background: var(--item-hover);
+      border-color: var(--muted);
+    }
+    .chip-btn.is-active {
+      background: var(--green);
+      color: #ffffff;
+      border-color: var(--green);
+      box-shadow: 0 1px 4px rgba(16, 185, 129, 0.3);
+    }
+    .ring-wrap {
+      width: 38px;
+      height: 38px;
+      position: relative;
+      flex-shrink: 0;
+    }
+    .ring-svg {
+      transform: rotate(-90deg);
+      width: 38px;
+      height: 38px;
+    }
+    .ring-bg {
+      fill: none;
+      stroke: var(--card-muted);
+      stroke-width: 4;
+    }
+    .ring-bar {
+      fill: none;
+      stroke-width: 4;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.35s ease;
+    }
+    .ring-text {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 9.5px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    /* Completed section */
+    .today-summary {
+      font-size: 13px;
+      font-weight: 800;
+      color: var(--green);
+      background: var(--green-soft);
+      padding: 10px 14px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+    .completed-meta {
+      font-size: 12px;
+      color: var(--muted);
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    /* Modal Sheet Styling */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(5, 7, 11, 0.65);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 150;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+    }
+    .modal-box {
+      background: var(--card);
+      border: var(--card-border);
+      border-radius: 24px;
+      width: 100%;
+      max-width: 550px;
+      max-height: 85vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      box-shadow: 0 24px 50px -10px rgba(0, 0, 0, 0.5);
+      animation: modalFadeIn 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    @keyframes modalFadeIn {
+      from { opacity: 0; transform: translateY(16px) scale(0.97); }
+      to { opacity: 1; transform: translateY(0) scale(1); }
+    }
+    .modal-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      background: var(--card-muted);
+    }
+    .modal-head h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 800;
+    }
+    .modal-body {
+      padding: 18px 20px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+    .modal-foot {
+      padding: 14px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      background: var(--card-muted);
+    }
+
+    /* Promote Form inside inbox */
+    .promote-box {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding-top: 10px;
+      margin-top: 6px;
+      border-top: 1px dashed var(--border);
+      flex-wrap: wrap;
+    }
+
+    /* Select elements for iOS: set font-size 16px to prevent zoom */
+    select.input-field {
+      font-size: 16px !important;
+    }
+
+    /* Toasts */
+    .toast {
+      position: fixed;
+      bottom: 22px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--toast-bg);
+      color: var(--toast-text);
+      padding: 12px 18px;
+      border-radius: 16px;
+      display: none;
+      align-items: center;
+      gap: 14px;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+      z-index: 200;
+      max-width: 92vw;
+      font-size: 13.5px;
+      font-weight: 600;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .toast.is-visible { display: flex; }
+    .toast.is-alarm {
+      background: var(--green);
+      color: #ffffff;
+      bottom: 80px;
+      box-shadow: 0 10px 30px rgba(16, 185, 129, 0.4);
+    }
+    .undo-btn {
+      background: var(--red);
+      color: #ffffff;
+      border: none;
+      border-radius: 10px;
+      padding: 6px 13px;
+      font-size: 12.5px;
+      font-weight: 800;
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+    }
+    .alarm-close {
+      background: rgba(255, 255, 255, 0.2);
+      color: #ffffff;
+      border: none;
+      border-radius: 9px;
+      padding: 5px 12px;
+      font-size: 12.5px;
+      font-weight: 800;
+      cursor: pointer;
+      font-family: inherit;
+    }
     .hidden { display: none !important; }
+
+    @media print {
+      body * { visibility: hidden !important; }
+      #print-area, #print-area * { visibility: visible !important; }
+      #print-area { position: absolute; left: 0; top: 0; width: 100%; color: #000; background: #fff; }
+    }
   </style>
 </head>
 <body>
   <div class="container">
+    <!-- Main Top Tabs (Two Tabs Only) -->
     <div class="tabs-bar">
       <button type="button" class="tab-btn is-active" id="tab-live">الساعة الحالية</button>
-      <button type="button" class="tab-btn" id="tab-routine">Routine</button>
+      <button type="button" class="tab-btn" id="tab-routine">Routine (٠)</button>
     </div>
 
-    <!-- LIVE VIEW -->
-    <div id="view-live" style="display:flex; flex-direction:column; gap:12px;">
+    <!-- 1. LIVE VIEW (الساعة الحالية) -->
+    <div id="view-live" class="container" style="margin:0; gap:14px;">
+      <!-- Card 1: Hour Allocation -->
       <div class="card">
         <div class="header-row">
           <h1>مهام الساعة القادمة</h1>
@@ -103,485 +866,1357 @@
         </div>
         <div class="sub-stats" id="sub-stats">مفيش مهام حالياً</div>
         <div class="hour-clock" id="hour-clock-hint"></div>
+
         <div class="stacked-bar" id="stacked-bar"></div>
+        <div class="bars-list" id="bars-list"></div>
       </div>
 
-      <button type="button" class="inbox-modal-btn" id="open-inbox-btn">
-        <span>📥 صندوق المهام (Inbox)</span>
-        <span class="sub-stats" id="inbox-count-badge">٠ مهام</span>
+      <!-- Card 2: Inbox Launcher Button inside Live Screen -->
+      <button type="button" class="inbox-launcher-btn" id="open-inbox-modal-btn">
+        <div class="inbox-launcher-left">
+          <span>📥</span>
+          <span>صندوق المهام (Inbox)</span>
+        </div>
+        <span class="count-pill" id="inbox-launcher-pill">٠ مهام</span>
       </button>
 
+      <!-- Card 3: Checklist & Direct Task Addition -->
       <div class="card">
         <div class="task-list" id="task-list"></div>
+
         <form class="add-bar" id="add-form">
           <input type="text" class="input-field input-name" id="new-title" placeholder="اكتب اسم المهمة الجديدة..." required>
-          <div class="mins-wrap" style="position:relative;">
-            <input type="text" inputmode="numeric" class="input-field input-mins" id="new-mins" placeholder="دقيقة" required>
+          <div class="mins-wrap">
+            <input type="text" inputmode="numeric" class="input-field input-mins" id="new-mins" value="60" required>
+            <span class="max-hint" id="max-hint">أقصى وقت: ٦٠ د</span>
           </div>
-          <button type="submit" class="add-btn">+</button>
+          <button type="submit" class="add-btn" title="إضافة مهمة">+</button>
         </form>
       </div>
 
-      <!-- DAILY TRACKERS COMPACT -->
-      <div class="prio-group" id="daily-trackers-box"></div>
+      <!-- Card 4: Daily Trackers -->
+      <div class="prio-group">
+        <div class="prio-group-header">
+          <div class="prio-group-title">
+            <span class="color-dot" style="background:var(--blue);"></span>
+            <span>عدادات اليوم</span>
+            <button type="button" class="gear-btn" id="open-trackers-settings-btn" title="إعدادات العدادات">⚙️</button>
+          </div>
+          <div class="prio-group-right" id="toggle-trackers-btn" style="cursor: pointer;">
+            <span class="count-pill" id="trackers-overall-pill">٠ / ٦</span>
+            <span class="group-arrow" id="trackers-arrow">▼</span>
+          </div>
+        </div>
+        <div class="prio-group-body" id="trackers-body">
+          <div class="trackers-grid" id="trackers-grid"></div>
+        </div>
+      </div>
 
-      <!-- COMPLETED LOG -->
-      <div class="prio-group" id="completed-box"></div>
+      <!-- Card 5: Completed Log (48h rolling) -->
+      <div class="prio-group" id="completed-box" style="margin-bottom:0;"></div>
 
-      <!-- FOOTER ACTIONS MOVED TO VERY BOTTOM -->
-      <div class="footer-actions">
+      <!-- Bottom Actions Footer -->
+      <div class="footer-actions" style="margin-top:4px; padding-top:4px; border-top:none;">
         <button type="button" class="copy-btn" id="copy-btn">نسخ الحالة لإرسالها في الشات</button>
-        <button type="button" class="copy-btn" id="refresh-app-btn">↻ تحديث</button>
+        <span class="copy-status" id="copy-status"></span>
+        <button type="button" class="icon-btn" id="refresh-app-btn" title="تحديث نسخة التطبيق">↻ تحديث</button>
       </div>
     </div>
 
-    <!-- ROUTINE VIEW -->
+    <!-- 2. ROUTINE VIEW -->
     <div id="view-routine" class="hidden">
       <div class="card">
         <div class="header-row">
           <h1>Routine (قالب المهام اليومية)</h1>
-          <button type="button" class="copy-btn" id="toggle-trackers-history-btn">📊 سجل العدادات</button>
+          <button type="button" class="icon-btn" id="open-trackers-log-btn" style="background: var(--card-muted); font-weight: 700;">📊 سجل العدادات</button>
         </div>
-        <div class="sub-stats">اضغط على اسم أو وقت أي مهمة لتعديله، أو أضفها للساعة الحالية فوراً.</div>
+        <div class="sub-stats">مهام ثابتة بوقتها؛ اضغط على الاسم أو الوقت لتعديله، أو "إضافة للساعة" لنسخها فوراً.</div>
+
         <div class="task-list" id="routine-list"></div>
+
         <form class="add-bar" id="routine-form">
           <input type="text" class="input-field input-name" id="routine-title" placeholder="اسم مهمة الروتين..." required>
           <input type="text" inputmode="numeric" class="input-field input-mins" id="routine-mins" placeholder="الدقائق" required>
-          <button type="submit" class="add-btn">+</button>
+          <button type="submit" class="add-btn" title="إضافة للروتين">+</button>
         </form>
-        <div id="trackers-history-panel" class="hidden" style="margin-top:12px;"></div>
       </div>
     </div>
   </div>
 
-  <!-- INBOX MODAL SHEET -->
-  <div class="modal-overlay hidden" id="inbox-modal">
-    <div class="modal-sheet">
+  <!-- MODAL: INBOX MODAL SHEET -->
+  <div class="modal-overlay hidden" id="modal-inbox">
+    <div class="modal-box" style="max-width: 580px;">
       <div class="modal-head">
-        <div class="modal-title-wrap">
-          <span style="font-weight:800; font-size:15px;">📥 صندوق المهام (Inbox)</span>
-          <button type="button" class="mini-gear-btn" id="open-sections-mgmt">⚙️ الأقسام</button>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span>📥</span>
+          <h2>صندوق المهام (Inbox)</h2>
+          <button type="button" class="gear-btn" id="open-inbox-sections-mgr-btn" title="إدارة أقسام الـ Inbox" style="font-size: 11px; padding: 2px 7px; margin-right: 4px; gap: 3px;">
+            <span>⚙️</span>
+            <span style="font-size: 10.5px;">الأقسام</span>
+          </button>
         </div>
-        <button type="button" class="modal-close-btn" id="close-inbox-btn">✕</button>
+        <div>
+          <button type="button" class="icon-btn" id="close-inbox-modal" style="padding: 6px 12px; font-size: 14px;">✕</button>
+        </div>
       </div>
+      <div class="modal-body">
+        <div class="sub-stats" style="margin:0 0 4px 0;">مهام اليوم مقسمة حسب فتراتك (اضغط لنقل المهمة للساعة أو تغيير قسمها).</div>
+        <div id="inbox-groups"></div>
 
-      <div id="inbox-sections-container" style="display:flex; flex-direction:column; gap:10px;"></div>
-
-      <form class="add-bar" id="inbox-form">
-        <input type="text" class="input-field input-name" id="inbox-title" placeholder="اكتب مهمة جديدة للـ Inbox..." required>
-        <select class="input-field" id="inbox-section-select" style="max-width:140px;"></select>
-        <button type="submit" class="add-btn">+</button>
-      </form>
+        <!-- Add Inbox Task Form with Category Select -->
+        <form class="add-bar" id="inbox-form" style="margin-top:8px;">
+          <input type="text" class="input-field input-name" id="inbox-title" placeholder="اكتب مهمة جديدة للـ Inbox..." required>
+          <select id="inbox-section-select" class="input-field" style="padding:9px 10px; font-size:13px; font-weight:700; max-width:145px;"></select>
+          <button type="submit" class="add-btn" title="إضافة للـ Inbox">+</button>
+        </form>
+      </div>
+      <div class="modal-foot">
+        <span class="max-hint" id="inbox-footer-count">إجمالي المهام: ٠</span>
+        <button type="button" class="timer-btn" id="close-inbox-modal-2">تم</button>
+      </div>
     </div>
+  </div>
+
+  <!-- MODAL: INBOX SECTIONS MANAGER -->
+  <div class="modal-overlay hidden" id="modal-inbox-sections">
+    <div class="modal-box" style="max-width: 500px;">
+      <div class="modal-head">
+        <h2>📁 إدارة أقسام اليوم (Inbox)</h2>
+        <button type="button" class="icon-btn" id="close-inbox-sections">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="sub-stats">خصص أقسام يومك بحرية (مثلاً: النصف الأول، النصف الثاني، المشاوير):</div>
+        <div id="inbox-sections-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+
+        <form id="add-section-form" style="display:flex; gap:8px; align-items:center; margin-top:8px; padding-top:10px; border-top:1px solid var(--border);">
+          <input type="text" class="input-field input-name" id="new-section-name" placeholder="اسم القسم الجديد..." required>
+          <input type="color" id="new-section-color" value="#4f75ff" style="width:38px; height:38px; border:none; border-radius:10px; cursor:pointer; background:transparent;">
+          <button type="submit" class="timer-btn">+ إضافة قسم</button>
+        </form>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="timer-btn" id="close-inbox-sections-2">حفظ والعودة</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Trackers Settings -->
+  <div class="modal-overlay hidden" id="modal-trackers-settings">
+    <div class="modal-box">
+      <div class="modal-head">
+        <h2>⚙️ إعدادات عدادات اليوم</h2>
+        <button type="button" class="icon-btn" id="close-trackers-settings">✕</button>
+      </div>
+      <div class="modal-body" id="trackers-settings-body"></div>
+      <div class="modal-foot">
+        <span class="max-hint">التصفير التلقائي يومياً ٣:٠٠ ص</span>
+        <button type="button" class="timer-btn" id="save-trackers-settings">حفظ</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: Trackers Log & Export (PDF) -->
+  <div class="modal-overlay hidden" id="modal-trackers-log">
+    <div class="modal-box" style="max-width: 580px;">
+      <div class="modal-head">
+        <h2>📊 سجل العدادات اليومي</h2>
+        <button type="button" class="icon-btn" id="close-trackers-log">✕</button>
+      </div>
+      <div class="modal-body" id="trackers-log-body"></div>
+      <div class="modal-foot">
+        <button type="button" class="icon-btn" id="print-pdf-btn">📄 تنزيل / طباعة PDF</button>
+        <button type="button" class="timer-btn" id="close-trackers-log-2">إغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Hidden Print Area for PDF Export -->
+  <div id="print-area" class="hidden"></div>
+
+  <!-- Toasts -->
+  <div class="toast is-alarm" id="alarm-toast">
+    <span id="alarm-text">انتهى وقت المهمة!</span>
+    <button type="button" class="alarm-close" id="alarm-close">حسناً</button>
+  </div>
+
+  <div class="toast" id="undo-toast">
+    <span id="undo-text">تم إنهاء المهمة</span>
+    <button type="button" class="undo-btn" id="undo-btn">تراجع (Undo)</button>
   </div>
 
   <script>
-    const STORAGE_KEY = 'hourly_tracker_v16_zen';
+    const STORAGE_KEY = 'hourly_tracker_standalone_v2';
+    const TWO_DAYS_MS = 48 * 60 * 60 * 1000;
+    const PALETTE = ['#4f75ff', '#22c55e', '#ec4899', '#e09f3e', '#8b5cf6', '#06b6d4', '#e25c5c', '#84cc16'];
+    
+    // Default Sections instead of fixed priorities
+    const DEFAULT_INBOX_SECTIONS = [
+      { id: 'sec-1', name: 'النصف الأول من اليوم', color: '#4f75ff' },
+      { id: 'sec-2', name: 'النصف الثاني من اليوم', color: '#e09f3e' }
+    ];
 
-    function toAr(n) {
-      return String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
-    }
+    const DEFAULT_TRACKERS = [
+      { id: 'prayers', name: 'الصلاة', type: 'checks', items: ['فجر', 'ظهر', 'عصر', 'مغرب', 'عشاء'], done: ['فجر'], color: '#22c55e' },
+      { id: 'water', name: 'المياه', type: 'counter', val: 0, goal: 2500, step: 200, unit: 'مل', color: '#06b6d4' },
+      { id: 'steps', name: 'الخطوات', type: 'counter', val: 0, goal: 5000, step: 500, unit: 'خطوة', color: '#e09f3e' },
+      { id: 'sadaqah', name: 'الصدقات', type: 'checks', items: ['صدقة النهار', 'صدقة الليل'], done: [], color: '#8b5cf6' },
+      { id: 'teeth', name: 'غسيل الأسنان', type: 'checks', items: ['الصبح', 'بالليل'], done: [], color: '#ec4899' },
+      { id: 'quran', name: 'القرآن', type: 'counter', val: 0, goal: 5, step: 1, unit: 'صفحة', color: '#4f75ff' }
+    ];
+
     function parseMins(val) {
-      const normalized = String(val || '').replace(/[\u0660-\u0669]/g, d => d.charCodeAt(0) - 0x0660).replace(/[^\d]/g, '');
+      const normalized = String(val || '')
+        .replace(/[\u0660-\u0669]/g, d => d.charCodeAt(0) - 0x0660)
+        .replace(/[\u06F0-\u06F9]/g, d => d.charCodeAt(0) - 0x06F0)
+        .replace(/[^\d]/g, '');
       const num = parseInt(normalized, 10);
       return Number.isFinite(num) ? num : 0;
     }
 
-    let TASKS = JSON.parse(localStorage.getItem(STORAGE_KEY + '_tasks') || '[]');
-    let INBOX = JSON.parse(localStorage.getItem(STORAGE_KEY + '_inbox') || '[]');
-    let ROUTINE = JSON.parse(localStorage.getItem(STORAGE_KEY + '_routine') || '[]');
-    let COMPLETED = JSON.parse(localStorage.getItem(STORAGE_KEY + '_completed') || '[]');
-    let SECTIONS = JSON.parse(localStorage.getItem(STORAGE_KEY + '_sections') || JSON.stringify([
-      { id: 'sec_1', name: 'النصف الأول من اليوم', color: '#3b82f6' },
-      { id: 'sec_2', name: 'النصف الثاني من اليوم', color: '#eab308' }
-    ]));
-    let TRACKERS = JSON.parse(localStorage.getItem(STORAGE_KEY + '_trackers') || JSON.stringify([
-      { id: 'salat', name: 'الصلاة', type: 'checks', items: ['فجر', 'ظهر', 'عصر', 'مغرب', 'عشاء'], val: [false,false,false,false,false], color: '#22c55e' },
-      { id: 'water', name: 'المياه', type: 'numeric', step: 200, goal: 2500, unit: 'مل', val: 0, color: '#3b82f6' },
-      { id: 'steps', name: 'الخطوات', type: 'numeric', step: 500, goal: 5000, unit: 'خطوة', val: 0, color: '#f59e0b' },
-      { id: 'charity', name: 'الصدقات', type: 'checks', items: ['صدقة النهار', 'صدقة الليل'], val: [false,false], color: '#ec4899' },
-      { id: 'teeth', name: 'غسيل الأسنان', type: 'checks', items: ['الصبح', 'بالليل'], val: [false,false], color: '#8b5cf6' },
-      { id: 'quran', name: 'القرآن', type: 'numeric', step: 1, goal: 5, unit: 'صفحة', val: 0, color: '#10b981' }
-    ]));
-    let TRACKERS_HISTORY = JSON.parse(localStorage.getItem(STORAGE_KEY + '_history') || '[]');
-    let trackersOpen = true;
-    let trackersSettingsOpen = false;
-
-    function saveAll() {
-      localStorage.setItem(STORAGE_KEY + '_tasks', JSON.stringify(TASKS));
-      localStorage.setItem(STORAGE_KEY + '_inbox', JSON.stringify(INBOX));
-      localStorage.setItem(STORAGE_KEY + '_routine', JSON.stringify(ROUTINE));
-      localStorage.setItem(STORAGE_KEY + '_completed', JSON.stringify(COMPLETED));
-      localStorage.setItem(STORAGE_KEY + '_sections', JSON.stringify(SECTIONS));
-      localStorage.setItem(STORAGE_KEY + '_trackers', JSON.stringify(TRACKERS));
-      localStorage.setItem(STORAGE_KEY + '_history', JSON.stringify(TRACKERS_HISTORY));
+    function toAr(n) {
+      return String(n).replace(/\d/g, d => '٠١٢٣٤٥٦٧٨٩'[d]);
     }
 
-    function checkDailyReset() {
+    function updateHourClock() {
+      const el = document.getElementById('hour-clock-hint');
+      if (!el) return;
       const now = new Date();
-      const lastResetStr = localStorage.getItem(STORAGE_KEY + '_last_reset');
-      const resetThreshold = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 3, 0, 0);
-      if (now < resetThreshold) resetThreshold.setDate(resetThreshold.getDate() - 1);
+      const minsLeft = 60 - now.getMinutes();
+      const nextHour24 = (now.getHours() + 1) % 24;
+      const ampm = nextHour24 >= 12 ? 'م' : 'ص';
+      const nextHour12 = nextHour24 % 12 || 12;
+      el.textContent = `الوقت الفعلي: باقي ${toAr(minsLeft)} د على الساعة ${toAr(nextHour12)}:٠٠ ${ampm}`;
+    }
 
-      if (!lastResetStr || new Date(lastResetStr) < resetThreshold) {
-        TRACKERS_HISTORY.unshift({
-          date: new Date().toLocaleDateString('ar-EG'),
-          snapshot: TRACKERS.map(t => ({ name: t.name, val: t.val, goal: t.goal, unit: t.unit, type: t.type }))
+    function formatCompletedTime(ts) {
+      const d = new Date(ts);
+      const now = new Date();
+      const isToday = d.toDateString() === now.toDateString();
+      const dayLabel = isToday ? 'النهارده' : 'أمس';
+      let h = d.getHours();
+      const m = String(d.getMinutes()).padStart(2, '0');
+      const ampm = h >= 12 ? 'م' : 'ص';
+      h = h % 12 || 12;
+      return `${dayLabel} · ${toAr(h)}:${toAr(m)} ${ampm}`;
+    }
+
+    let audioCtx = null;
+    function unlockAudio() {
+      try {
+        const AC = window.AudioContext || window.webkitAudioContext;
+        if (!AC) return;
+        if (!audioCtx) audioCtx = new AC();
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+      } catch (e) {}
+    }
+
+    function playChime() {
+      try {
+        unlockAudio();
+        if (!audioCtx) return;
+        const notes = [587.33, 783.99, 1046.5];
+        notes.forEach((freq, i) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.value = freq;
+          const start = audioCtx.currentTime + i * 0.18;
+          gain.gain.setValueAtTime(0.001, start);
+          gain.gain.exponentialRampToValueAtTime(0.25, start + 0.03);
+          gain.gain.exponentialRampToValueAtTime(0.001, start + 0.35);
+          osc.connect(gain);
+          gain.connect(audioCtx.destination);
+          osc.start(start);
+          osc.stop(start + 0.36);
         });
-        TRACKERS.forEach(t => {
-          if (t.type === 'checks') t.val = t.items.map(() => false);
-          else t.val = 0;
+      } catch (e) {}
+      try {
+        if (navigator.vibrate) navigator.vibrate([250, 120, 250]);
+      } catch (e) {}
+    }
+
+    let alarmTimeout = null;
+    function showAlarm(label) {
+      playChime();
+      const toast = document.getElementById('alarm-toast');
+      document.getElementById('alarm-text').textContent = `انتهى وقت «${label}»!`;
+      toast.classList.add('is-visible');
+      if (alarmTimeout) clearTimeout(alarmTimeout);
+      alarmTimeout = setTimeout(() => {
+        toast.classList.remove('is-visible');
+      }, 8000);
+    }
+
+    document.getElementById('alarm-close').addEventListener('click', () => {
+      if (alarmTimeout) clearTimeout(alarmTimeout);
+      document.getElementById('alarm-toast').classList.remove('is-visible');
+    });
+
+    // Automated 3:00 AM Reset Logic
+    function checkAndApplyDaily3AMReset(stateObj) {
+      const now = new Date();
+      const threshold = new Date(now);
+      if (now.getHours() < 3) {
+        threshold.setDate(threshold.getDate() - 1);
+      }
+      threshold.setHours(3, 0, 0, 0);
+
+      const lastReset = stateObj.lastReset ? new Date(stateObj.lastReset) : null;
+      if (!lastReset || lastReset < threshold) {
+        if (lastReset && stateObj.trackers) {
+          const snapshot = {
+            id: Date.now(),
+            dateStr: lastReset.toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric' }),
+            timestamp: lastReset.getTime(),
+            trackers: JSON.parse(JSON.stringify(stateObj.trackers))
+          };
+          if (!stateObj.trackersLogs) stateObj.trackersLogs = [];
+          stateObj.trackersLogs.unshift(snapshot);
+          if (stateObj.trackersLogs.length > 30) stateObj.trackersLogs.pop();
+        }
+
+        (stateObj.trackers || []).forEach(tr => {
+          if (tr.type === 'checks') tr.done = [];
+          if (tr.type === 'counter') tr.val = 0;
         });
-        localStorage.setItem(STORAGE_KEY + '_last_reset', now.toISOString());
-        saveAll();
+
+        stateObj.lastReset = threshold.toISOString();
       }
     }
-    checkDailyReset();
 
-    function buildMiniRing(current, goal, color) {
-      const r = 14;
-      const circ = 2 * Math.PI * r;
-      const ratio = goal > 0 ? Math.min(1, current / goal) : 0;
-      const offset = circ * (1 - ratio);
-      const isGoal = goal > 0 && current >= goal;
-      const strokeColor = isGoal ? 'var(--green)' : (color || 'var(--blue)');
-      const label = goal <= 99 ? `${toAr(current)}/${toAr(goal)}` : `${toAr(Math.round(ratio * 100))}%`;
-      return `
-        <div class="ring-wrap">
-          <svg width="38" height="38" viewBox="0 0 38 38">
-            <circle cx="19" cy="19" r="${r}" fill="none" stroke="var(--border)" stroke-width="3.5" />
-            <circle cx="19" cy="19" r="${r}" fill="none" stroke="${strokeColor}" stroke-width="3.5"
-              stroke-dasharray="${circ.toFixed(2)}" stroke-dashoffset="${offset.toFixed(2)}"
-              stroke-linecap="round" transform="rotate(-90 19 19)" />
-          </svg>
-          <span class="ring-text">${label}</span>
-        </div>
-      `;
+    function loadState() {
+      let state = {
+        tasks: [],
+        inboxSections: JSON.parse(JSON.stringify(DEFAULT_INBOX_SECTIONS)),
+        inbox: [
+          { id: 1, label: 'مراجعة الإيميلات والرسائل', sectionId: 'sec-1' },
+          { id: 2, label: 'تجهيز ملف التقرير الأسبوعي', sectionId: 'sec-2' }
+        ],
+        routine: [
+          { id: 1, label: 'قراءة ورد القرآن', mins: 15 },
+          { id: 2, label: 'أذكار الصباح والمساء', mins: 10 }
+        ],
+        completed: [],
+        trackers: JSON.parse(JSON.stringify(DEFAULT_TRACKERS)),
+        trackersLogs: [],
+        lastReset: null
+      };
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          state = { ...state, ...parsed };
+        }
+      } catch (e) {}
+
+      // Backward compatibility check for inbox items and sections
+      if (!state.inboxSections || state.inboxSections.length === 0) {
+        state.inboxSections = JSON.parse(JSON.stringify(DEFAULT_INBOX_SECTIONS));
+      }
+      state.inbox = (state.inbox || []).map(item => {
+        if (!item.sectionId) {
+          item.sectionId = state.inboxSections[0].id;
+        }
+        return item;
+      });
+
+      checkAndApplyDaily3AMReset(state);
+
+      state.tasks = (state.tasks || []).map(t => ({
+        ...t,
+        remainingSec: typeof t.remainingSec === 'number' ? t.remainingSec : t.mins * 60,
+        running: Boolean(t.running && t.endAt),
+        endAt: t.endAt || null,
+        completing: false
+      }));
+
+      return state;
     }
 
-    function render() {
-      const minsUsed = TASKS.reduce((acc, t) => acc + (t.mins || 0), 0);
-      const minsLeft = Math.max(0, 60 - minsUsed);
-      document.getElementById('remaining-badge').textContent = `${toAr(minsLeft)} دقيقة فراغ`;
-      document.getElementById('sub-stats').textContent = TASKS.length ? `${toAr(TASKS.length)} مهام محددة` : 'مفيش مهام حالياً';
-      document.getElementById('inbox-count-badge').textContent = `${toAr(INBOX.length)} مهام`;
+    const state = loadState();
+    let TASKS = state.tasks;
+    let INBOX_SECTIONS = state.inboxSections;
+    let INBOX = state.inbox;
+    let ROUTINE = state.routine;
+    let COMPLETED = state.completed;
+    let TRACKERS = state.trackers;
+    let TRACKERS_LOGS = state.trackersLogs;
 
-      const now = new Date();
-      const actualLeft = 60 - now.getMinutes();
-      const nextH = (now.getHours() + 1) % 24;
-      const ampm = nextH >= 12 ? 'م' : 'ص';
-      const h12 = nextH % 12 || 12;
-      document.getElementById('hour-clock-hint').textContent = `الوقت الفعلي: باقي ${toAr(actualLeft)} د على الساعة ${toAr(h12)}:٠٠ ${ampm}`;
+    let trackersOpen = true;
+    let completedOpen = false;
+    let openSections = {};
+    INBOX_SECTIONS.forEach(s => { openSections[s.id] = true; });
 
-      const barEl = document.getElementById('stacked-bar');
-      barEl.innerHTML = TASKS.map(t => `<div style="flex:${t.mins}; background:var(--blue); border-left:1px solid var(--border);" title="${t.title}"></div>`).join('') +
-                        `<div style="flex:${minsLeft}; background:transparent;"></div>`;
+    let currentTab = 'live';
+    let promotingInboxId = null;
+    let colorIdx = TASKS.length;
+    let ticker = null;
+    let lastRemoved = null;
+    let undoTimeout = null;
+    const pendingDeletes = {};
 
-      const taskList = document.getElementById('task-list');
-      taskList.innerHTML = TASKS.map((t, idx) => `
-        <div class="task-item">
-          <div class="task-meta">
-            <span class="task-chk" onclick="completeTask(${idx})"></span>
-            <span class="task-title">${t.title}</span>
-          </div>
-          <div style="display:flex; align-items:center; gap:6px;">
-            <span class="sub-stats">${toAr(t.mins)} د</span>
-            <button class="icon-btn del" onclick="removeTask(${idx})">×</button>
-          </div>
+    function pruneCompleted() {
+      const cutoff = Date.now() - TWO_DAYS_MS;
+      COMPLETED = COMPLETED.filter(c => c.completedAt >= cutoff);
+    }
+
+    function saveState() {
+      pruneCompleted();
+      checkAndApplyDaily3AMReset(state);
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify({
+          tasks: TASKS.map(({ completing, ...rest }) => rest),
+          inboxSections: INBOX_SECTIONS,
+          inbox: INBOX,
+          routine: ROUTINE,
+          completed: COMPLETED,
+          trackers: TRACKERS,
+          trackersLogs: TRACKERS_LOGS,
+          lastReset: state.lastReset
+        }));
+      } catch (e) {}
+    }
+
+    function nextDistinctColor() {
+      const used = new Set(TASKS.map(t => t.color));
+      const free = PALETTE.find(c => !used.has(c));
+      if (free) return free;
+      const c = PALETTE[colorIdx % PALETTE.length];
+      colorIdx++;
+      return c;
+    }
+
+    function switchTab(tab) {
+      currentTab = tab;
+      document.getElementById('tab-live').classList.toggle('is-active', tab === 'live');
+      document.getElementById('tab-routine').classList.toggle('is-active', tab === 'routine');
+      document.getElementById('view-live').classList.toggle('hidden', tab !== 'live');
+      document.getElementById('view-routine').classList.toggle('hidden', tab !== 'routine');
+      render();
+    }
+
+    document.getElementById('tab-live').addEventListener('click', () => switchTab('live'));
+    document.getElementById('tab-routine').addEventListener('click', () => switchTab('routine'));
+
+    // Modal Control for Inbox
+    const inboxModal = document.getElementById('modal-inbox');
+    const sectionsModal = document.getElementById('modal-inbox-sections');
+
+    function openInboxModal() {
+      inboxModal.classList.remove('hidden');
+      renderInboxInsideModal();
+    }
+    function closeInboxModal() {
+      promotingInboxId = null;
+      inboxModal.classList.add('hidden');
+      render();
+    }
+
+    document.getElementById('open-inbox-modal-btn').addEventListener('click', openInboxModal);
+    document.getElementById('close-inbox-modal').addEventListener('click', closeInboxModal);
+    document.getElementById('close-inbox-modal-2').addEventListener('click', closeInboxModal);
+    inboxModal.addEventListener('click', e => {
+      if (e.target === inboxModal) closeInboxModal();
+    });
+
+    // Sections Manager Modal
+    function openSectionsManager() {
+      renderSectionsManagerList();
+      sectionsModal.classList.remove('hidden');
+    }
+    function closeSectionsManager() {
+      sectionsModal.classList.add('hidden');
+      renderInboxInsideModal();
+      render();
+    }
+
+    document.getElementById('open-inbox-sections-mgr-btn').addEventListener('click', openSectionsManager);
+    document.getElementById('close-inbox-sections').addEventListener('click', closeSectionsManager);
+    document.getElementById('close-inbox-sections-2').addEventListener('click', closeSectionsManager);
+    sectionsModal.addEventListener('click', e => {
+      if (e.target === sectionsModal) closeSectionsManager();
+    });
+
+    function renderSectionsManagerList() {
+      const listEl = document.getElementById('inbox-sections-list');
+      if (!listEl) return;
+      listEl.innerHTML = INBOX_SECTIONS.map((sec, idx) => `
+        <div style="background:var(--item); padding:10px 12px; border-radius:12px; border:1px solid var(--border); display:flex; align-items:center; gap:8px;">
+          <input type="color" value="${sec.color || '#4f75ff'}" data-sec-color="${sec.id}" style="width:32px; height:32px; border:none; border-radius:8px; cursor:pointer; background:transparent;">
+          <input type="text" value="${sec.name}" data-sec-name="${sec.id}" class="input-field" style="flex:1; padding:6px 10px; font-size:13px; font-weight:700;">
+          <button type="button" class="icon-btn del" data-del-sec="${sec.id}" ${INBOX_SECTIONS.length <= 1 ? 'disabled title="لا يمكن حذف القسم الأخير"' : 'title="حذف القسم"'}>×</button>
         </div>
-      `).join('') || '<div class="sub-stats" style="text-align:center; padding:8px;">كل المهام خلصت! أضف مهمة للساعة من الـ Inbox أو الـ Routine.</div>';
+      `).join('');
 
-      const doneCount = TRACKERS.filter(t => t.type === 'checks' ? t.val.every(Boolean) : t.val >= t.goal).length;
-      const trackersBox = document.getElementById('daily-trackers-box');
-      trackersBox.innerHTML = `
-        <div class="prio-group-header" onclick="trackersOpen = !trackersOpen; render();">
-          <div class="prio-group-title">
-            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--blue);"></span>
-            <span>عدادات اليوم</span>
-            <button type="button" class="settings-btn" onclick="event.stopPropagation(); trackersSettingsOpen = !trackersSettingsOpen; render();">⚙️</button>
-          </div>
-          <div class="prio-group-right">
-            <span class="count-pill">${toAr(doneCount)}/${toAr(TRACKERS.length)}</span>
-            <span style="font-size:11px; color:var(--muted);">${trackersOpen ? '▼' : '◀'}</span>
-          </div>
-        </div>
-        ${trackersOpen ? `
-          <div class="trackers-compact-list">
-            ${trackersSettingsOpen ? renderTrackersSettings() : TRACKERS.map((t, tidx) => {
-              if (t.type === 'checks') {
-                const cDone = t.val.filter(Boolean).length;
-                return `
-                  <div class="tracker-row">
-                    <div class="tracker-left">
-                      ${buildMiniRing(cDone, t.items.length, t.color)}
-                      <div>
-                        <div class="tracker-name">${t.name}</div>
-                        <div class="tracker-val ${cDone === t.items.length ? 'is-goal' : ''}">${toAr(cDone)} من ${toAr(t.items.length)}</div>
-                      </div>
-                    </div>
-                    <div class="tracker-actions">
-                      ${t.items.map((it, i) => `
-                        <button class="pill-btn ${t.val[i] ? 'is-done' : ''}" onclick="toggleTrackerCheck(${tidx}, ${i})">${it}</button>
-                      `).join('')}
-                    </div>
-                  </div>
-                `;
-              } else {
-                return `
-                  <div class="tracker-row">
-                    <div class="tracker-left">
-                      ${buildMiniRing(t.val, t.goal, t.color)}
-                      <div>
-                        <div class="tracker-name">${t.name}</div>
-                        <div class="tracker-val ${t.val >= t.goal ? 'is-goal' : ''}">${toAr(t.val)} / ${toAr(t.goal)} ${t.unit}</div>
-                      </div>
-                    </div>
-                    <div class="tracker-actions">
-                      <button class="pill-btn pill-step" onclick="stepTrackerNum(${tidx}, -${t.step})">-${toAr(t.step)}</button>
-                      <button class="pill-btn pill-step is-done" onclick="stepTrackerNum(${tidx}, ${t.step})">+${toAr(t.step)}</button>
-                    </div>
-                  </div>
-                `;
-              }
-            }).join('')}
-          </div>
-        ` : ''}
-      `;
+      listEl.querySelectorAll('[data-sec-name]').forEach(inp => {
+        inp.addEventListener('change', () => {
+          const id = inp.dataset.secName;
+          const s = INBOX_SECTIONS.find(x => x.id === id);
+          if (s && inp.value.trim()) s.name = inp.value.trim();
+          saveState();
+        });
+      });
 
-      const completedBox = document.getElementById('completed-box');
-      completedBox.innerHTML = `
-        <div class="prio-group-header">
-          <div class="prio-group-title">
-            <span style="display:inline-block; width:8px; height:8px; border-radius:50%; background:var(--green);"></span>
-            <span>المهام المكتملة (آخر ٤٨ ساعة)</span>
-          </div>
-          <span class="count-pill">${toAr(COMPLETED.length)}</span>
-        </div>
-        <div style="padding:0 14px 14px; display:flex; flex-direction:column; gap:6px;">
-          ${COMPLETED.slice(0, 10).map((c, i) => `
-            <div class="task-item" style="opacity:0.8;">
-              <span class="task-title" style="text-decoration:line-through;">${c.title}</span>
-              <div style="display:flex; align-items:center; gap:6px;">
-                <span class="sub-stats">${toAr(c.mins)} د</span>
-                <button class="icon-btn" onclick="undoTask(${i})">تراجع</button>
+      listEl.querySelectorAll('[data-sec-color]').forEach(inp => {
+        inp.addEventListener('change', () => {
+          const id = inp.dataset.secColor;
+          const s = INBOX_SECTIONS.find(x => x.id === id);
+          if (s) s.color = inp.value;
+          saveState();
+        });
+      });
+
+      listEl.querySelectorAll('[data-del-sec]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (INBOX_SECTIONS.length <= 1) return;
+          const id = btn.dataset.delSec;
+          const targetFallback = INBOX_SECTIONS.find(x => x.id !== id).id;
+          INBOX.forEach(item => {
+            if (item.sectionId === id) item.sectionId = targetFallback;
+          });
+          INBOX_SECTIONS = INBOX_SECTIONS.filter(x => x.id !== id);
+          saveState();
+          renderSectionsManagerList();
+        });
+      });
+    }
+
+    document.getElementById('add-section-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const nameInput = document.getElementById('new-section-name');
+      const colorInput = document.getElementById('new-section-color');
+      const name = nameInput.value.trim();
+      if (!name) return;
+
+      const newId = 'sec-' + Date.now();
+      INBOX_SECTIONS.push({ id: newId, name, color: colorInput.value || '#4f75ff' });
+      openSections[newId] = true;
+      nameInput.value = '';
+      saveState();
+      renderSectionsManagerList();
+    });
+
+    function showUndo(task, index, completedId) {
+      lastRemoved = { task, index, completedId };
+      const toast = document.getElementById('undo-toast');
+      document.getElementById('undo-text').textContent = `تم إنهاء «${task.label}»`;
+      toast.classList.add('is-visible');
+      if (undoTimeout) clearTimeout(undoTimeout);
+      undoTimeout = setTimeout(() => {
+        toast.classList.remove('is-visible');
+        lastRemoved = null;
+      }, 5000);
+    }
+
+    document.getElementById('undo-btn').addEventListener('click', () => {
+      if (!lastRemoved) return;
+      const { task, index, completedId } = lastRemoved;
+      TASKS.splice(Math.min(index, TASKS.length), 0, { ...task, completing: false });
+      COMPLETED = COMPLETED.filter(c => c.logId !== completedId);
+      lastRemoved = null;
+      if (undoTimeout) clearTimeout(undoTimeout);
+      document.getElementById('undo-toast').classList.remove('is-visible');
+      render();
+    });
+
+    function formatDuration(t) {
+      if (t.remainingSec <= 0) return '٠٠:٠٠';
+      if (!t.running && t.remainingSec === t.mins * 60) {
+        return `${toAr(t.mins)} د`;
+      }
+      const m = Math.floor(t.remainingSec / 60);
+      const s = t.remainingSec % 60;
+      return `${toAr(String(m).padStart(2, '0'))}:${toAr(String(s).padStart(2, '0'))}`;
+    }
+
+    function syncRunningTimers(doFullRender = false) {
+      const now = Date.now();
+      let finishedTask = null;
+      TASKS.forEach(t => {
+        if (t.running && t.endAt) {
+          const left = Math.max(0, Math.ceil((t.endAt - now) / 1000));
+          t.remainingSec = left;
+          if (left <= 0) {
+            t.running = false;
+            t.endAt = null;
+            finishedTask = t;
+          }
+          const durEl = document.getElementById(`dur-${t.id}`);
+          if (durEl) {
+            durEl.textContent = formatDuration(t);
+            durEl.className = `task-dur ${t.running ? 'is-running' : (t.remainingSec === 0 ? 'is-finished' : '')}`;
+          }
+        }
+      });
+      if (finishedTask) {
+        render();
+        showAlarm(finishedTask.label);
+      } else if (doFullRender) {
+        render();
+      } else {
+        saveState();
+      }
+    }
+
+    function ensureTicker() {
+      const anyRunning = TASKS.some(t => t.running);
+      if (anyRunning && !ticker) {
+        ticker = setInterval(() => {
+          syncRunningTimers(false);
+          if (!TASKS.some(t => t.running) && ticker) {
+            clearInterval(ticker);
+            ticker = null;
+          }
+        }, 500);
+      } else if (!anyRunning && ticker) {
+        clearInterval(ticker);
+        ticker = null;
+      }
+    }
+
+    // Render Trackers Card
+    function renderTrackers() {
+      const grid = document.getElementById('trackers-grid');
+      const overallPill = document.getElementById('trackers-overall-pill');
+      if (!grid) return;
+
+      let completedCount = 0;
+      const totalTrackers = TRACKERS.length;
+
+      grid.innerHTML = TRACKERS.map((tr, idx) => {
+        let pct = 0;
+        let statusStr = '';
+        let isDone = false;
+
+        if (tr.type === 'checks') {
+          const items = tr.items || [];
+          const done = tr.done || [];
+          pct = items.length > 0 ? Math.round((done.length / items.length) * 100) : 0;
+          statusStr = `${toAr(done.length)} من ${toAr(items.length)}`;
+          if (done.length >= items.length && items.length > 0) isDone = true;
+        } else {
+          const val = tr.val || 0;
+          const goal = tr.goal || 1;
+          pct = Math.min(100, Math.round((val / goal) * 100));
+          statusStr = `${toAr(val)} / ${toAr(goal)} ${tr.unit || ''}`;
+          if (val >= goal) isDone = true;
+        }
+
+        if (isDone) completedCount++;
+
+        const radius = 15;
+        const circ = 2 * Math.PI * radius;
+        const offset = circ - (pct / 100) * circ;
+
+        return `
+          <div class="tracker-card">
+            <div class="tracker-main">
+              <div class="tracker-header-inline">
+                <div class="tracker-title-row">
+                  <span>${tr.name}</span>
+                </div>
+                <div class="tracker-status-line">${statusStr}</div>
+              </div>
+              <div class="tracker-actions-row">
+                ${tr.type === 'checks' ? (tr.items || []).map(item => {
+                  const checkDone = (tr.done || []).includes(item);
+                  return `
+                    <button type="button" class="chip-btn ${checkDone ? 'is-active' : ''}" data-tr-check="${idx}" data-item="${item}">
+                      ${item}
+                    </button>
+                  `;
+                }).join('') : `
+                  <button type="button" class="chip-btn" data-tr-step="${idx}" data-val="${tr.step}">+${toAr(tr.step)} ${tr.unit || ''}</button>
+                  <button type="button" class="chip-btn" data-tr-step="${idx}" data-val="${-tr.step}">-${toAr(tr.step)}</button>
+                  <button type="button" class="chip-btn" data-tr-reset="${idx}" title="تصفير">↺</button>
+                `}
               </div>
             </div>
-          `).join('') || '<div class="sub-stats" style="text-align:center;">مفيش مهام مكتملة</div>'}
-        </div>
-      `;
-
-      const routineList = document.getElementById('routine-list');
-      routineList.innerHTML = ROUTINE.map((r, ridx) => `
-        <div class="task-item">
-          <div class="task-meta">
-            <span class="task-title" onclick="editRoutine(${ridx})" style="cursor:pointer;">${r.title}</span>
-          </div>
-          <div style="display:flex; align-items:center; gap:6px;">
-            <span class="sub-stats" onclick="editRoutine(${ridx})" style="cursor:pointer;">${toAr(r.mins)} د</span>
-            <button class="timer-btn" onclick="addRoutineToLive(${ridx})">إضافة للساعة</button>
-            <button class="icon-btn del" onclick="removeRoutine(${ridx})">×</button>
-          </div>
-        </div>
-      `).join('') || '<div class="sub-stats" style="text-align:center; padding:10px;">لا توجد مهام روتين مضافة</div>';
-
-      renderInboxModal();
-    }
-
-    function renderTrackersSettings() {
-      return `
-        <div style="display:flex; flex-direction:column; gap:8px;">
-          ${TRACKERS.map((t, i) => `
-            <div style="display:flex; align-items:center; justify-content:space-between; background:var(--card); padding:8px; border-radius:8px;">
-              <span style="font-weight:700; font-size:13px;">${t.name}</span>
-              <button class="icon-btn" onclick="resetTrackerToday(${i})">تصفير اليوم</button>
-            </div>
-          `).join('')}
-        </div>
-      `;
-    }
-
-    function renderInboxModal() {
-      const select = document.getElementById('inbox-section-select');
-      select.innerHTML = SECTIONS.map(s => `<option value="${s.id}">${s.name}</option>`).join('');
-
-      const container = document.getElementById('inbox-sections-container');
-      container.innerHTML = SECTIONS.map(s => {
-        const items = INBOX.filter(it => it.sectionId === s.id);
-        return `
-          <div style="background:var(--item); border:1px solid var(--border); border-radius:12px; padding:10px;">
-            <div style="font-weight:700; font-size:13px; color:${s.color}; margin-bottom:8px; display:flex; justify-content:space-between;">
-              <span>${s.name}</span>
-              <span class="count-pill">${toAr(items.length)}</span>
-            </div>
-            <div style="display:flex; flex-direction:column; gap:6px;">
-              ${items.map(it => `
-                <div style="display:flex; align-items:center; justify-content:space-between; background:var(--card); padding:7px 10px; border-radius:8px;">
-                  <span style="font-size:14px;">${it.title}</span>
-                  <div style="display:flex; align-items:center; gap:6px;">
-                    <button class="timer-btn" style="padding:4px 8px; font-size:11px;" onclick="addInboxToLive('${it.id}')">إضافة للساعة</button>
-                    <button class="icon-btn del" style="padding:3px 7px;" onclick="removeInbox('${it.id}')">×</button>
-                  </div>
-                </div>
-              `).join('') || '<span class="sub-stats" style="font-size:11px;">فارغ</span>'}
+            <div class="ring-wrap" title="${pct}%">
+              <svg class="ring-svg" viewBox="0 0 38 38">
+                <circle class="ring-bg" cx="19" cy="19" r="${radius}"></circle>
+                <circle class="ring-bar" cx="19" cy="19" r="${radius}" stroke="${isDone ? 'var(--green)' : (tr.color || 'var(--green)')}"
+                  stroke-dasharray="${circ}" stroke-dashoffset="${offset}"></circle>
+              </svg>
+              <div class="ring-text">
+                ${tr.type === 'checks' ? `${toAr((tr.done || []).length)}/${toAr((tr.items || []).length)}` : `${toAr(pct)}%`}
+              </div>
             </div>
           </div>
         `;
       }).join('');
+
+      if (overallPill) overallPill.textContent = `${toAr(completedCount)} / ${toAr(totalTrackers)}`;
+
+      grid.querySelectorAll('[data-tr-check]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tIdx = Number(btn.dataset.trCheck);
+          const item = btn.dataset.item;
+          const tr = TRACKERS[tIdx];
+          if (!tr.done) tr.done = [];
+          if (tr.done.includes(item)) {
+            tr.done = tr.done.filter(x => x !== item);
+          } else {
+            tr.done.push(item);
+          }
+          render();
+        });
+      });
+
+      grid.querySelectorAll('[data-tr-step]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tIdx = Number(btn.dataset.trStep);
+          const val = Number(btn.dataset.val);
+          const tr = TRACKERS[tIdx];
+          tr.val = Math.max(0, (tr.val || 0) + val);
+          render();
+        });
+      });
+
+      grid.querySelectorAll('[data-tr-reset]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const tIdx = Number(btn.dataset.trReset);
+          TRACKERS[tIdx].val = 0;
+          render();
+        });
+      });
     }
 
-    window.completeTask = (idx) => {
-      COMPLETED.unshift({ ...TASKS[idx], doneAt: Date.now() });
-      TASKS.splice(idx, 1);
-      saveAll();
-      render();
-    };
-    window.undoTask = (i) => {
-      TASKS.push(COMPLETED[i]);
-      COMPLETED.splice(i, 1);
-      saveAll();
-      render();
-    };
-    window.removeTask = (idx) => {
-      TASKS.splice(idx, 1);
-      saveAll();
-      render();
-    };
-    window.toggleTrackerCheck = (tidx, i) => {
-      TRACKERS[tidx].val[i] = !TRACKERS[tidx].val[i];
-      saveAll();
-      render();
-    };
-    window.stepTrackerNum = (tidx, delta) => {
-      TRACKERS[tidx].val = Math.max(0, TRACKERS[tidx].val + delta);
-      saveAll();
-      render();
-    };
-    window.resetTrackerToday = (i) => {
-      if (TRACKERS[i].type === 'checks') TRACKERS[i].val = TRACKERS[i].items.map(() => false);
-      else TRACKERS[i].val = 0;
-      saveAll();
-      render();
-    };
-    window.removeRoutine = (idx) => {
-      ROUTINE.splice(idx, 1);
-      saveAll();
-      render();
-    };
-    window.editRoutine = (idx) => {
-      const title = prompt('تعديل اسم مهمة الروتين:', ROUTINE[idx].title);
-      const mins = prompt('تعديل المدة (بالدقائق):', ROUTINE[idx].mins);
-      if (title) ROUTINE[idx].title = title;
-      if (mins) ROUTINE[idx].mins = parseMins(mins) || ROUTINE[idx].mins;
-      saveAll();
-      render();
-    };
-    window.addRoutineToLive = (idx) => {
-      const r = ROUTINE[idx];
-      TASKS.push({ title: r.title, mins: r.mins });
-      saveAll();
-      render();
-    };
-    window.removeInbox = (id) => {
-      INBOX = INBOX.filter(i => i.id !== id);
-      saveAll();
-      render();
-    };
-    window.addInboxToLive = (id) => {
-      const it = INBOX.find(i => i.id === id);
-      const mins = prompt(`كم دقيقة للمهمة "${it.title}"؟ (أقصى وقت ٦٠ دقيقة)`, '15');
-      if (mins !== null) {
-        const parsed = Math.min(60, Math.max(1, parseMins(mins) || 15));
-        TASKS.push({ title: it.title, mins: parsed });
-        INBOX = INBOX.filter(i => i.id !== id);
-        saveAll();
-        render();
-        document.getElementById('inbox-modal').classList.add('hidden');
+    document.getElementById('toggle-trackers-btn').addEventListener('click', () => {
+      trackersOpen = !trackersOpen;
+      document.getElementById('trackers-body').classList.toggle('hidden', !trackersOpen);
+      document.getElementById('trackers-arrow').textContent = trackersOpen ? '▼' : '◀';
+    });
+
+    // Render Inbox Modal List
+    function renderInboxInsideModal() {
+      const inboxGroupsEl = document.getElementById('inbox-groups');
+      const footerCount = document.getElementById('inbox-footer-count');
+      const secSelect = document.getElementById('inbox-section-select');
+
+      if (footerCount) footerCount.textContent = `إجمالي المهام: ${toAr(INBOX.length)}`;
+
+      if (secSelect) {
+        secSelect.innerHTML = INBOX_SECTIONS.map(s => `
+          <option value="${s.id}">${s.name}</option>
+        `).join('');
       }
-    };
 
-    document.getElementById('add-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const title = document.getElementById('new-title').value.trim();
-      const mins = Math.min(60, Math.max(1, parseMins(document.getElementById('new-mins').value) || 15));
-      if (title) {
-        TASKS.push({ title, mins });
-        document.getElementById('new-title').value = '';
-        document.getElementById('new-mins').value = '';
-        saveAll();
-        render();
-      }
-    });
+      if (!inboxGroupsEl) return;
 
-    document.getElementById('inbox-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const title = document.getElementById('inbox-title').value.trim();
-      const sectionId = document.getElementById('inbox-section-select').value;
-      if (title) {
-        INBOX.push({ id: 'inb_' + Date.now(), title, sectionId });
-        document.getElementById('inbox-title').value = '';
-        saveAll();
-        render();
-      }
-    });
-
-    document.getElementById('routine-form').addEventListener('submit', (e) => {
-      e.preventDefault();
-      const title = document.getElementById('routine-title').value.trim();
-      const mins = Math.max(1, parseMins(document.getElementById('routine-mins').value) || 15);
-      if (title) {
-        ROUTINE.push({ title, mins });
-        document.getElementById('routine-title').value = '';
-        document.getElementById('routine-mins').value = '';
-        saveAll();
-        render();
-      }
-    });
-
-    const inboxModal = document.getElementById('inbox-modal');
-    document.getElementById('open-inbox-btn').addEventListener('click', () => inboxModal.classList.remove('hidden'));
-    document.getElementById('close-inbox-btn').addEventListener('click', () => inboxModal.classList.add('hidden'));
-
-    document.getElementById('tab-live').addEventListener('click', () => {
-      document.getElementById('tab-live').classList.add('is-active');
-      document.getElementById('tab-routine').classList.remove('is-active');
-      document.getElementById('view-live').classList.remove('hidden');
-      document.getElementById('view-routine').classList.add('hidden');
-    });
-
-    document.getElementById('tab-routine').addEventListener('click', () => {
-      document.getElementById('tab-routine').classList.add('is-active');
-      document.getElementById('tab-live').classList.remove('is-active');
-      document.getElementById('view-routine').classList.remove('hidden');
-      document.getElementById('view-live').classList.add('hidden');
-    });
-
-    document.getElementById('toggle-trackers-history-btn').addEventListener('click', () => {
-      const p = document.getElementById('trackers-history-panel');
-      p.classList.toggle('hidden');
-      if (!p.classList.contains('hidden')) {
-        p.innerHTML = `
-          <div style="background:var(--item); padding:10px; border-radius:12px; border:1px solid var(--border); display:flex; flex-direction:column; gap:8px;">
-            <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span style="font-weight:700;">سجل الأيام السابقة</span>
-              <button class="timer-btn" onclick="window.print()">📄 طباعة / حفظ PDF</button>
-            </div>
-            ${TRACKERS_HISTORY.slice(0, 7).map(h => `
-              <div style="font-size:12px; border-bottom:1px solid var(--border); padding-bottom:4px;">
-                <strong>${h.date}</strong>: ${h.snapshot.map(s => `${s.name} (${typeof s.val === 'object' ? s.val.filter(Boolean).length : s.val})`).join(' · ')}
+      inboxGroupsEl.innerHTML = INBOX_SECTIONS.map(sec => {
+        const items = INBOX.filter(item => item.sectionId === sec.id);
+        const isOpen = openSections[sec.id] !== false;
+        return `
+          <div class="prio-group">
+            <div class="prio-group-header" data-toggle-sec="${sec.id}" style="cursor:pointer;">
+              <div class="prio-group-title">
+                <span class="color-dot" style="background:${sec.color || '#4f75ff'};"></span>
+                <span>${sec.name}</span>
               </div>
-            `).join('') || '<span class="sub-stats">لا توجد سجلات سابقة بعد</span>'}
+              <div class="prio-group-right">
+                <span class="count-pill">${toAr(items.length)}</span>
+                <span class="group-arrow">${isOpen ? '▼' : '◀'}</span>
+              </div>
+            </div>
+            ${isOpen ? `
+              <div class="prio-group-body">
+                ${items.length === 0
+                  ? '<div class="empty-msg" style="padding:10px;">لا توجد مهام في هذا القسم بعد.</div>'
+                  : items.map(item => `
+                    <div class="task-row">
+                      <span class="color-dot color-dot-clickable" style="background:${sec.color || '#4f75ff'};" data-cycle-sec="${item.id}" title="اضغط لنقل المهمة للقسم التالي"></span>
+                      <div class="task-info">
+                        <span class="task-title">${item.label}</span>
+                      </div>
+                      <div class="row-actions">
+                        <button type="button" class="timer-btn" data-promote="${item.id}">إضافة للساعة</button>
+                        <button type="button" class="icon-btn del" data-del-inbox="${item.id}" title="حذف">×</button>
+                      </div>
+                      ${promotingInboxId === item.id ? `
+                        <div class="promote-box">
+                          <span class="max-hint">الوقت (دقائق - أقصى وقت ٦٠):</span>
+                          <input type="text" inputmode="numeric" class="input-field input-mins" id="promote-mins-${item.id}" value="" placeholder="الدقائق" autofocus>
+                          <button type="button" class="timer-btn" data-confirm-promote="${item.id}">تأكيد</button>
+                          <button type="button" class="icon-btn" data-cancel-promote="1">إلغاء</button>
+                        </div>
+                      ` : ''}
+                    </div>
+                  `).join('')}
+              </div>
+            ` : ''}
           </div>
         `;
+      }).join('');
+
+      inboxGroupsEl.querySelectorAll('[data-toggle-sec]').forEach(header => {
+        header.addEventListener('click', () => {
+          const id = header.dataset.toggleSec;
+          openSections[id] = !(openSections[id] !== false);
+          renderInboxInsideModal();
+        });
+      });
+
+      // Quick Cycle Section on dot click
+      inboxGroupsEl.querySelectorAll('[data-cycle-sec]').forEach(dot => {
+        dot.addEventListener('click', () => {
+          const id = Number(dot.dataset.cycleSec);
+          const item = INBOX.find(x => x.id === id);
+          if (!item || INBOX_SECTIONS.length <= 1) return;
+          const currentIdx = INBOX_SECTIONS.findIndex(s => s.id === item.sectionId);
+          const nextSec = INBOX_SECTIONS[(currentIdx + 1) % INBOX_SECTIONS.length];
+          item.sectionId = nextSec.id;
+          openSections[nextSec.id] = true;
+          saveState();
+          renderInboxInsideModal();
+        });
+      });
+
+      inboxGroupsEl.querySelectorAll('[data-del-inbox]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.delInbox);
+          INBOX = INBOX.filter(x => x.id !== id);
+          saveState();
+          render();
+          renderInboxInsideModal();
+        });
+      });
+
+      inboxGroupsEl.querySelectorAll('[data-promote]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          promotingInboxId = Number(btn.dataset.promote);
+          renderInboxInsideModal();
+          const inp = document.getElementById(`promote-mins-${promotingInboxId}`);
+          if (inp) inp.focus();
+        });
+      });
+
+      inboxGroupsEl.querySelectorAll('[data-cancel-promote]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          promotingInboxId = null;
+          renderInboxInsideModal();
+        });
+      });
+
+      inboxGroupsEl.querySelectorAll('[data-confirm-promote]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.confirmPromote);
+          const minsInp = document.getElementById(`promote-mins-${id}`);
+          const rawMins = parseMins(minsInp ? minsInp.value : '0');
+          if (!(rawMins > 0)) return;
+          const mins = Math.min(60, rawMins);
+          const idx = INBOX.findIndex(x => x.id === id);
+          if (idx === -1) return;
+          const [item] = INBOX.splice(idx, 1);
+          const sec = INBOX_SECTIONS.find(s => s.id === item.sectionId) || INBOX_SECTIONS[0];
+          TASKS.push({
+            id: Date.now(),
+            label: item.label,
+            mins,
+            color: nextDistinctColor(),
+            priorityColor: sec ? sec.color : '#4f75ff',
+            remainingSec: mins * 60,
+            running: false,
+            endAt: null,
+            completing: false
+          });
+          promotingInboxId = null;
+          closeInboxModal();
+          render();
+        });
+      });
+    }
+
+    // Main App Render
+    function render() {
+      saveState();
+      ensureTicker();
+
+      document.getElementById('tab-routine').textContent = `(${toAr(ROUTINE.length)}) Routine`;
+      const inboxLauncherPill = document.getElementById('inbox-launcher-pill');
+      if (inboxLauncherPill) inboxLauncherPill.textContent = `${toAr(INBOX.length)} مهام`;
+
+      const totalTasksMins = TASKS.reduce((s, t) => s + t.mins, 0);
+      const freeMins = Math.max(0, 60 - totalTasksMins);
+
+      const displayItems = [...TASKS];
+      if (freeMins > 0) {
+        displayItems.push({ id: 'free', label: 'وقت فراغ', mins: freeMins, color: 'var(--bar-slate)', isFree: true });
       }
+
+      const badgeEl = document.getElementById('remaining-badge');
+      const statsEl = document.getElementById('sub-stats');
+      const stackedEl = document.getElementById('stacked-bar');
+      const barsEl = document.getElementById('bars-list');
+      const listEl = document.getElementById('task-list');
+      const newMinsEl = document.getElementById('new-mins');
+      const maxHintEl = document.getElementById('max-hint');
+
+      if (freeMins > 0) {
+        newMinsEl.value = freeMins;
+        maxHintEl.textContent = `أقصى وقت: ${toAr(freeMins)} د`;
+      } else {
+        newMinsEl.value = 5;
+        maxHintEl.textContent = 'الساعة مكتملة (٦٠ د)';
+      }
+
+      if (TASKS.length === 0) {
+        badgeEl.textContent = '٦٠ دقيقة فراغ';
+        statsEl.textContent = 'مفيش مهام حالياً';
+      } else {
+        badgeEl.textContent = freeMins > 0
+          ? `${toAr(totalTasksMins)} د مهام · ${toAr(freeMins)} د فراغ`
+          : `${toAr(totalTasksMins)} دقيقة مهام`;
+        const overNote = totalTasksMins > 60 ? ` (زيادة ${toAr(totalTasksMins - 60)} د عن الساعة)` : '';
+        statsEl.textContent = `المهام الحالية: ${toAr(TASKS.length)}${overNote}`;
+      }
+
+      const graphSum = displayItems.reduce((s, t) => s + t.mins, 0);
+      if (graphSum === 0) {
+        stackedEl.innerHTML = '';
+        barsEl.innerHTML = '<div class="empty-msg">مفيش مهام حالياً.</div>';
+      } else {
+        stackedEl.innerHTML = displayItems.map(t => {
+          const pct = (t.mins / graphSum) * 100;
+          return `<div class="stacked-seg" style="width:${pct}%; background:${t.color};" title="${t.label}"></div>`;
+        }).join('');
+
+        const peak = Math.max(...displayItems.map(t => t.mins));
+        barsEl.innerHTML = displayItems.map(t => {
+          const w = (t.mins / peak) * 100;
+          return `
+            <div class="bar-row">
+              <div class="bar-mins">${toAr(t.mins)} د</div>
+              <div class="bar-track">
+                <div class="bar-fill" style="width:${w}%; background:${t.color};"></div>
+              </div>
+              <div class="bar-label">${t.label}</div>
+            </div>
+          `;
+        }).join('');
+      }
+
+      listEl.innerHTML = TASKS.length === 0
+        ? '<div class="empty-msg is-done">كل المهام خلصت! تقدر تضيف مهمة جديدة من تحت أو تسحب من الـ Inbox أو الـ Routine.</div>'
+        : TASKS.map(t => {
+            const durClass = t.running ? 'is-running' : (t.remainingSec === 0 ? 'is-finished' : '');
+            const prioBorder = t.priorityColor ? `border-right: 4px solid ${t.priorityColor};` : '';
+            return `
+              <div class="task-row ${t.completing ? 'is-completing' : ''}" style="${prioBorder}">
+                <div class="task-circle" data-check="${t.id}" title="اضغط هنا لإنهاء المهمة">
+                  <svg viewBox="0 0 16 16" width="14" height="14">
+                    <path d="M3.2 8.4 L6.4 11.6 L12.8 4.4" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
+                  </svg>
+                </div>
+                <span class="color-dot" style="background:${t.color};"></span>
+                <div class="task-info">
+                  <span class="task-title">${t.label}</span>
+                  <span class="task-dur ${durClass}" id="dur-${t.id}">${formatDuration(t)}</span>
+                </div>
+                <div class="row-actions">
+                  <button type="button" class="icon-btn" data-to-inbox="${t.id}" title="تحويل للـ Inbox">للـ Inbox</button>
+                  <button type="button" class="timer-btn ${t.running ? 'is-stop' : ''}" data-timer="${t.id}">${t.running ? 'إيقاف' : 'بدء'}</button>
+                  <button type="button" class="icon-btn del" data-del-live="${t.id}" title="حذف">×</button>
+                </div>
+              </div>
+            `;
+          }).join('');
+
+      updateHourClock();
+      renderTrackers();
+
+      // Completed Log
+      const todayStr = new Date().toDateString();
+      const todayItems = COMPLETED.filter(c => new Date(c.completedAt).toDateString() === todayStr);
+      const todayCount = todayItems.length;
+      const todayMins = todayItems.reduce((s, c) => s + (Number(c.mins) || 0), 0);
+
+      const completedBox = document.getElementById('completed-box');
+      completedBox.innerHTML = `
+        <div class="prio-group-header" id="toggle-completed" style="cursor:pointer;">
+          <div class="prio-group-title">
+            <span class="color-dot" style="background:var(--green);"></span>
+            <span>المهام المكتملة (آخر ٤٨ ساعة)</span>
+          </div>
+          <div class="prio-group-right">
+            <span class="count-pill">${toAr(COMPLETED.length)}</span>
+            <span class="group-arrow">${completedOpen ? '▼' : '◀'}</span>
+          </div>
+        </div>
+        ${completedOpen ? `
+          <div class="prio-group-body">
+            <div class="today-summary">
+              <span>إنجاز اليوم</span>
+              <span>${toAr(todayCount)} ${todayCount === 1 ? 'مهمة' : 'مهام'} · ${toAr(todayMins)} دقيقة</span>
+            </div>
+            ${COMPLETED.length === 0
+              ? '<div class="empty-msg">مفيش مهام مكتملة خلال آخر ٤٨ ساعة.</div>'
+              : COMPLETED.map(c => `
+                <div class="task-row" style="opacity:0.85;">
+                  <span class="color-dot" style="background:var(--green);"></span>
+                  <div class="task-info">
+                    <span class="task-title" style="text-decoration:line-through; color:var(--muted);">${c.label}</span>
+                    <span class="completed-meta">${toAr(c.mins)} د · ${formatCompletedTime(c.completedAt)}</span>
+                  </div>
+                </div>
+              `).join('')}
+          </div>
+        ` : ''}
+      `;
+
+      document.getElementById('toggle-completed').addEventListener('click', () => {
+        completedOpen = !completedOpen;
+        render();
+      });
+
+      // Routine List
+      const routineListEl = document.getElementById('routine-list');
+      routineListEl.innerHTML = ROUTINE.length === 0
+        ? '<div class="empty-msg">مفيش مهام روتين لسه. ضيف مهامك اليومية من النموذج بالأسفل.</div>'
+        : ROUTINE.map(item => `
+            <div class="task-row">
+              <div class="task-info" style="cursor: pointer;" data-edit-routine="${item.id}" title="اضغط لتعديل الاسم أو الوقت">
+                <span class="task-title">✏️ ${item.label}</span>
+                <span class="task-dur">${toAr(item.mins)} د</span>
+              </div>
+              <div class="row-actions">
+                <button type="button" class="timer-btn" data-use-routine="${item.id}">إضافة للساعة</button>
+                <button type="button" class="icon-btn del" data-del-routine="${item.id}" title="حذف من الروتين">×</button>
+              </div>
+            </div>
+          `).join('');
+
+      // Live tasks listeners
+      listEl.querySelectorAll('[data-check]').forEach(circle => {
+        circle.addEventListener('click', e => {
+          e.stopPropagation();
+          const id = Number(circle.dataset.check);
+          const task = TASKS.find(x => x.id === id);
+          if (!task) return;
+
+          if (task.completing) {
+            task.completing = false;
+            if (pendingDeletes[id]) {
+              clearTimeout(pendingDeletes[id]);
+              delete pendingDeletes[id];
+            }
+            render();
+            return;
+          }
+
+          task.completing = true;
+          task.running = false;
+          task.endAt = null;
+          render();
+
+          pendingDeletes[id] = setTimeout(() => {
+            delete pendingDeletes[id];
+            const idx = TASKS.findIndex(x => x.id === id);
+            if (idx === -1) return;
+            const removed = { ...TASKS[idx], completing: false, running: false, endAt: null };
+            TASKS.splice(idx, 1);
+            const logId = Date.now() + Math.floor(Math.random() * 1000);
+            COMPLETED.unshift({ logId, label: removed.label, mins: removed.mins, completedAt: Date.now() });
+            showUndo(removed, idx, logId);
+            render();
+          }, 1800);
+        });
+      });
+
+      listEl.querySelectorAll('[data-to-inbox]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const id = Number(btn.dataset.toInbox);
+          const idx = TASKS.findIndex(x => x.id === id);
+          if (idx === -1) return;
+          const [moved] = TASKS.splice(idx, 1);
+          const targetSec = INBOX_SECTIONS[0] ? INBOX_SECTIONS[0].id : 'sec-1';
+          INBOX.push({ id: moved.id, label: moved.label, sectionId: targetSec });
+          openSections[targetSec] = true;
+          render();
+        });
+      });
+
+      listEl.querySelectorAll('[data-del-live]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const id = Number(btn.dataset.delLive);
+          TASKS = TASKS.filter(x => x.id !== id);
+          render();
+        });
+      });
+
+      listEl.querySelectorAll('[data-timer]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          unlockAudio();
+          const id = Number(btn.dataset.timer);
+          const task = TASKS.find(x => x.id === id);
+          if (!task || task.completing) return;
+          const now = Date.now();
+          if (task.running) {
+            task.remainingSec = task.endAt ? Math.max(0, Math.ceil((task.endAt - now) / 1000)) : task.remainingSec;
+            task.running = false;
+            task.endAt = null;
+          } else {
+            if (task.remainingSec <= 0) task.remainingSec = task.mins * 60;
+            TASKS.forEach(x => {
+              if (x.running && x.id !== id && x.endAt) {
+                x.remainingSec = Math.max(0, Math.ceil((x.endAt - now) / 1000));
+              }
+              x.running = (x.id === id);
+              x.endAt = (x.id === id) ? now + x.remainingSec * 1000 : null;
+            });
+          }
+          render();
+        });
+      });
+
+      // Routine listeners
+      routineListEl.querySelectorAll('[data-use-routine]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.useRoutine);
+          const item = ROUTINE.find(x => x.id === id);
+          if (!item) return;
+          TASKS.push({
+            id: Date.now() + Math.floor(Math.random() * 1000),
+            label: item.label,
+            mins: item.mins,
+            color: nextDistinctColor(),
+            remainingSec: item.mins * 60,
+            running: false,
+            endAt: null,
+            completing: false
+          });
+          switchTab('live');
+        });
+      });
+
+      routineListEl.querySelectorAll('[data-edit-routine]').forEach(el => {
+        el.addEventListener('click', () => {
+          const id = Number(el.dataset.editRoutine);
+          const item = ROUTINE.find(x => x.id === id);
+          if (!item) return;
+          const newName = prompt('تعديل اسم المهمة الروتينية:', item.label);
+          if (newName === null) return;
+          const newMins = prompt('المدة بالدقائق (أقصى وقت ٦٠):', item.mins);
+          if (newMins === null) return;
+          item.label = newName.trim() || item.label;
+          item.mins = Math.min(60, Math.max(1, parseMins(newMins) || item.mins));
+          render();
+        });
+      });
+
+      routineListEl.querySelectorAll('[data-del-routine]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.delRoutine);
+          ROUTINE = ROUTINE.filter(x => x.id !== id);
+          render();
+        });
+      });
+    }
+
+    // Direct Add Task to Hour
+    document.getElementById('add-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const titleInput = document.getElementById('new-title');
+      const minsInput = document.getElementById('new-mins');
+      const label = titleInput.value.trim();
+      const mins = parseMins(minsInput.value);
+      if (!label || !(mins > 0)) return;
+
+      TASKS.push({
+        id: Date.now(),
+        label,
+        mins: Math.min(60, mins),
+        color: nextDistinctColor(),
+        remainingSec: Math.min(60, mins) * 60,
+        running: false,
+        endAt: null,
+        completing: false
+      });
+      titleInput.value = '';
+      render();
     });
 
-    document.getElementById('refresh-app-btn').addEventListener('click', () => location.reload());
-    document.getElementById('copy-btn').addEventListener('click', () => {
-      const txt = TASKS.map(t => `- ${t.title} (${toAr(t.mins)} د)`).join('\n') || 'لا توجد مهام';
-      navigator.clipboard.writeText(txt).then(() => alert('تم نسخ حالة المهام'));
+    // Add Routine Item Form
+    document.getElementById('routine-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const titleInput = document.getElementById('routine-title');
+      const minsInput = document.getElementById('routine-mins');
+      const label = titleInput.value.trim();
+      const mins = parseMins(minsInput.value);
+      if (!label || !(mins > 0)) return;
+      ROUTINE.push({ id: Date.now(), label, mins: Math.min(60, mins) });
+      titleInput.value = '';
+      minsInput.value = '';
+      render();
+    });
+
+    // Add Inbox Task Form
+    document.getElementById('inbox-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const input = document.getElementById('inbox-title');
+      const secSelect = document.getElementById('inbox-section-select');
+      const label = input.value.trim();
+      if (!label) return;
+      const sectionId = secSelect ? secSelect.value : (INBOX_SECTIONS[0] ? INBOX_SECTIONS[0].id : 'sec-1');
+      INBOX.push({ id: Date.now(), label, sectionId });
+      openSections[sectionId] = true;
+      input.value = '';
+      saveState();
+      render();
+      renderInboxInsideModal();
+    });
+
+    // Priority picker for inbox modal
+    document.querySelectorAll('#prio-picker .color-dot-clickable').forEach(btn => {
+      btn.addEventListener('click', () => {
+        selectedInboxColor = btn.dataset.color;
+        document.querySelectorAll('#prio-picker .color-dot-clickable').forEach(b => b.classList.remove('is-selected'));
+        btn.classList.add('is-selected');
+      });
+    });
+
+    // Copy Status
+    document.getElementById('copy-btn').addEventListener('click', async () => {
+      const statusEl = document.getElementById('copy-status');
+      let text = TASKS.length === 0
+        ? 'خلصت كل مهام الساعة القادمة.'
+        : 'المهام المتبقية في الساعة القادمة:\n' + TASKS.map(t => `- ${t.label} (${t.mins} د)`).join('\n');
+      if (INBOX.length > 0) {
+        text += '\n\nمهام الـ Inbox:\n' + INBOX.map(i => `- ${i.label}`).join('\n');
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        statusEl.textContent = 'تم النسخ!';
+      } catch (e) {
+        statusEl.textContent = 'تعذر النسخ التلقائي.';
+      }
+      setTimeout(() => { statusEl.textContent = ''; }, 3000);
+    });
+
+    // App Refresh Button
+    document.getElementById('refresh-app-btn').addEventListener('click', () => {
+      saveState();
+      const base = window.location.href.split('?')[0];
+      window.location.replace(`${base}?v=${Date.now()}`);
+    });
+
+    // Trackers Settings Modal
+    function openTrackersSettings() {
+      const body = document.getElementById('trackers-settings-body');
+      body.innerHTML = TRACKERS.map((tr, idx) => `
+        <div style="background:var(--item); padding:10px 12px; border-radius:12px; border:1px solid var(--border); display:flex; flex-direction:column; gap:6px;">
+          <div style="font-size:12px; font-weight:700; color:${tr.color};">العداد: ${tr.name}</div>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="tr-name-${idx}" value="${tr.name}" class="input-field" style="flex:1; padding:6px 10px; font-size:13px;" placeholder="اسم العداد">
+            ${tr.type === 'counter' ? `
+              <input type="number" id="tr-goal-${idx}" value="${tr.goal}" class="input-field" style="width:80px; padding:6px 10px; font-size:13px;" placeholder="الهدف">
+              <input type="number" id="tr-step-${idx}" value="${tr.step}" class="input-field" style="width:70px; padding:6px 10px; font-size:13px;" placeholder="الضغطة">
+            ` : ''}
+          </div>
+        </div>
+      `).join('');
+      document.getElementById('modal-trackers-settings').classList.remove('hidden');
+    }
+
+    document.getElementById('open-trackers-settings-btn').addEventListener('click', openTrackersSettings);
+    document.getElementById('close-trackers-settings').addEventListener('click', () => {
+      document.getElementById('modal-trackers-settings').classList.add('hidden');
+    });
+
+    document.getElementById('save-trackers-settings').addEventListener('click', () => {
+      TRACKERS.forEach((tr, idx) => {
+        const nameEl = document.getElementById(`tr-name-${idx}`);
+        if (nameEl && nameEl.value.trim()) tr.name = nameEl.value.trim();
+        if (tr.type === 'counter') {
+          const goalEl = document.getElementById(`tr-goal-${idx}`);
+          const stepEl = document.getElementById(`tr-step-${idx}`);
+          if (goalEl && parseMins(goalEl.value) > 0) tr.goal = parseMins(goalEl.value);
+          if (stepEl && parseMins(stepEl.value) > 0) tr.step = parseMins(stepEl.value);
+        }
+      });
+      document.getElementById('modal-trackers-settings').classList.add('hidden');
+      render();
+    });
+
+    // Trackers Log & Export PDF Modal
+    function openTrackersLog() {
+      const body = document.getElementById('trackers-log-body');
+      const allDays = [
+        { label: 'اليوم الحالي (حتى الآن)', trackers: TRACKERS },
+        ...(TRACKERS_LOGS || []).map(l => ({ label: l.dateStr, trackers: l.trackers }))
+      ];
+
+      body.innerHTML = allDays.map(day => `
+        <div style="background:var(--item); border:1px solid var(--border); border-radius:12px; padding:12px; margin-bottom:8px;">
+          <div style="font-weight:800; font-size:13px; color:var(--green); margin-bottom:8px; border-bottom:1px solid var(--border); padding-bottom:4px;">
+            📅 ${day.label}
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:6px; font-size:12px;">
+            ${(day.trackers || []).map(t => {
+              const res = t.type === 'checks'
+                ? `${toAr((t.done || []).length)} / ${toAr((t.items || []).length)}`
+                : `${toAr(t.val || 0)} / ${toAr(t.goal || 0)} ${t.unit || ''}`;
+              return `
+                <div style="background:var(--card); padding:6px 8px; border-radius:8px; display:flex; justify-content:space-between;">
+                  <span style="color:var(--muted);">${t.name}:</span>
+                  <span style="font-weight:700;">${res}</span>
+                </div>
+              `;
+            }).join('')}
+          </div>
+        </div>
+      `).join('');
+
+      document.getElementById('modal-trackers-log').classList.remove('hidden');
+    }
+
+    document.getElementById('open-trackers-log-btn').addEventListener('click', openTrackersLog);
+    document.getElementById('close-trackers-log').addEventListener('click', () => {
+      document.getElementById('modal-trackers-log').classList.add('hidden');
+    });
+    document.getElementById('close-trackers-log-2').addEventListener('click', () => {
+      document.getElementById('modal-trackers-log').classList.add('hidden');
+    });
+
+    // PDF / Print Handler
+    document.getElementById('print-pdf-btn').addEventListener('click', () => {
+      const printArea = document.getElementById('print-area');
+      const allDays = [
+        { label: 'اليوم الحالي', trackers: TRACKERS },
+        ...(TRACKERS_LOGS || []).map(l => ({ label: l.dateStr, trackers: l.trackers }))
+      ];
+
+      printArea.innerHTML = `
+        <div style="direction:rtl; font-family:system-ui, sans-serif; padding:24px; color:#111;">
+          <h1 style="text-align:center; font-size:18px; margin-bottom:20px;">تقرير سجل العدادات اليومية</h1>
+          ${allDays.map(day => `
+            <div style="border:1px solid #ddd; border-radius:8px; padding:12px; margin-bottom:16px;">
+              <h3 style="margin:0 0 10px 0; font-size:14px; color:#15803d;">${day.label}</h3>
+              <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                ${(day.trackers || []).map(t => `
+                  <tr style="border-bottom:1px solid #eee;">
+                    <td style="padding:6px; font-weight:bold;">${t.name}</td>
+                    <td style="padding:6px; text-align:left;">
+                      ${t.type === 'checks' ? `${(t.done || []).length} / ${(t.items || []).length}` : `${t.val || 0} / ${t.goal || 0} ${t.unit || ''}`}
+                    </td>
+                  </tr>
+                `).join('')}
+              </table>
+            </div>
+          `).join('')}
+        </div>
+      `;
+      window.print();
     });
 
     render();
+    setInterval(updateHourClock, 15000);
+    setInterval(() => {
+      checkAndApplyDaily3AMReset(state);
+    }, 60000);
   </script>
 </body>
 </html>
