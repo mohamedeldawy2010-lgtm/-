@@ -156,7 +156,7 @@
       margin-bottom: 8px;
     }
     h1 {
-      font-size: 15.5px;
+      font-size: 14.5px;
       margin: 0;
       font-weight: 800;
       letter-spacing: -0.02em;
@@ -405,6 +405,15 @@
       align-items: center;
       gap: 10px;
       min-width: 0;
+    }
+    .task-note {
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--muted);
+      padding-right: 40px;
+      line-height: 1.4;
+      overflow-wrap: break-word;
+      word-break: break-word;
     }
     .unified-bar-row {
       display: flex;
@@ -766,6 +775,30 @@
       justify-content: center;
       transition: all 0.15s ease;
     }
+    .delegate-pill {
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 8px;
+      border-radius: 8px;
+      border: 1px dashed var(--border);
+      background: var(--card);
+      color: var(--muted);
+      cursor: pointer;
+      font-family: inherit;
+      white-space: nowrap;
+      flex-shrink: 0;
+      transition: all 0.15s ease;
+    }
+    .delegate-pill:hover {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+    .delegate-pill.is-assigned {
+      border-style: solid;
+      border-color: rgba(59, 102, 245, 0.35);
+      background: var(--blue-soft);
+      color: var(--blue);
+    }
     .gear-btn:hover {
       color: var(--text);
       border-color: var(--muted);
@@ -1008,6 +1041,7 @@
     <div class="tabs-bar">
       <button type="button" class="tab-btn is-active" id="tab-live">الساعة الحالية</button>
       <button type="button" class="tab-btn" id="tab-routine">Routine (٠)</button>
+      <button type="button" class="tab-btn" id="open-delegates-mgr-btn" title="إعدادات قائمة التفويض (Delegate)" style="flex:0 0 auto; padding:9px 10px; font-size:15px;">👥</button>
       <button type="button" class="tab-btn" id="theme-toggle-btn" title="تبديل الوضع الليلي / النهاري" style="flex:0 0 auto; padding:9px 12px; font-size:15px;">🌙</button>
     </div>
 
@@ -1020,6 +1054,10 @@
             <button type="button" class="inbox-mini-btn" id="open-inbox-modal-btn" title="صندوق المهام (Inbox)">
               <span class="inbox-mini-circle">📥</span>
               <span class="inbox-mini-count" id="inbox-launcher-pill">٠</span>
+            </button>
+            <button type="button" class="inbox-mini-btn" id="open-notes-modal-btn" title="الملاحظات (Notes)">
+              <span class="inbox-mini-circle">📝</span>
+              <span class="inbox-mini-count" id="notes-launcher-pill">٠</span>
             </button>
             <h1>مهام الساعة القادمة</h1>
           </div>
@@ -1123,6 +1161,31 @@
     </div>
   </div>
 
+  <!-- MODAL: NOTES -->
+  <div class="modal-overlay hidden" id="modal-notes">
+    <div class="modal-box" style="max-width: 580px;">
+      <div class="modal-head">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <span>📝</span>
+          <h2>الملاحظات (Notes)</h2>
+        </div>
+        <button type="button" class="icon-btn" id="close-notes-modal" style="padding: 6px 12px; font-size: 14px;">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="sub-stats" style="margin:0 0 4px 0;">اكتب أي ملاحظة أو فكرة، واضغط عليها لتعديلها أو اسحبها لليمين لنقلها للـ Inbox أو حذفها.</div>
+        <form id="add-note-form" style="display:flex; gap:8px; align-items:flex-start;">
+          <textarea class="input-field input-name" id="new-note-text" rows="2" placeholder="اكتب ملاحظة جديدة..." style="resize:vertical; min-height:44px;" required></textarea>
+          <button type="submit" class="add-btn" title="إضافة ملاحظة" style="padding:10px 16px;">+</button>
+        </form>
+        <div id="notes-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+      </div>
+      <div class="modal-foot">
+        <span class="max-hint" id="notes-footer-count">إجمالي الملاحظات: ٠</span>
+        <button type="button" class="timer-btn" id="close-notes-modal-2">تم</button>
+      </div>
+    </div>
+  </div>
+
   <!-- MODAL: INBOX SECTIONS MANAGER -->
   <div class="modal-overlay hidden" id="modal-inbox-sections">
     <div class="modal-box" style="max-width: 500px;">
@@ -1165,6 +1228,28 @@
       </div>
       <div class="modal-foot">
         <button type="button" class="timer-btn" id="close-routine-sections-2">حفظ والعودة</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: DELEGATES SETTINGS -->
+  <div class="modal-overlay hidden" id="modal-delegates">
+    <div class="modal-box" style="max-width: 480px;">
+      <div class="modal-head">
+        <h2>👥 إعدادات قائمة التفويض (Delegate)</h2>
+        <button type="button" class="icon-btn" id="close-delegates-modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="sub-stats">أضف أسماء الأشخاص أو الجهات اللي بتفوّض ليهم المهام، وهتظهرلك للاختيار جنب كل مهمة:</div>
+        <div id="delegates-list" style="display:flex; flex-direction:column; gap:8px;"></div>
+
+        <form id="add-delegate-form" style="display:flex; gap:8px; align-items:center; margin-top:8px; padding-top:10px; border-top:1px solid var(--border);">
+          <input type="text" class="input-field input-name" id="new-delegate-name" placeholder="اسم الشخص أو الجهة..." required>
+          <button type="submit" class="timer-btn">+ إضافة</button>
+        </form>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="timer-btn" id="close-delegates-modal-2">حفظ وإغلاق</button>
       </div>
     </div>
   </div>
@@ -1373,6 +1458,8 @@
         inbox: [],
         routine: [],
         completed: [],
+        notes: [],
+        delegates: [],
         trackers: JSON.parse(JSON.stringify(DEFAULT_TRACKERS)),
         trackersLogs: [],
         lastReset: null
@@ -1423,6 +1510,8 @@
     let INBOX = state.inbox;
     let ROUTINE = state.routine;
     let COMPLETED = state.completed;
+    let NOTES = Array.isArray(state.notes) ? state.notes : [];
+    let DELEGATES = Array.isArray(state.delegates) ? state.delegates : [];
     let TRACKERS = state.trackers;
     let TRACKERS_LOGS = state.trackersLogs;
 
@@ -1442,7 +1531,10 @@
     let swipedTaskId = null;
     let movingLiveToInboxId = null;
     let editingLiveTaskId = null;
+    let delegatingLiveTaskId = null;
     let swipedInboxId = null;
+    let swipedNoteId = null;
+    let editingNoteId = null;
     let swipedRoutineId = null;
     let movingRoutineId = null;
     let addingToRoutineSecId = null;
@@ -1471,6 +1563,8 @@
           inbox: INBOX,
           routine: ROUTINE,
           completed: COMPLETED,
+          notes: NOTES,
+          delegates: DELEGATES,
           trackers: TRACKERS,
           trackersLogs: TRACKERS_LOGS,
           lastReset: state.lastReset
@@ -1521,6 +1615,34 @@
       applyTheme(isCurrentlyDark() ? 'light' : 'dark');
     });
 
+    // Horizontal swipe anywhere outside task rows/modals to switch between Live Hour & Routine
+    (function setupTabSwipe() {
+      let tStartX = 0, tStartY = 0, tValid = false;
+      document.addEventListener('touchstart', e => {
+        if (!e.touches || e.touches.length !== 1) { tValid = false; return; }
+        const target = e.target;
+        const anyModalOpen = Array.from(document.querySelectorAll('.modal-overlay')).some(m => !m.classList.contains('hidden'));
+        if (anyModalOpen || target.closest('.swipe-wrap') || target.closest('.drag-handle') || target.closest('input, select, textarea, button')) {
+          tValid = false;
+          return;
+        }
+        tStartX = e.touches[0].clientX;
+        tStartY = e.touches[0].clientY;
+        tValid = true;
+      }, { passive: true });
+
+      document.addEventListener('touchend', e => {
+        if (!tValid || !e.changedTouches || !e.changedTouches[0]) return;
+        tValid = false;
+        const dx = e.changedTouches[0].clientX - tStartX;
+        const dy = e.changedTouches[0].clientY - tStartY;
+        if (Math.abs(dx) > 75 && Math.abs(dx) > Math.abs(dy) * 1.6) {
+          if (dx > 0 && currentTab === 'live') switchTab('routine');
+          else if (dx < 0 && currentTab === 'routine') switchTab('live');
+        }
+      }, { passive: true });
+    })();
+
     document.getElementById('tab-live').addEventListener('click', () => switchTab('live'));
     document.getElementById('tab-routine').addEventListener('click', () => switchTab('routine'));
 
@@ -1543,6 +1665,203 @@
     document.getElementById('close-inbox-modal-2').addEventListener('click', closeInboxModal);
     inboxModal.addEventListener('click', e => {
       if (e.target === inboxModal) closeInboxModal();
+    });
+
+    // Notes Modal
+    const notesModal = document.getElementById('modal-notes');
+    function openNotesModal() {
+      renderNotesInsideModal();
+      notesModal.classList.remove('hidden');
+    }
+    function closeNotesModal() {
+      editingNoteId = null;
+      swipedNoteId = null;
+      notesModal.classList.add('hidden');
+      render();
+    }
+    document.getElementById('open-notes-modal-btn').addEventListener('click', openNotesModal);
+    document.getElementById('close-notes-modal').addEventListener('click', closeNotesModal);
+    document.getElementById('close-notes-modal-2').addEventListener('click', closeNotesModal);
+    notesModal.addEventListener('click', e => {
+      if (e.target === notesModal) closeNotesModal();
+    });
+
+    function renderNotesInsideModal() {
+      const listEl = document.getElementById('notes-list');
+      const footerCount = document.getElementById('notes-footer-count');
+      if (footerCount) footerCount.textContent = `إجمالي الملاحظات: ${toAr(NOTES.length)}`;
+      if (!listEl) return;
+
+      if (NOTES.length === 0) {
+        listEl.innerHTML = '<div class="empty-msg" style="padding:14px;">لا توجد ملاحظات بعد.</div>';
+        return;
+      }
+
+      listEl.innerHTML = NOTES.map(note => {
+        const isSwiped = swipedNoteId === note.id;
+        return `
+          <div class="inbox-item-outer">
+            <div class="swipe-wrap" data-note-swipe-id="${note.id}">
+              <div class="swipe-actions">
+                <button type="button" class="icon-btn" data-note-to-inbox="${note.id}" title="تحويل لمهمة في Inbox">للـ Inbox</button>
+                <button type="button" class="icon-btn del" data-del-note="${note.id}" title="حذف">×</button>
+              </div>
+              <div class="swipe-content" style="transform: translate3d(${isSwiped ? '122px' : '0px'}, 0, 0);">
+                <div class="unified-top" style="align-items:flex-start;">
+                  <span class="drag-handle note-drag-handle" title="اسحب للترتيب">⋮⋮</span>
+                  <div style="flex:1; min-width:0; cursor:pointer;" data-edit-note="${note.id}" title="اضغط للتعديل">
+                    <div class="task-title" style="white-space:pre-wrap; font-weight:600; line-height:1.45;">${note.text}</div>
+                    <div class="completed-meta" style="margin-top:3px;">${formatCompletedTime(note.updatedAt || note.createdAt)}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            ${editingNoteId === note.id ? `
+              <div class="promote-box" style="padding:8px 10px; background:var(--item); border-radius:12px; border:1px solid var(--border); margin-top:0;">
+                <textarea class="input-field" id="edit-note-inp-${note.id}" rows="2" style="width:100%; resize:vertical; font-size:16px;">${note.text}</textarea>
+                <button type="button" class="timer-btn" data-save-note="${note.id}">حفظ</button>
+                <button type="button" class="icon-btn" data-cancel-note="1">إلغاء</button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+
+      attachLiveSortable(
+        listEl,
+        '.inbox-item-outer',
+        '.note-drag-handle',
+        (from, to) => {
+          const [moved] = NOTES.splice(from, 1);
+          NOTES.splice(to, 0, moved);
+        },
+        () => {
+          saveState();
+          renderNotesInsideModal();
+        }
+      );
+
+      listEl.querySelectorAll('.swipe-wrap').forEach(wrap => {
+        const content = wrap.querySelector('.swipe-content');
+        const noteId = Number(wrap.dataset.noteSwipeId);
+        if (!content) return;
+        let sX = 0, sY = 0, baseOffset = 0, swiping = false, lockChecked = false;
+
+        function onStart(cx, cy, target) {
+          if (target.closest('.drag-handle') || target.closest('button')) return false;
+          sX = cx; sY = cy;
+          baseOffset = (swipedNoteId === noteId) ? 122 : 0;
+          swiping = false; lockChecked = false;
+          return true;
+        }
+        function onMove(cx, cy, ev) {
+          const dx = cx - sX, dy = cy - sY;
+          if (!lockChecked) {
+            if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+            lockChecked = true;
+            if (Math.abs(dx) > Math.abs(dy)) { swiping = true; wrap.classList.add('is-swiping'); }
+          }
+          if (swiping) {
+            if (ev && ev.cancelable) ev.preventDefault();
+            content.style.transform = `translate3d(${Math.max(0, Math.min(132, baseOffset + dx))}px, 0, 0)`;
+          }
+        }
+        function onEnd(cx) {
+          wrap.classList.remove('is-swiping');
+          if (!swiping) return;
+          if (baseOffset + (cx - sX) > 50) {
+            swipedNoteId = noteId;
+            content.style.transform = 'translate3d(122px, 0, 0)';
+            listEl.querySelectorAll('.swipe-wrap').forEach(other => {
+              if (other !== wrap) {
+                const oc = other.querySelector('.swipe-content');
+                if (oc) oc.style.transform = 'translate3d(0px, 0, 0)';
+              }
+            });
+          } else {
+            if (swipedNoteId === noteId) swipedNoteId = null;
+            content.style.transform = 'translate3d(0px, 0, 0)';
+          }
+          swiping = false;
+        }
+        content.addEventListener('touchstart', e => { if (e.touches?.[0]) onStart(e.touches[0].clientX, e.touches[0].clientY, e.target); }, { passive: true });
+        content.addEventListener('touchmove', e => { if (e.touches?.[0]) onMove(e.touches[0].clientX, e.touches[0].clientY, e); }, { passive: false });
+        content.addEventListener('touchend', e => { onEnd(e.changedTouches?.[0] ? e.changedTouches[0].clientX : sX); });
+        content.addEventListener('mousedown', e => {
+          if (!onStart(e.clientX, e.clientY, e.target)) return;
+          const mm = ev => onMove(ev.clientX, ev.clientY, ev);
+          const mu = ev => { document.removeEventListener('mousemove', mm); document.removeEventListener('mouseup', mu); onEnd(ev.clientX); };
+          document.addEventListener('mousemove', mm);
+          document.addEventListener('mouseup', mu);
+        });
+      });
+
+      listEl.querySelectorAll('[data-edit-note]').forEach(el => {
+        el.addEventListener('click', () => {
+          const id = Number(el.dataset.editNote);
+          if (swipedNoteId === id) { swipedNoteId = null; renderNotesInsideModal(); return; }
+          editingNoteId = (editingNoteId === id) ? null : id;
+          renderNotesInsideModal();
+        });
+      });
+
+      listEl.querySelectorAll('[data-save-note]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.saveNote);
+          const note = NOTES.find(x => x.id === id);
+          const inp = document.getElementById(`edit-note-inp-${id}`);
+          if (note && inp && inp.value.trim()) {
+            note.text = inp.value.trim();
+            note.updatedAt = Date.now();
+          }
+          editingNoteId = null;
+          saveState();
+          renderNotesInsideModal();
+        });
+      });
+
+      listEl.querySelectorAll('[data-cancel-note]').forEach(btn => {
+        btn.addEventListener('click', () => { editingNoteId = null; renderNotesInsideModal(); });
+      });
+
+      listEl.querySelectorAll('[data-del-note]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.delNote);
+          NOTES = NOTES.filter(x => x.id !== id);
+          swipedNoteId = null;
+          saveState();
+          render();
+          renderNotesInsideModal();
+        });
+      });
+
+      listEl.querySelectorAll('[data-note-to-inbox]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.noteToInbox);
+          const idx = NOTES.findIndex(x => x.id === id);
+          if (idx === -1) return;
+          const [moved] = NOTES.splice(idx, 1);
+          const targetSec = INBOX_SECTIONS[0] ? INBOX_SECTIONS[0].id : 'sec-1';
+          INBOX.push({ id: Date.now(), label: moved.text, sectionId: targetSec });
+          openSections[targetSec] = true;
+          swipedNoteId = null;
+          saveState();
+          render();
+          renderNotesInsideModal();
+        });
+      });
+    }
+
+    document.getElementById('add-note-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const inp = document.getElementById('new-note-text');
+      const text = inp.value.trim();
+      if (!text) return;
+      NOTES.unshift({ id: Date.now(), text, createdAt: Date.now(), updatedAt: Date.now() });
+      inp.value = '';
+      saveState();
+      render();
+      renderNotesInsideModal();
     });
 
     // Sections Manager Modal
@@ -2159,12 +2478,14 @@
                                   ${item.mins > 0 ? `<span class="task-dur">${toAr(item.mins)} د</span>` : ''}
                                 </div>
                               </div>
+                              ${item.note ? `<div class="task-note" style="padding-right:34px;">${item.note}</div>` : ''}
                             </div>
                           </div>
                           ${editingInboxId === item.id ? `
                             <div class="promote-box" style="padding:8px 10px; background:var(--item); border-radius:12px; border:1px solid var(--border); margin-top:0;">
                               <input type="text" class="input-field input-name" id="edit-inbox-name-${item.id}" value="${item.label}" placeholder="اسم المهمة">
                               <input type="text" inputmode="numeric" class="input-field input-mins" id="edit-inbox-mins-${item.id}" value="" placeholder="${item.mins > 0 ? toAr(item.mins) + ' د' : 'الوقت'}">
+                              <input type="text" class="input-field" id="edit-inbox-note-${item.id}" value="${item.note || ''}" placeholder="نوت / ملاحظة (اختياري)..." style="width:100%; font-weight:400;">
                               <button type="button" class="timer-btn" data-save-inbox="${item.id}">حفظ</button>
                               <button type="button" class="icon-btn" data-cancel-inbox-edit="1">إلغاء</button>
                             </div>
@@ -2389,7 +2710,13 @@
           if (!item) return;
           const nameInp = document.getElementById(`edit-inbox-name-${id}`);
           const minsInp = document.getElementById(`edit-inbox-mins-${id}`);
+          const noteInp = document.getElementById(`edit-inbox-note-${id}`);
           if (nameInp && nameInp.value.trim()) item.label = nameInp.value.trim();
+          if (noteInp) {
+            const n = noteInp.value.trim();
+            if (n) item.note = n;
+            else delete item.note;
+          }
           const rawMins = parseMins(minsInp ? minsInp.value : '');
           if (rawMins > 0) item.mins = Math.min(60, rawMins);
           editingInboxId = null;
@@ -2482,6 +2809,7 @@
           TASKS.push({
             id: Date.now(),
             label: item.label,
+            note: item.note || '',
             mins,
             color: nextDistinctColor(),
             priorityColor: sec ? sec.color : '#4f75ff',
@@ -2506,6 +2834,8 @@
       document.getElementById('tab-routine').textContent = `Routine (${toAr(remainingRoutineTotal)})`;
       const inboxLauncherPill = document.getElementById('inbox-launcher-pill');
       if (inboxLauncherPill) inboxLauncherPill.textContent = toAr(INBOX.length);
+      const notesLauncherPill = document.getElementById('notes-launcher-pill');
+      if (notesLauncherPill) notesLauncherPill.textContent = toAr(NOTES.length);
 
       const totalTasksMins = TASKS.reduce((s, t) => s + t.mins, 0);
       const freeMins = Math.max(0, 60 - totalTasksMins);
@@ -2575,9 +2905,11 @@
                       <div class="task-info" data-edit-live="${t.id}" style="cursor:pointer;" title="اضغط لتعديل الاسم أو الوقت">
                         <span class="task-title">${t.label}</span>
                         ${t.running ? `<button type="button" class="timer-btn is-stop" data-timer="${t.id}" style="padding:2px 8px; font-size:11px;">إيقاف</button>` : ''}
+                        <button type="button" class="delegate-pill ${t.delegate ? 'is-assigned' : ''}" data-delegate-btn="${t.id}" title="تفويض المهمة">${t.delegate ? `👤 ${t.delegate}` : 'Delegate'}</button>
                         <span class="task-dur ${durClass}" id="dur-${t.id}">${formatDuration(t)}</span>
                       </div>
                     </div>
+                    ${t.note ? `<div class="task-note">${t.note}</div>` : ''}
                     <div class="unified-bar-row">
                       <div class="unified-bar-track">
                         <div class="unified-bar-fill" style="width:${barPct}%; background:${t.color};"></div>
@@ -2585,10 +2917,24 @@
                     </div>
                   </div>
                 </div>
+                ${delegatingLiveTaskId === t.id ? `
+                  <div class="promote-box" style="padding:8px 10px; background:var(--item); border-radius:12px; border:1px solid var(--border); margin-top:0;">
+                    <span class="max-hint">Delegate إلى:</span>
+                    ${DELEGATES.length === 0
+                      ? '<span class="max-hint" style="color:var(--red);">القائمة فاضية — أضف أسماء من الإعدادات</span>'
+                      : DELEGATES.map(name => `
+                        <button type="button" class="chip-btn ${t.delegate === name ? 'is-active' : ''}" data-set-delegate="${t.id}" data-del-name="${name}">${name}</button>
+                      `).join('')}
+                    ${t.delegate ? `<button type="button" class="icon-btn" data-clear-delegate="${t.id}">إزالة</button>` : ''}
+                    <button type="button" class="icon-btn" data-open-del-settings="1">⚙️ القائمة</button>
+                    <button type="button" class="icon-btn" data-cancel-delegate="1">إغلاق</button>
+                  </div>
+                ` : ''}
                 ${editingLiveTaskId === t.id ? `
                   <div class="promote-box" style="padding:8px 10px; background:var(--item); border-radius:12px; border:1px solid var(--border); margin-top:0;">
                     <input type="text" class="input-field input-name" id="edit-live-name-${t.id}" value="${t.label}" placeholder="اسم المهمة">
                     <input type="text" inputmode="numeric" class="input-field input-mins" id="edit-live-mins-${t.id}" value="" placeholder="${toAr(t.mins)} د">
+                    <input type="text" class="input-field" id="edit-live-note-${t.id}" value="${t.note || ''}" placeholder="نوت / ملاحظة (اختياري)..." style="width:100%; font-weight:400;">
                     <button type="button" class="timer-btn" data-save-live="${t.id}">حفظ</button>
                     <button type="button" class="icon-btn" data-cancel-live-edit="1">إلغاء</button>
                   </div>
@@ -2966,7 +3312,13 @@
           if (!task) return;
           const nameInp = document.getElementById(`edit-live-name-${id}`);
           const minsInp = document.getElementById(`edit-live-mins-${id}`);
+          const noteInp = document.getElementById(`edit-live-note-${id}`);
           if (nameInp && nameInp.value.trim()) task.label = nameInp.value.trim();
+          if (noteInp) {
+            const n = noteInp.value.trim();
+            if (n) task.note = n;
+            else delete task.note;
+          }
           const rawMins = parseMins(minsInp ? minsInp.value : '');
           if (rawMins > 0) {
             const otherMins = TASKS.reduce((s, x) => x.id === id ? s : s + x.mins, 0);
@@ -2983,6 +3335,58 @@
         btn.addEventListener('click', e => {
           e.stopPropagation();
           editingLiveTaskId = null;
+          render();
+        });
+      });
+
+      // Delegate picker listeners on Live Hour tasks
+      listEl.querySelectorAll('[data-delegate-btn]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const id = Number(btn.dataset.delegateBtn);
+          swipedTaskId = null;
+          editingLiveTaskId = null;
+          movingLiveToInboxId = null;
+          delegatingLiveTaskId = (delegatingLiveTaskId === id) ? null : id;
+          render();
+        });
+      });
+
+      listEl.querySelectorAll('[data-set-delegate]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const id = Number(btn.dataset.setDelegate);
+          const task = TASKS.find(x => x.id === id);
+          if (!task) return;
+          task.delegate = btn.dataset.delName;
+          delegatingLiveTaskId = null;
+          render();
+        });
+      });
+
+      listEl.querySelectorAll('[data-clear-delegate]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const id = Number(btn.dataset.clearDelegate);
+          const task = TASKS.find(x => x.id === id);
+          if (!task) return;
+          delete task.delegate;
+          delegatingLiveTaskId = null;
+          render();
+        });
+      });
+
+      listEl.querySelectorAll('[data-open-del-settings]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          openDelegatesModal();
+        });
+      });
+
+      listEl.querySelectorAll('[data-cancel-delegate]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          delegatingLiveTaskId = null;
           render();
         });
       });
@@ -3042,7 +3446,7 @@
           const idx = TASKS.findIndex(x => x.id === id);
           if (idx === -1) return;
           const [moved] = TASKS.splice(idx, 1);
-          INBOX.push({ id: moved.id, label: moved.label, sectionId: targetSec });
+          INBOX.push({ id: moved.id, label: moved.label, note: moved.note || '', mins: moved.mins, sectionId: targetSec });
           openSections[targetSec] = true;
           movingLiveToInboxId = null;
           render();
@@ -3435,7 +3839,7 @@
       const statusEl = document.getElementById('copy-status');
       let text = TASKS.length === 0
         ? 'خلصت كل مهام الساعة القادمة.'
-        : 'المهام المتبقية في الساعة القادمة:\n' + TASKS.map(t => `- ${t.label} (${t.mins} د)`).join('\n');
+        : 'المهام المتبقية في الساعة القادمة:\n' + TASKS.map(t => `- ${t.label} (${t.mins} د)${t.delegate ? ` [Delegate: ${t.delegate}]` : ''}`).join('\n');
       if (INBOX.length > 0) {
         text += '\n\nمهام الـ Inbox:\n' + INBOX.map(i => `- ${i.label}`).join('\n');
       }
@@ -3453,6 +3857,69 @@
       saveState();
       const base = window.location.href.split('?')[0];
       window.location.replace(`${base}?v=${Date.now()}`);
+    });
+
+    // Delegates Settings Modal
+    const delegatesModal = document.getElementById('modal-delegates');
+    function openDelegatesModal() {
+      renderDelegatesList();
+      delegatesModal.classList.remove('hidden');
+    }
+    function closeDelegatesModal() {
+      delegatesModal.classList.add('hidden');
+      render();
+    }
+    document.getElementById('open-delegates-mgr-btn').addEventListener('click', openDelegatesModal);
+    document.getElementById('close-delegates-modal').addEventListener('click', closeDelegatesModal);
+    document.getElementById('close-delegates-modal-2').addEventListener('click', closeDelegatesModal);
+    delegatesModal.addEventListener('click', e => {
+      if (e.target === delegatesModal) closeDelegatesModal();
+    });
+
+    function renderDelegatesList() {
+      const listEl = document.getElementById('delegates-list');
+      if (!listEl) return;
+      listEl.innerHTML = DELEGATES.length === 0
+        ? '<div class="empty-msg" style="padding:10px;">مفيش أسماء لسه. أضف أول اسم من تحت.</div>'
+        : DELEGATES.map((name, idx) => `
+          <div style="background:var(--item); padding:8px 12px; border-radius:12px; border:1px solid var(--border); display:flex; align-items:center; gap:8px;">
+            <input type="text" value="${name}" data-del-edit-idx="${idx}" class="input-field" style="flex:1; padding:6px 10px; font-size:16px; font-weight:700;">
+            <button type="button" class="icon-btn del" data-del-remove-idx="${idx}" title="حذف">×</button>
+          </div>
+        `).join('');
+
+      listEl.querySelectorAll('[data-del-edit-idx]').forEach(inp => {
+        inp.addEventListener('change', () => {
+          const i = Number(inp.dataset.delEditIdx);
+          const oldName = DELEGATES[i];
+          const newName = inp.value.trim();
+          if (newName) {
+            DELEGATES[i] = newName;
+            TASKS.forEach(t => { if (t.delegate === oldName) t.delegate = newName; });
+            saveState();
+          }
+        });
+      });
+
+      listEl.querySelectorAll('[data-del-remove-idx]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const i = Number(btn.dataset.delRemoveIdx);
+          DELEGATES.splice(i, 1);
+          saveState();
+          renderDelegatesList();
+        });
+      });
+    }
+
+    document.getElementById('add-delegate-form').addEventListener('submit', e => {
+      e.preventDefault();
+      const inp = document.getElementById('new-delegate-name');
+      const name = inp.value.trim();
+      if (!name) return;
+      if (!DELEGATES.includes(name)) DELEGATES.push(name);
+      inp.value = '';
+      saveState();
+      renderDelegatesList();
     });
 
     // Trackers Settings Modal
