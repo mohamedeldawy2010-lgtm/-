@@ -165,7 +165,8 @@
     .hour-clock {
       font-size: 12.5px;
       color: var(--blue);
-      font-weight: 700;
+      font-weight: 800;
+      font-variant-numeric: tabular-nums;
       margin-bottom: 14px;
       display: flex;
       align-items: center;
@@ -1218,11 +1219,14 @@
       const el = document.getElementById('hour-clock-hint');
       if (!el) return;
       const now = new Date();
-      const minsLeft = 60 - now.getMinutes();
+      const secsPassed = now.getMinutes() * 60 + now.getSeconds();
+      const secsLeft = secsPassed === 0 ? 3600 : (3600 - secsPassed);
+      const minsLeft = Math.floor(secsLeft / 60);
+      const sLeft = secsLeft % 60;
       const nextHour24 = (now.getHours() + 1) % 24;
       const ampm = nextHour24 >= 12 ? 'م' : 'ص';
       const nextHour12 = nextHour24 % 12 || 12;
-      el.textContent = `باقي ${toAr(minsLeft)} د على ${toAr(nextHour12)}:٠٠ ${ampm}`;
+      el.textContent = `⏱ ${toAr(String(minsLeft).padStart(2, '0'))}:${toAr(String(sLeft).padStart(2, '0'))} على ${toAr(nextHour12)}:٠٠ ${ampm}`;
     }
 
     function formatCompletedTime(ts) {
@@ -3443,7 +3447,7 @@
     });
 
     render();
-    setInterval(updateHourClock, 15000);
+    setInterval(updateHourClock, 1000);
     setInterval(() => {
       if (checkAndApplyDaily3AMReset(state)) render();
     }, 30000);
