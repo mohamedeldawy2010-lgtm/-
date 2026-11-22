@@ -1101,7 +1101,10 @@
       <div class="footer-actions" style="margin-top:4px; padding-top:4px; border-top:none;">
         <button type="button" class="copy-btn" id="copy-btn">نسخ الحالة لإرسالها في الشات</button>
         <span class="copy-status" id="copy-status"></span>
-        <button type="button" class="icon-btn" id="refresh-app-btn" title="تحديث نسخة التطبيق">↻ تحديث</button>
+        <div style="display:flex; gap:6px; align-items:center;">
+          <button type="button" class="icon-btn" id="open-backup-btn" title="نقل أو حفظ نسخة احتياطية">💾 نقل البيانات</button>
+          <button type="button" class="icon-btn" id="refresh-app-btn" title="تحديث نسخة التطبيق">↻ تحديث</button>
+        </div>
       </div>
     </div>
 
@@ -1261,6 +1264,29 @@
       </div>
       <div class="modal-foot">
         <button type="button" class="timer-btn" id="close-delegates-modal-2">حفظ وإغلاق</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MODAL: BACKUP / RESTORE -->
+  <div class="modal-overlay hidden" id="modal-backup">
+    <div class="modal-box" style="max-width: 500px;">
+      <div class="modal-head">
+        <h2>💾 نقل البيانات / نسخة احتياطية</h2>
+        <button type="button" class="icon-btn" id="close-backup-modal">✕</button>
+      </div>
+      <div class="modal-body">
+        <div class="sub-stats">انقل كل مهامك وإعداداتك وسجلاتك بين الأيقونة القديمة والجديدة في خطوتين:</div>
+        <button type="button" class="timer-btn" id="export-backup-btn" style="padding:10px 14px; font-size:13px;">📤 ١. نسخ كل بياناتي الحالية</button>
+        <div id="export-backup-status" style="font-size:12px; font-weight:700; color:var(--green); text-align:center;"></div>
+        <div style="border-top:1px dashed var(--border); padding-top:10px; display:flex; flex-direction:column; gap:8px;">
+          <div class="sub-stats" style="margin:0;">📥 ٢. الصق النسخة هنا للاستعادة في الأيقونة الجديدة:</div>
+          <textarea class="input-field" id="import-backup-text" rows="3" placeholder="الصق كود النسخة الاحتياطية هنا..." style="width:100%; font-size:14px; direction:ltr;"></textarea>
+          <button type="button" class="add-btn" id="import-backup-btn" style="padding:10px 14px; font-size:14px;">استعادة البيانات الآن</button>
+        </div>
+      </div>
+      <div class="modal-foot">
+        <button type="button" class="icon-btn" id="close-backup-modal-2">إغلاق</button>
       </div>
     </div>
   </div>
@@ -4189,6 +4215,43 @@
       inp.value = '';
       saveState();
       renderDelegatesList();
+    });
+
+    // Backup / Restore Modal
+    const backupModal = document.getElementById('modal-backup');
+    document.getElementById('open-backup-btn').addEventListener('click', () => {
+      document.getElementById('export-backup-status').textContent = '';
+      document.getElementById('import-backup-text').value = '';
+      backupModal.classList.remove('hidden');
+    });
+    document.getElementById('close-backup-modal').addEventListener('click', () => backupModal.classList.add('hidden'));
+    document.getElementById('close-backup-modal-2').addEventListener('click', () => backupModal.classList.add('hidden'));
+    backupModal.addEventListener('click', e => { if (e.target === backupModal) backupModal.classList.add('hidden'); });
+
+    document.getElementById('export-backup-btn').addEventListener('click', async () => {
+      saveState();
+      const raw = localStorage.getItem(STORAGE_KEY) || '{}';
+      const statusEl = document.getElementById('export-backup-status');
+      try {
+        await navigator.clipboard.writeText(raw);
+        statusEl.textContent = '✓ تم نسخ كل البيانات! افتح الأيقونة الجديدة والصقها.';
+      } catch (e) {
+        document.getElementById('import-backup-text').value = raw;
+        statusEl.textContent = 'حدد النص اللي تحت وانسخه يدوياً.';
+      }
+    });
+
+    document.getElementById('import-backup-btn').addEventListener('click', () => {
+      const txt = document.getElementById('import-backup-text').value.trim();
+      if (!txt) return;
+      try {
+        const parsed = JSON.parse(txt);
+        if (typeof parsed !== 'object' || parsed === null) throw new Error('Invalid');
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        window.location.reload();
+      } catch (e) {
+        showWarningToast('النص غير صحيح — تأكد إنك نسخت الكود كامل');
+      }
     });
 
     // Trackers Settings Modal
