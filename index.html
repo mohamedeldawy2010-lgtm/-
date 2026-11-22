@@ -1521,6 +1521,9 @@
         (stateObj.routine || []).forEach(r => {
           r.doneToday = false;
           delete r.routineLogId;
+          r.running = false;
+          r.endAt = null;
+          r.remainingSec = r.mins * 60;
         });
 
         stateObj.lastReset = threshold.toISOString();
@@ -1563,7 +1566,12 @@
       }
       state.routine = (state.routine || []).map(item => {
         if (!item.sectionId) item.sectionId = state.routineSections[0].id;
-        return item;
+        return {
+          ...item,
+          remainingSec: typeof item.remainingSec === 'number' ? item.remainingSec : item.mins * 60,
+          running: Boolean(item.running && item.endAt),
+          endAt: item.endAt || null
+        };
       });
       if (!state.trackers || state.trackers.length === 0) {
         state.trackers = JSON.parse(JSON.stringify(DEFAULT_TRACKERS));
@@ -2381,6 +2389,22 @@
           }
         }
       });
+      ROUTINE.forEach(r => {
+        if (r.running && r.endAt) {
+          const left = Math.max(0, Math.ceil((r.endAt - now) / 1000));
+          r.remainingSec = left;
+          if (left <= 0) {
+            r.running = false;
+            r.endAt = null;
+            finishedTask = r;
+          }
+          const durEl = document.getElementById(`rtn-dur-${r.id}`);
+          if (durEl) {
+            durEl.textContent = formatDuration(r);
+            durEl.className = `task-dur ${r.running ? 'is-running' : (r.remainingSec === 0 ? 'is-finished' : '')}`;
+          }
+        }
+      });
       if (finishedTask) {
         render();
         showAlarm(finishedTask.label);
@@ -2392,11 +2416,11 @@
     }
 
     function ensureTicker() {
-      const anyRunning = TASKS.some(t => t.running);
+      const anyRunning = TASKS.some(t => t.running) || ROUTINE.some(r => r.running);
       if (anyRunning && !ticker) {
         ticker = setInterval(() => {
           syncRunningTimers(false);
-          if (!TASKS.some(t => t.running) && ticker) {
+          if (!TASKS.some(t => t.running) && !ROUTINE.some(r => r.running) && ticker) {
             clearInterval(ticker);
             ticker = null;
           }
@@ -2829,7 +2853,10 @@
             else delete item.note;
           }
           const rawMins = parseMins(minsInp ? minsInp.value : '');
-          if (rawMins > 0) item.mins = Math.min(60, rawMins);
+          if (rawMins > 0) {
+            item.mins = Math.min(60, rawMins);
+            if (!item.running) item.remainingSec = item.mins * 60;
+          }
           editingInboxId = null;
           saveState();
           renderInboxInsideModal();
@@ -3198,15 +3225,18 @@
                   ? '<div class="empty-msg" style="padding:10px;">لا توجد مهام في هذا القسم بعد.</div>'
                   : items.map((item, idx) => {
                       const isSwiped = swipedRoutineId === item.id;
+                      const rSec = typeof item.remainingSec === 'number' ? item.remainingSec : item.mins * 60;
+                      const durClass = item.running ? 'is-running' : (rSec === 0 ? 'is-finished' : '');
                       return `
                         <div class="inbox-item-outer">
                           <div class="swipe-wrap ${item.doneToday ? 'is-completing' : ''}" data-rtn-swipe-id="${item.id}">
                             <div class="swipe-actions">
-                              <button type="button" class="timer-btn" data-use-routine="${item.id}" style="padding:6px 10px;">للساعة</button>
+                              <button type="button" class="timer-btn ${item.running ? 'is-stop' : ''}" data-rtn-timer="${item.id}" style="padding:6px 10px;">${item.running ? 'إيقاف' : 'بدء'}</button>
+                              <button type="button" class="timer-btn" data-use-routine="${item.id}" style="padding:6px 10px; background:var(--text-soft);">للساعة</button>
                               <button type="button" class="icon-btn" data-move-rsec="${item.id}" title="نقل لقسم آخر">نقل</button>
                               <button type="button" class="icon-btn del" data-del-routine="${item.id}" title="حذف من الروتين">×</button>
                             </div>
-                            <div class="swipe-content" style="transform: translate3d(${isSwiped ? '164px' : '0px'}, 0, 0);">
+                            <div class="swipe-content" style="transform: translate3d(${isSwiped ? '220px' : '0px'}, 0, 0);">
                               <div class="unified-top">
                                 <span class="drag-handle rtn-task-drag-handle" title="اسحب للترتيب">⋮⋮</span>
                                 <div class="task-circle" data-check-routine="${item.id}" title="تعليم كمكتمل اليوم">
@@ -3217,7 +3247,10 @@
                                 <span class="color-dot color-dot-clickable" style="background:${sec.color || '#4f75ff'};" data-move-rsec="${item.id}" title="نقل لقسم آخر"></span>
                                 <div class="task-info" style="cursor: pointer;" data-edit-routine="${item.id}" title="اضغط لتعديل الاسم أو الوقت">
                                   <span class="task-title">✏️ ${item.label}</span>
-                                  <span class="task-dur">${toAr(item.mins)} د</span>
+                                  <div style="display:flex; align-items:center; gap:5px; flex-shrink:0;">
+                                    ${item.running ? `<button type="button" class="timer-btn is-stop" data-rtn-timer="${item.id}" style="padding:2px 8px; font-size:11px;">إيقاف</button>` : ''}
+                                    <span class="task-dur ${durClass}" id="rtn-dur-${item.id}">${formatDuration({ ...item, remainingSec: rSec })}</span>
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -3754,7 +3787,7 @@
           if (target.closest('.drag-handle') || target.closest('.task-circle') || target.closest('.color-dot-clickable') || target.closest('button')) return false;
           sX = cx;
           sY = cy;
-          baseOffset = (swipedRoutineId === itemId) ? 164 : 0;
+          baseOffset = (swipedRoutineId === itemId) ? 220 : 0;
           swiping = false;
           lockChecked = false;
           return true;
@@ -3773,7 +3806,7 @@
           }
           if (swiping) {
             if (ev && ev.cancelable) ev.preventDefault();
-            const nextX = Math.max(0, Math.min(174, baseOffset + dx));
+            const nextX = Math.max(0, Math.min(230, baseOffset + dx));
             content.style.transform = `translate3d(${nextX}px, 0, 0)`;
           }
         }
@@ -3785,7 +3818,7 @@
           const finalX = baseOffset + dx;
           if (finalX > 60) {
             swipedRoutineId = itemId;
-            content.style.transform = 'translate3d(164px, 0, 0)';
+            content.style.transform = 'translate3d(220px, 0, 0)';
             routineListEl.querySelectorAll('.swipe-wrap').forEach(other => {
               if (other !== wrap) {
                 const oc = other.querySelector('.swipe-content');
@@ -3879,6 +3912,33 @@
           } else if (item.routineLogId) {
             COMPLETED = COMPLETED.filter(c => c.logId !== item.routineLogId);
             delete item.routineLogId;
+          }
+          render();
+        });
+      });
+
+      routineListEl.querySelectorAll('[data-rtn-timer]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          unlockAudio();
+          swipedRoutineId = null;
+          const id = Number(btn.dataset.rtnTimer);
+          const item = ROUTINE.find(x => x.id === id);
+          if (!item) return;
+          const now = Date.now();
+          if (item.running) {
+            item.remainingSec = item.endAt ? Math.max(0, Math.ceil((item.endAt - now) / 1000)) : (item.remainingSec || item.mins * 60);
+            item.running = false;
+            item.endAt = null;
+          } else {
+            if (!item.remainingSec || item.remainingSec <= 0) item.remainingSec = item.mins * 60;
+            ROUTINE.forEach(x => {
+              if (x.running && x.id !== id && x.endAt) {
+                x.remainingSec = Math.max(0, Math.ceil((x.endAt - now) / 1000));
+              }
+              x.running = (x.id === id);
+              x.endAt = (x.id === id) ? now + x.remainingSec * 1000 : null;
+            });
           }
           render();
         });
