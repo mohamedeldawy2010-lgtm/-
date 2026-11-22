@@ -1589,7 +1589,7 @@
     let trackersOpen = true;
     let completedOpen = false;
     let openSections = {};
-    INBOX_SECTIONS.forEach(s => { openSections[s.id] = true; });
+    INBOX_SECTIONS.forEach(s => { openSections[s.id] = false; });
     let openRoutineSections = {};
     ROUTINE_SECTIONS.forEach(s => { openRoutineSections[s.id] = false; });
 
@@ -2534,7 +2534,7 @@
 
       inboxGroupsEl.innerHTML = INBOX_SECTIONS.map((sec, secIdx) => {
         const items = INBOX.filter(item => item.sectionId === sec.id);
-        const isOpen = openSections[sec.id] !== false;
+        const isOpen = Boolean(openSections[sec.id]);
         return `
           <div class="prio-group" data-sec-id="${sec.id}">
             <div class="prio-group-header" data-toggle-sec="${sec.id}" style="cursor:pointer; padding:11px 14px;">
@@ -2622,7 +2622,7 @@
       inboxGroupsEl.querySelectorAll('[data-toggle-sec]').forEach(header => {
         header.addEventListener('click', () => {
           const id = header.dataset.toggleSec;
-          openSections[id] = !(openSections[id] !== false);
+          openSections[id] = !Boolean(openSections[id]);
           renderInboxInsideModal();
         });
       });
@@ -3095,7 +3095,7 @@
             <span>المهام المكتملة (٤٨ ساعة)</span>
           </div>
           <div class="prio-group-right">
-            <span class="count-pill">${toAr(total48Count)} · ${formatTotalTimeAr(total48Mins)}</span>
+            <span class="count-pill">${toAr(total48Count)}</span>
             <span class="group-arrow">${completedOpen ? '▼' : '◀'}</span>
           </div>
         </div>
@@ -3113,15 +3113,36 @@
             </div>
             ${COMPLETED.length === 0
               ? '<div class="empty-msg">مفيش مهام مكتملة خلال آخر ٤٨ ساعة.</div>'
-              : COMPLETED.map(c => `
-                <div class="task-row" style="opacity:0.85;">
-                  <span class="color-dot" style="background:var(--green);"></span>
-                  <div class="task-info">
-                    <span class="task-title" style="text-decoration:line-through; color:var(--muted);">${c.label}</span>
-                    <span class="completed-meta">${toAr(c.mins)} د · ${formatCompletedTime(c.completedAt)}</span>
-                  </div>
-                </div>
-              `).join('')}
+              : (() => {
+                  const todayRows = COMPLETED.filter(c => new Date(c.completedAt).toDateString() === new Date().toDateString());
+                  const olderRows = COMPLETED.filter(c => new Date(c.completedAt).toDateString() !== new Date().toDateString());
+                  let out = '';
+                  if (todayRows.length > 0) {
+                    out += `<div style="font-size:11.5px; font-weight:800; color:var(--green); padding:2px 4px;">✨ مهام النهارده (${toAr(todayRows.length)})</div>`;
+                    out += todayRows.map(c => `
+                      <div class="task-row" style="background:var(--green-soft); border-color:rgba(16,185,129,0.32);">
+                        <span class="color-dot" style="background:var(--green);"></span>
+                        <div class="task-info">
+                          <span class="task-title" style="color:var(--text);">${c.label}</span>
+                          <span class="completed-meta" style="color:var(--green); font-weight:700;">${toAr(c.mins)} د · ${formatCompletedTime(c.completedAt)}</span>
+                        </div>
+                      </div>
+                    `).join('');
+                  }
+                  if (olderRows.length > 0) {
+                    out += `<div style="font-size:11.5px; font-weight:800; color:var(--muted); padding:6px 4px 2px; border-top:${todayRows.length > 0 ? '1px dashed var(--border)' : 'none'}; margin-top:${todayRows.length > 0 ? '4px' : '0'};">أمس وما قبلها (${toAr(olderRows.length)})</div>`;
+                    out += olderRows.map(c => `
+                      <div class="task-row" style="opacity:0.72;">
+                        <span class="color-dot" style="background:var(--muted);"></span>
+                        <div class="task-info">
+                          <span class="task-title" style="text-decoration:line-through; color:var(--muted);">${c.label}</span>
+                          <span class="completed-meta">${toAr(c.mins)} د · ${formatCompletedTime(c.completedAt)}</span>
+                        </div>
+                      </div>
+                    `).join('');
+                  }
+                  return out;
+                })()}
           </div>
         ` : ''}
       `;
