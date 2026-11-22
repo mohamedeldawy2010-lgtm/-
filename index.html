@@ -1097,13 +1097,11 @@
       <!-- Card 5: Completed Log (48h rolling) -->
       <div class="prio-group" id="completed-box" style="margin-bottom:0;"></div>
 
-      <!-- Bottom Actions Footer -->
-      <div class="footer-actions" style="margin-top:4px; padding-top:4px; border-top:none;">
-        <button type="button" class="copy-btn" id="copy-btn">نسخ الحالة لإرسالها في الشات</button>
-        <span class="copy-status" id="copy-status"></span>
+      <!-- Bottom Corner Icon Actions -->
+      <div class="footer-actions" style="margin-top:0; padding-top:0; border-top:none; justify-content:flex-end;">
         <div style="display:flex; gap:6px; align-items:center;">
-          <button type="button" class="icon-btn" id="open-backup-btn" title="نقل أو حفظ نسخة احتياطية">💾 نقل البيانات</button>
-          <button type="button" class="icon-btn" id="refresh-app-btn" title="تحديث نسخة التطبيق">↻ تحديث</button>
+          <button type="button" class="icon-btn" id="open-backup-btn" title="نقل أو حفظ نسخة احتياطية" style="padding:6px 10px; font-size:15px;">💾</button>
+          <button type="button" class="icon-btn" id="refresh-app-btn" title="تحديث نسخة التطبيق" style="padding:6px 10px; font-size:15px;">↻</button>
         </div>
       </div>
     </div>
@@ -4127,24 +4125,6 @@
       pendingLiveLabel = '';
       liveMinsInputEl.value = '';
       livePromptEl.classList.add('hidden');
-    });
-
-    // Copy Status
-    document.getElementById('copy-btn').addEventListener('click', async () => {
-      const statusEl = document.getElementById('copy-status');
-      let text = TASKS.length === 0
-        ? 'خلصت كل مهام الساعة القادمة.'
-        : 'المهام المتبقية في الساعة القادمة:\n' + TASKS.map(t => `- ${t.label} (${t.mins} د)${t.delegate ? ` [Delegate: ${t.delegate}]` : ''}`).join('\n');
-      if (INBOX.length > 0) {
-        text += '\n\nمهام الـ Inbox:\n' + INBOX.map(i => `- ${i.label}`).join('\n');
-      }
-      try {
-        await navigator.clipboard.writeText(text);
-        statusEl.textContent = 'تم النسخ!';
-      } catch (e) {
-        statusEl.textContent = 'تعذر النسخ التلقائي.';
-      }
-      setTimeout(() => { statusEl.textContent = ''; }, 3000);
     });
 
     // App Refresh Button
