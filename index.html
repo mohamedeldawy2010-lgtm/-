@@ -1036,6 +1036,68 @@
       font-family: inherit;
     }
     .hidden { display: none !important; }
+    .celebrate-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 300;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15, 23, 42, 0.55);
+      backdrop-filter: blur(6px);
+      -webkit-backdrop-filter: blur(6px);
+      padding: 20px;
+      animation: celebFadeIn 0.25s ease forwards;
+    }
+    .celebrate-canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+    }
+    .celebrate-card {
+      position: relative;
+      z-index: 2;
+      background: linear-gradient(135deg, #10b981 0%, #059669 45%, #2563eb 100%);
+      color: #ffffff;
+      border-radius: 28px;
+      padding: 28px 26px;
+      text-align: center;
+      max-width: 340px;
+      width: 100%;
+      box-shadow: 0 24px 60px rgba(16, 185, 129, 0.5), 0 0 0 4px rgba(255, 255, 255, 0.25);
+      animation: celebPop 0.55s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+    }
+    .celebrate-emoji {
+      font-size: 62px;
+      line-height: 1.1;
+      display: inline-block;
+      animation: celebBounce 0.9s ease infinite alternate;
+    }
+    .celebrate-title {
+      font-size: 26px;
+      font-weight: 900;
+      margin: 10px 0 6px;
+      text-shadow: 0 2px 10px rgba(0,0,0,0.2);
+    }
+    .celebrate-sub {
+      font-size: 15px;
+      font-weight: 700;
+      opacity: 0.95;
+    }
+    @keyframes celebFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+    @keyframes celebPop {
+      0% { opacity: 0; transform: scale(0.45) translateY(30px); }
+      100% { opacity: 1; transform: scale(1) translateY(0); }
+    }
+    @keyframes celebBounce {
+      0% { transform: translateY(0) scale(1) rotate(-4deg); }
+      100% { transform: translateY(-10px) scale(1.12) rotate(4deg); }
+    }
 
     #print-area { display: none; }
     @media print {
@@ -1328,9 +1390,17 @@
     <button type="button" class="alarm-close" id="alarm-close">حسناً</button>
   </div>
 
-  <div class="toast" id="undo-toast">
-    <span id="undo-text">تم إنهاء المهمة</span>
-    <button type="button" class="undo-btn" id="undo-btn">تراجع (Undo)</button>
+  <div class="celebrate-overlay hidden" id="celebrate-overlay">
+    <canvas class="celebrate-canvas" id="celebrate-canvas"></canvas>
+    <div class="celebrate-card">
+      <div class="celebrate-emoji">🏆🎉</div>
+      <div class="celebrate-title" id="celebrate-title">عاش! ١٠ مهام</div>
+      <div class="celebrate-sub" id="celebrate-sub">إنجاز ممتاز النهارده</div>
+    </div>
+  </div>
+
+  <div class="toast" id="undo-toast" style="padding:6px; border-radius:999px;">
+    <button type="button" class="undo-btn" id="undo-btn" style="border-radius:999px; padding:8px 16px; font-size:13px;">↩ تراجع</button>
   </div>
 
   <script>
@@ -1415,21 +1485,63 @@
       };
     }
 
+    let celebTimer = null;
+    let celebRaf = null;
     function checkCompletedMilestoneToast() {
-      const { count } = getTodayCompletedStats();
+      const { count, mins } = getTodayCompletedStats();
       if (count >= 10 && count % 5 === 0) {
-        const toast = document.getElementById('alarm-toast');
-        const closeBtn = document.getElementById('alarm-close');
-        if (closeBtn) closeBtn.style.display = 'none';
-        toast.style.background = 'var(--green)';
-        document.getElementById('alarm-text').textContent = `🎉 عاش! أنجزت ${toAr(count)} مهمة النهارده`;
-        toast.classList.add('is-visible');
-        if (alarmTimeout) clearTimeout(alarmTimeout);
-        alarmTimeout = setTimeout(() => {
-          toast.classList.remove('is-visible');
-          toast.style.background = '';
-          if (closeBtn) closeBtn.style.display = '';
-        }, 2000);
+        playChime();
+        const overlay = document.getElementById('celebrate-overlay');
+        const canvas = document.getElementById('celebrate-canvas');
+        document.getElementById('celebrate-title').textContent = `أنجزت ${toAr(count)} مهمة! 🔥`;
+        document.getElementById('celebrate-sub').textContent = `إجمالي وقت النهارده: ${formatTotalTimeAr(mins)}`;
+        overlay.classList.remove('hidden');
+
+        // Confetti burst animation
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        const ctx = canvas.getContext('2d');
+        const colors = ['#fde047', '#34d399', '#38bdf8', '#fb7185', '#a78bfa', '#fb923c', '#ffffff'];
+        const pieces = Array.from({ length: 110 }, () => ({
+          x: canvas.width * (0.15 + Math.random() * 0.7),
+          y: canvas.height * (0.25 + Math.random() * 0.2),
+          vx: (Math.random() - 0.5) * 14,
+          vy: (Math.random() - 0.85) * 16 - 3,
+          w: 7 + Math.random() * 7,
+          h: 5 + Math.random() * 6,
+          rot: Math.random() * Math.PI * 2,
+          vrot: (Math.random() - 0.5) * 0.25,
+          color: colors[Math.floor(Math.random() * colors.length)]
+        }));
+
+        if (celebRaf) cancelAnimationFrame(celebRaf);
+        function step() {
+          ctx.clearRect(0, 0, canvas.width, canvas.height);
+          pieces.forEach(p => {
+            p.x += p.vx;
+            p.y += p.vy;
+            p.vy += 0.34;
+            p.vx *= 0.99;
+            p.rot += p.vrot;
+            ctx.save();
+            ctx.translate(p.x, p.y);
+            ctx.rotate(p.rot);
+            ctx.fillStyle = p.color;
+            ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+            ctx.restore();
+          });
+          celebRaf = requestAnimationFrame(step);
+        }
+        step();
+
+        const closeCeleb = () => {
+          overlay.classList.add('hidden');
+          if (celebRaf) { cancelAnimationFrame(celebRaf); celebRaf = null; }
+          if (celebTimer) { clearTimeout(celebTimer); celebTimer = null; }
+        };
+        overlay.onclick = closeCeleb;
+        if (celebTimer) clearTimeout(celebTimer);
+        celebTimer = setTimeout(closeCeleb, 5000);
       }
     }
 
@@ -2374,7 +2486,6 @@
     function showUndo(task, index, completedId) {
       lastRemoved = { task, index, completedId };
       const toast = document.getElementById('undo-toast');
-      document.getElementById('undo-text').textContent = `تم إنهاء «${task.label}»`;
       toast.classList.add('is-visible');
       if (undoTimeout) clearTimeout(undoTimeout);
       undoTimeout = setTimeout(() => {
