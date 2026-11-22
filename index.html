@@ -775,6 +775,13 @@
       justify-content: center;
       transition: all 0.15s ease;
     }
+    .live-left-stack {
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+      flex-shrink: 0;
+    }
     .delegate-pill {
       font-size: 11px;
       font-weight: 700;
@@ -3024,16 +3031,20 @@
                           <path d="M3.2 8.4 L6.4 11.6 L12.8 4.4" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
                         </svg>
                       </div>
-                      <span class="color-dot" style="background:${t.color};"></span>
-                      <div class="task-info" data-edit-live="${t.id}" style="cursor:pointer;" title="اضغط لتعديل الاسم أو الوقت">
-                        <span class="task-title">${t.label}</span>
-                        ${t.running ? `<button type="button" class="timer-btn is-stop" data-timer="${t.id}" style="padding:2px 8px; font-size:11px;">إيقاف</button>` : ''}
-                        <button type="button" class="delegate-pill ${t.delegate ? 'is-assigned' : ''}" data-delegate-btn="${t.id}" title="تفويض المهمة">${t.delegate ? `👤 ${t.delegate}` : 'Delegate'}</button>
-                        <span class="task-dur ${durClass}" id="dur-${t.id}">${formatDuration(t)}</span>
+                        <div class="task-info" data-edit-live="${t.id}" style="cursor:pointer; align-items:flex-start;" title="اضغط لتعديل الاسم أو الوقت">
+                        <span class="task-title" style="padding-top:2px; line-height:1.4;">${t.label}</span>
+                        <div class="live-left-stack">
+                          <button type="button" class="delegate-pill ${t.delegate ? 'is-assigned' : ''}" data-delegate-btn="${t.id}" title="تفويض المهمة">${t.delegate ? `👤 ${t.delegate}` : 'Delegate'}</button>
+                          <div style="display:flex; align-items:center; gap:5px;">
+                            ${t.running ? `<button type="button" class="timer-btn is-stop" data-timer="${t.id}" style="padding:2px 8px; font-size:11px;">إيقاف</button>` : ''}
+                            <span class="task-dur ${durClass}" id="dur-${t.id}">${formatDuration(t)}</span>
+                          </div>
+                        </div>
                       </div>
                     </div>
                     ${t.note ? `<div class="task-note">${t.note}</div>` : ''}
                     <div class="unified-bar-row">
+                      <span class="color-dot" style="background:${t.color}; width:8px; height:8px; border-radius:50%;"></span>
                       <div class="unified-bar-track">
                         <div class="unified-bar-fill" style="width:${barPct}%; background:${t.color};"></div>
                       </div>
