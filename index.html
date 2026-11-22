@@ -1349,12 +1349,9 @@
     ];
 
     const DEFAULT_TRACKERS = [
-      { id: 'prayers', name: 'الصلاة', type: 'checks', items: ['فجر', 'ظهر', 'عصر', 'مغرب', 'عشاء'], done: [], color: '#22c55e' },
-      { id: 'water', name: 'المياه', type: 'counter', val: 0, goal: 2500, step: 200, unit: 'مل', color: '#06b6d4' },
-      { id: 'steps', name: 'الخطوات', type: 'counter', val: 0, goal: 5000, step: 500, unit: 'خطوة', color: '#e09f3e' },
-      { id: 'sadaqah', name: 'الصدقات', type: 'checks', items: ['صدقة النهار', 'صدقة الليل'], done: [], color: '#8b5cf6' },
-      { id: 'teeth', name: 'غسيل الأسنان', type: 'checks', items: ['الصبح', 'بالليل'], done: [], color: '#ec4899' },
-      { id: 'quran', name: 'القرآن', type: 'counter', val: 0, goal: 5, step: 1, unit: 'صفحة', color: '#4f75ff' }
+      { id: 'sample-water', name: 'شرب المياه', type: 'counter', val: 0, goal: 8, step: 1, unit: 'كوب', color: '#06b6d4' },
+      { id: 'sample-walk', name: 'المشي / الرياضة', type: 'counter', val: 0, goal: 30, step: 10, unit: 'دقيقة', color: '#22c55e' },
+      { id: 'sample-read', name: 'القراءة اليومية', type: 'checks', items: ['الصباح', 'المساء'], done: [], color: '#4f75ff' }
     ];
 
     function parseMins(val) {
