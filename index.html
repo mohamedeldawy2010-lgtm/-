@@ -1349,6 +1349,58 @@
       el.textContent = `⏱ ${toAr(String(minsLeft).padStart(2, '0'))}:${toAr(String(sLeft).padStart(2, '0'))} على ${toAr(nextHour12)}:٠٠ ${ampm}`;
     }
 
+    function formatTotalTimeAr(totalMins) {
+      const mins = Math.max(0, Math.round(totalMins || 0));
+      if (mins === 0) return '٠ دقيقة';
+      if (mins < 60) {
+        if (mins === 1) return 'دقيقة واحدة';
+        if (mins === 2) return 'دقيقتين';
+        return `${toAr(mins)} ${mins <= 10 ? 'دقائق' : 'دقيقة'}`;
+      }
+      const h = Math.floor(mins / 60);
+      const m = mins % 60;
+      let hStr = '';
+      if (h === 1) hStr = 'ساعة';
+      else if (h === 2) hStr = 'ساعتين';
+      else if (h <= 10) hStr = `${toAr(h)} ساعات`;
+      else hStr = `${toAr(h)} ساعة`;
+
+      if (m === 0) return hStr;
+      let mStr = '';
+      if (m === 1) mStr = 'ودقيقة';
+      else if (m === 2) mStr = 'ودقيقتين';
+      else if (m <= 10) mStr = `و${toAr(m)} دقائق`;
+      else mStr = `و${toAr(m)} دقيقة`;
+      return `${hStr} ${mStr}`;
+    }
+
+    function getTodayCompletedStats() {
+      const todayStr = new Date().toDateString();
+      const todayItems = COMPLETED.filter(c => new Date(c.completedAt).toDateString() === todayStr);
+      return {
+        count: todayItems.length,
+        mins: todayItems.reduce((s, c) => s + (Number(c.mins) || 0), 0)
+      };
+    }
+
+    function checkCompletedMilestoneToast() {
+      const { count } = getTodayCompletedStats();
+      if (count >= 10 && count % 5 === 0) {
+        const toast = document.getElementById('alarm-toast');
+        const closeBtn = document.getElementById('alarm-close');
+        if (closeBtn) closeBtn.style.display = 'none';
+        toast.style.background = 'var(--green)';
+        document.getElementById('alarm-text').textContent = `🎉 عاش! أنجزت ${toAr(count)} مهمة النهارده`;
+        toast.classList.add('is-visible');
+        if (alarmTimeout) clearTimeout(alarmTimeout);
+        alarmTimeout = setTimeout(() => {
+          toast.classList.remove('is-visible');
+          toast.style.background = '';
+          if (closeBtn) closeBtn.style.display = '';
+        }, 2000);
+      }
+    }
+
     function formatCompletedTime(ts) {
       const d = new Date(ts);
       const now = new Date();
@@ -1400,12 +1452,29 @@
     function showAlarm(label) {
       playChime();
       const toast = document.getElementById('alarm-toast');
+      toast.style.background = '';
+      const cb = document.getElementById('alarm-close'); if (cb) cb.style.display = '';
       document.getElementById('alarm-text').textContent = `انتهى وقت «${label}»!`;
       toast.classList.add('is-visible');
       if (alarmTimeout) clearTimeout(alarmTimeout);
       alarmTimeout = setTimeout(() => {
         toast.classList.remove('is-visible');
       }, 8000);
+    }
+
+    function showWarningToast(msg) {
+      const toast = document.getElementById('alarm-toast');
+      const closeBtn = document.getElementById('alarm-close');
+      if (closeBtn) closeBtn.style.display = 'none';
+      toast.style.background = 'var(--red)';
+      document.getElementById('alarm-text').textContent = msg;
+      toast.classList.add('is-visible');
+      if (alarmTimeout) clearTimeout(alarmTimeout);
+      alarmTimeout = setTimeout(() => {
+        toast.classList.remove('is-visible');
+        toast.style.background = '';
+        if (closeBtn) closeBtn.style.display = '';
+      }, 2000);
     }
 
     document.getElementById('alarm-close').addEventListener('click', () => {
@@ -1442,6 +1511,7 @@
         });
         (stateObj.routine || []).forEach(r => {
           r.doneToday = false;
+          delete r.routineLogId;
         });
 
         stateObj.lastReset = threshold.toISOString();
@@ -1520,7 +1590,7 @@
     let openSections = {};
     INBOX_SECTIONS.forEach(s => { openSections[s.id] = true; });
     let openRoutineSections = {};
-    ROUTINE_SECTIONS.forEach(s => { openRoutineSections[s.id] = true; });
+    ROUTINE_SECTIONS.forEach(s => { openRoutineSections[s.id] = false; });
 
     let currentTab = 'live';
     let promotingInboxId = null;
@@ -2776,6 +2846,19 @@
 
       inboxGroupsEl.querySelectorAll('[data-promote]').forEach(btn => {
         btn.addEventListener('click', () => {
+          if (TASKS.length >= 5) {
+            swipedInboxId = null;
+            renderInboxInsideModal();
+            showWarningToast('وصلت للحد الأقصى (٥ مهام في الساعة)');
+            return;
+          }
+          const totalTasksMins = TASKS.reduce((s, t) => s + t.mins, 0);
+          if (totalTasksMins >= 60) {
+            swipedInboxId = null;
+            renderInboxInsideModal();
+            showWarningToast('الساعة مكتملة (٦٠ دقيقة)');
+            return;
+          }
           promotingInboxId = Number(btn.dataset.promote);
           editingInboxId = null;
           movingInboxId = null;
@@ -2795,6 +2878,12 @@
 
       inboxGroupsEl.querySelectorAll('[data-confirm-promote]').forEach(btn => {
         btn.addEventListener('click', () => {
+          if (TASKS.length >= 5) {
+            promotingInboxId = null;
+            renderInboxInsideModal();
+            showWarningToast('وصلت للحد الأقصى (٥ مهام في الساعة)');
+            return;
+          }
           const id = Number(btn.dataset.confirmPromote);
           const minsInp = document.getElementById(`promote-mins-${id}`);
           const totalTasksMins = TASKS.reduce((s, t) => s + t.mins, 0);
@@ -2859,7 +2948,7 @@
           ? `${toAr(totalTasksMins)} د مهام · ${toAr(freeMins)} د فراغ`
           : `${toAr(totalTasksMins)} دقيقة مهام`;
         const overNote = totalTasksMins > 60 ? ` (زيادة ${toAr(totalTasksMins - 60)} د عن الساعة)` : '';
-        statsEl.textContent = `المهام الحالية: ${toAr(TASKS.length)}${overNote}`;
+        statsEl.textContent = `المهام الحالية: ${toAr(TASKS.length)} / ٥${overNote}`;
       }
 
       const graphSum = Math.max(60, displayItems.reduce((s, t) => s + t.mins, 0));
@@ -2958,28 +3047,35 @@
       renderTrackersRoutineView();
 
       // Completed Log
-      const todayStr = new Date().toDateString();
-      const todayItems = COMPLETED.filter(c => new Date(c.completedAt).toDateString() === todayStr);
-      const todayCount = todayItems.length;
-      const todayMins = todayItems.reduce((s, c) => s + (Number(c.mins) || 0), 0);
+      const todayStats = getTodayCompletedStats();
+      const todayCount = todayStats.count;
+      const todayMins = todayStats.mins;
+      const total48Count = COMPLETED.length;
+      const total48Mins = COMPLETED.reduce((s, c) => s + (Number(c.mins) || 0), 0);
 
       const completedBox = document.getElementById('completed-box');
       completedBox.innerHTML = `
         <div class="prio-group-header" id="toggle-completed" style="cursor:pointer;">
           <div class="prio-group-title">
             <span class="color-dot" style="background:var(--green);"></span>
-            <span>المهام المكتملة (آخر ٤٨ ساعة)</span>
+            <span>المهام المكتملة (٤٨ ساعة)</span>
           </div>
           <div class="prio-group-right">
-            <span class="count-pill">${toAr(COMPLETED.length)}</span>
+            <span class="count-pill">${toAr(total48Count)} · ${formatTotalTimeAr(total48Mins)}</span>
             <span class="group-arrow">${completedOpen ? '▼' : '◀'}</span>
           </div>
         </div>
         ${completedOpen ? `
           <div class="prio-group-body">
-            <div class="today-summary">
-              <span>إنجاز اليوم</span>
-              <span>${toAr(todayCount)} ${todayCount === 1 ? 'مهمة' : 'مهام'} · ${toAr(todayMins)} دقيقة</span>
+            <div class="today-summary" style="flex-direction:column; align-items:stretch; gap:6px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+                <span>إنجاز اليوم</span>
+                <span>${toAr(todayCount)} ${todayCount === 1 ? 'مهمة' : 'مهام'} · ${formatTotalTimeAr(todayMins)}</span>
+              </div>
+              <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; font-size:12px; opacity:0.9; border-top:1px dashed rgba(16,185,129,0.3); padding-top:5px;">
+                <span>إجمالي آخر ٤٨ ساعة</span>
+                <span>${toAr(total48Count)} ${total48Count === 1 ? 'مهمة' : 'مهام'} · ${formatTotalTimeAr(total48Mins)}</span>
+              </div>
             </div>
             ${COMPLETED.length === 0
               ? '<div class="empty-msg">مفيش مهام مكتملة خلال آخر ٤٨ ساعة.</div>'
@@ -3006,7 +3102,7 @@
       routineListEl.innerHTML = ROUTINE_SECTIONS.map((sec, secIdx) => {
         const items = ROUTINE.filter(item => (item.sectionId || ROUTINE_SECTIONS[0].id) === sec.id);
         const remCount = items.filter(item => !item.doneToday).length;
-        const isOpen = openRoutineSections[sec.id] !== false;
+        const isOpen = Boolean(openRoutineSections[sec.id]);
         return `
           <div class="prio-group" data-rsec-id="${sec.id}" style="margin-bottom:10px; border-radius:16px;">
             <div class="prio-group-header" data-toggle-rsec="${sec.id}" style="cursor:pointer; padding:11px 14px;">
@@ -3424,6 +3520,7 @@
             COMPLETED.unshift({ logId, label: removed.label, mins: removed.mins, completedAt: Date.now() });
             showUndo(removed, idx, logId);
             render();
+            checkCompletedMilestoneToast();
           }, 1800);
         });
       });
@@ -3537,7 +3634,7 @@
       routineListEl.querySelectorAll('[data-toggle-rsec]').forEach(header => {
         header.addEventListener('click', () => {
           const id = header.dataset.toggleRsec;
-          openRoutineSections[id] = !(openRoutineSections[id] !== false);
+          openRoutineSections[id] = !Boolean(openRoutineSections[id]);
           render();
         });
       });
@@ -3701,6 +3798,20 @@
           const item = ROUTINE.find(x => x.id === id);
           if (!item) return;
           item.doneToday = !item.doneToday;
+          if (item.doneToday) {
+            const logId = Date.now() + Math.floor(Math.random() * 1000);
+            item.routineLogId = logId;
+            COMPLETED.unshift({
+              logId,
+              label: item.label,
+              mins: item.mins,
+              completedAt: Date.now()
+            });
+            checkCompletedMilestoneToast();
+          } else if (item.routineLogId) {
+            COMPLETED = COMPLETED.filter(c => c.logId !== item.routineLogId);
+            delete item.routineLogId;
+          }
           render();
         });
       });
@@ -3708,15 +3819,28 @@
       routineListEl.querySelectorAll('[data-use-routine]').forEach(btn => {
         btn.addEventListener('click', () => {
           swipedRoutineId = null;
+          if (TASKS.length >= 5) {
+            render();
+            showWarningToast('وصلت للحد الأقصى (٥ مهام في الساعة)');
+            return;
+          }
+          const totalTasksMins = TASKS.reduce((s, t) => s + t.mins, 0);
+          const freeMins = Math.max(0, 60 - totalTasksMins);
+          if (freeMins <= 0) {
+            render();
+            showWarningToast('الساعة مكتملة (٦٠ دقيقة)');
+            return;
+          }
           const id = Number(btn.dataset.useRoutine);
           const item = ROUTINE.find(x => x.id === id);
           if (!item) return;
+          const mins = Math.min(freeMins, item.mins);
           TASKS.push({
             id: Date.now() + Math.floor(Math.random() * 1000),
             label: item.label,
-            mins: item.mins,
+            mins,
             color: nextDistinctColor(),
-            remainingSec: item.mins * 60,
+            remainingSec: mins * 60,
             running: false,
             endAt: null,
             completing: false
@@ -3783,9 +3907,19 @@
       const label = titleInput.value.trim();
       if (!label) return;
 
+      if (TASKS.length >= 5) {
+        showWarningToast('وصلت للحد الأقصى (٥ مهام في الساعة)');
+        liveMinsLabelEl.textContent = 'وصلت للحد الأقصى المسموح (٥ مهام) — خلّص أو حوّل مهمة الأول';
+        liveMinsInputEl.classList.add('hidden');
+        livePromptEl.querySelector('button[type="submit"]').classList.add('hidden');
+        livePromptEl.classList.remove('hidden');
+        return;
+      }
+
       const totalTasksMins = TASKS.reduce((s, t) => s + t.mins, 0);
       const freeMins = Math.max(0, 60 - totalTasksMins);
       if (freeMins <= 0) {
+        showWarningToast('الساعة مكتملة (٦٠ دقيقة)');
         liveMinsLabelEl.textContent = 'الساعة مكتملة (٦٠ د) — خلّص أو حوّل مهمة الأول';
         liveMinsInputEl.classList.add('hidden');
         livePromptEl.querySelector('button[type="submit"]').classList.add('hidden');
@@ -3805,6 +3939,11 @@
     livePromptEl.addEventListener('submit', e => {
       e.preventDefault();
       if (!pendingLiveLabel) return;
+      if (TASKS.length >= 5) {
+        showWarningToast('وصلت للحد الأقصى (٥ مهام في الساعة)');
+        livePromptEl.classList.add('hidden');
+        return;
+      }
       const totalTasksMins = TASKS.reduce((s, t) => s + t.mins, 0);
       const freeMins = Math.max(0, 60 - totalTasksMins);
       const rawMins = parseMins(liveMinsInputEl.value);
