@@ -1560,14 +1560,25 @@
 
     function loadState() {
       let state = {
-        tasks: [],
+        tasks: [
+          { id: 101, label: 'مراجعة خطة اليوم', mins: 10, color: '#4f75ff', remainingSec: 600, running: false, endAt: null, completing: false, note: 'مثال لمهمة سريعة' },
+          { id: 102, label: 'تجهيز العرض التقديمي', mins: 25, color: '#22c55e', remainingSec: 1500, running: false, endAt: null, completing: false }
+        ],
         inboxSections: JSON.parse(JSON.stringify(DEFAULT_INBOX_SECTIONS)),
         routineSections: JSON.parse(JSON.stringify(DEFAULT_ROUTINE_SECTIONS)),
-        inbox: [],
-        routine: [],
+        inbox: [
+          { id: 201, label: 'مكالمة عميل جديد', sectionId: 'sec-1', mins: 15 },
+          { id: 202, label: 'ترتيب المكتب', sectionId: 'sec-2', mins: 10 }
+        ],
+        routine: [
+          { id: 301, label: 'قراءة ٢٠ دقيقة', mins: 20, sectionId: 'rsec-1', remainingSec: 1200, running: false, endAt: null },
+          { id: 302, label: 'تخطيط مهام الغد', mins: 10, sectionId: 'rsec-2', remainingSec: 600, running: false, endAt: null }
+        ],
         completed: [],
-        notes: [],
-        delegates: [],
+        notes: [
+          { id: 401, text: 'مثال لملاحظة سريعة — اسحب لليمين لنقلها للـ Inbox أو حذفها.', createdAt: Date.now(), updatedAt: Date.now() }
+        ],
+        delegates: ['زميل العمل', 'المساعد'],
         trackers: JSON.parse(JSON.stringify(DEFAULT_TRACKERS)),
         trackersLogs: [],
         lastReset: null
