@@ -1197,8 +1197,9 @@
         <div class="sub-stats">خصص أقسام يومك بحرية (مثلاً: النصف الأول، النصف الثاني، المشاوير):</div>
         <div id="inbox-sections-list" style="display:flex; flex-direction:column; gap:8px;"></div>
 
-        <form id="add-section-form" style="display:flex; gap:8px; align-items:center; margin-top:8px; padding-top:10px; border-top:1px solid var(--border);">
+        <form id="add-section-form" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-top:8px; padding-top:10px; border-top:1px solid var(--border);">
           <input type="text" class="input-field input-name" id="new-section-name" placeholder="اسم القسم الجديد..." required>
+          <input type="text" inputmode="numeric" class="input-field input-mins" id="new-section-max" placeholder="أقصى عدد" style="width:92px;">
           <input type="color" id="new-section-color" value="#4f75ff" style="width:38px; height:38px; border:none; border-radius:10px; cursor:pointer; background:transparent;">
           <button type="submit" class="timer-btn">+ إضافة قسم</button>
         </form>
@@ -1908,10 +1909,11 @@
       listEl.querySelectorAll('[data-note-to-inbox]').forEach(btn => {
         btn.addEventListener('click', () => {
           const id = Number(btn.dataset.noteToInbox);
+          const targetSec = INBOX_SECTIONS[0] ? INBOX_SECTIONS[0].id : 'sec-1';
+          if (isInboxSectionFull(targetSec)) return;
           const idx = NOTES.findIndex(x => x.id === id);
           if (idx === -1) return;
           const [moved] = NOTES.splice(idx, 1);
-          const targetSec = INBOX_SECTIONS[0] ? INBOX_SECTIONS[0].id : 'sec-1';
           INBOX.push({ id: Date.now(), label: moved.text, sectionId: targetSec });
           openSections[targetSec] = true;
           swipedNoteId = null;
@@ -1959,6 +1961,7 @@
         <div style="background:var(--item); padding:10px 12px; border-radius:12px; border:1px solid var(--border); display:flex; align-items:center; gap:6px;">
           <input type="color" value="${sec.color || '#4f75ff'}" data-sec-color="${sec.id}" style="width:30px; height:30px; border:none; border-radius:8px; cursor:pointer; background:transparent; flex-shrink:0;">
           <input type="text" value="${sec.name}" data-sec-name="${sec.id}" class="input-field" style="flex:1; min-width:0; padding:6px 10px; font-size:16px; font-weight:700;">
+          <input type="text" inputmode="numeric" value="${sec.maxTasks > 0 ? sec.maxTasks : ''}" data-sec-max="${sec.id}" class="input-field" style="width:74px; text-align:center; padding:6px 6px; font-size:16px; font-weight:700;" placeholder="بلا حد" title="أقصى عدد مهام">
           <button type="button" class="icon-btn" data-sec-up="${idx}" ${idx === 0 ? 'disabled' : ''} title="تحريك لأعلى" style="padding:5px 7px;">▲</button>
           <button type="button" class="icon-btn" data-sec-down="${idx}" ${idx === INBOX_SECTIONS.length - 1 ? 'disabled' : ''} title="تحريك لأسفل" style="padding:5px 7px;">▼</button>
           <button type="button" class="icon-btn del" data-del-sec="${sec.id}" ${INBOX_SECTIONS.length <= 1 ? 'disabled title="لا يمكن حذف القسم الأخير"' : 'title="حذف القسم"'} style="padding:5px 8px;">×</button>
@@ -1970,6 +1973,18 @@
           const id = inp.dataset.secName;
           const s = INBOX_SECTIONS.find(x => x.id === id);
           if (s && inp.value.trim()) s.name = inp.value.trim();
+          saveState();
+        });
+      });
+
+      listEl.querySelectorAll('[data-sec-max]').forEach(inp => {
+        inp.addEventListener('change', () => {
+          const id = inp.dataset.secMax;
+          const s = INBOX_SECTIONS.find(x => x.id === id);
+          if (!s) return;
+          const maxVal = parseMins(inp.value);
+          if (maxVal > 0) s.maxTasks = maxVal;
+          else delete s.maxTasks;
           saveState();
         });
       });
@@ -2031,10 +2046,15 @@
       const name = nameInput.value.trim();
       if (!name) return;
 
+      const maxInput = document.getElementById('new-section-max');
+      const maxVal = parseMins(maxInput ? maxInput.value : '');
       const newId = 'sec-' + Date.now();
-      INBOX_SECTIONS.push({ id: newId, name, color: colorInput.value || '#4f75ff' });
+      const newSec = { id: newId, name, color: colorInput.value || '#4f75ff' };
+      if (maxVal > 0) newSec.maxTasks = maxVal;
+      INBOX_SECTIONS.push(newSec);
       openSections[newId] = true;
       nameInput.value = '';
+      if (maxInput) maxInput.value = '';
       saveState();
       renderSectionsManagerList();
     });
@@ -2255,6 +2275,17 @@
           document.addEventListener('mouseup', onUp);
         });
       });
+    }
+
+    function isInboxSectionFull(secId) {
+      const sec = INBOX_SECTIONS.find(s => s.id === secId);
+      if (!sec || !(sec.maxTasks > 0)) return false;
+      const count = INBOX.filter(x => (x.sectionId || INBOX_SECTIONS[0].id) === secId).length;
+      if (count >= sec.maxTasks) {
+        showWarningToast(`وصلت للحد الأقصى في «${sec.name}» (${toAr(sec.maxTasks)} مهام)`);
+        return true;
+      }
+      return false;
     }
 
     function moveInboxWithinSection(itemId, dir) {
@@ -2514,7 +2545,7 @@
               </div>
               <div class="prio-group-right" style="gap:5px;">
                 <button type="button" class="gear-btn" data-add-in-sec="${sec.id}" title="إضافة مهمة في هذا القسم" style="font-weight:800; padding:2px 8px;">+</button>
-                <span class="count-pill">${toAr(items.length)}</span>
+                <span class="count-pill">${sec.maxTasks > 0 ? `${toAr(items.length)}/${toAr(sec.maxTasks)}` : toAr(items.length)}</span>
                 <span class="group-arrow">${isOpen ? '▼' : '◀'}</span>
               </div>
             </div>
@@ -2726,6 +2757,7 @@
         btn.addEventListener('click', e => {
           e.stopPropagation();
           const secId = btn.dataset.addInSec;
+          if (isInboxSectionFull(secId)) return;
           openSections[secId] = true;
           addingToInboxSecId = (addingToInboxSecId === secId) ? null : secId;
           renderInboxInsideModal();
@@ -2739,6 +2771,7 @@
       inboxGroupsEl.querySelectorAll('[data-confirm-add-sec]').forEach(btn => {
         btn.addEventListener('click', () => {
           const secId = btn.dataset.confirmAddSec;
+          if (isInboxSectionFull(secId)) return;
           const inp = document.getElementById(`quick-inbox-input-${secId}`);
           const label = inp ? inp.value.trim() : '';
           if (!label) return;
@@ -2819,6 +2852,7 @@
           const targetSec = btn.dataset.targetSec;
           const item = INBOX.find(x => x.id === id);
           if (!item) return;
+          if (item.sectionId !== targetSec && isInboxSectionFull(targetSec)) return;
           item.sectionId = targetSec;
           openSections[targetSec] = true;
           movingInboxId = null;
@@ -3540,6 +3574,7 @@
           e.stopPropagation();
           const id = Number(btn.dataset.confirmToInbox);
           const targetSec = btn.dataset.targetSec;
+          if (isInboxSectionFull(targetSec)) return;
           const idx = TASKS.findIndex(x => x.id === id);
           if (idx === -1) return;
           const [moved] = TASKS.splice(idx, 1);
