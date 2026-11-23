@@ -1177,11 +1177,9 @@
     .header-row h1 { font-size:13px; }
     .header-row .time-badge { font-size:10.5px; padding:3px 9px; flex-shrink:0; }
     .time-badge.is-over { background:var(--red-soft); color:var(--red); }
-    .view-switch { display:inline-flex; gap:10px; align-items:center; }
-    .view-sym { border:1.5px solid var(--border); background:transparent; color:var(--text-soft); border-radius:11px; width:34px; height:34px; padding:0; font-family:inherit; font-size:16px; font-weight:700; line-height:1; cursor:pointer; transition:background .15s, color .15s, border-color .15s; display:inline-flex; align-items:center; justify-content:center; }
-    .view-sym.cal { font-size:13.5px; border-top:6px solid var(--red); border-radius:10px; padding-top:1px; }
+    .view-switch { display:inline-flex; gap:8px; align-items:center; }
+    .view-sym { border:1.5px solid var(--border); background:transparent; color:var(--text-soft); border-radius:999px; height:32px; padding:0 14px; font-family:inherit; font-size:13px; font-weight:600; line-height:1; cursor:pointer; white-space:nowrap; transition:background .15s, color .15s, border-color .15s; }
     .view-sym.is-active { background:var(--blue); border-color:var(--blue); color:var(--on-accent); }
-    .view-sym.cal.is-active { border-top-color:var(--red); }
     .ring-btn { position:relative; width:38px; height:38px; border:none; background:transparent; padding:0; cursor:pointer; flex-shrink:0; font-family:inherit; }
     .ring-btn svg { display:block; }
     .ring-label { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; }
@@ -3897,7 +3895,7 @@
               <div class="prio-group-title">
                 ${isMirror ? '' : '<span class="drag-handle sec-drag-handle" title="اسحب لترتيب القسم">⋮⋮</span>'}
                 <span class="color-dot" style="background:${sec.color || '#4f75ff'};"></span>
-                ${isToday ? `<span class="view-switch"><button type="button" class="view-sym cal ${todayView === 'today' ? 'is-active' : ''}" data-today-view="today" title="النهارده" aria-label="النهارده">${toAr(logicalToday().getDate())}</button><button type="button" class="view-sym ${todayView === 'tomorrow' ? 'is-active' : ''}" data-today-view="tomorrow" title="بكرة" aria-label="بكرة">←</button></span>` : `<span>${sec.name}</span>`}
+                ${isToday ? `<span class="view-switch"><button type="button" class="view-sym ${todayView === 'today' ? 'is-active' : ''}" data-today-view="today">Today</button><button type="button" class="view-sym ${todayView === 'tomorrow' ? 'is-active' : ''}" data-today-view="tomorrow">Tomorrow</button></span>` : `<span>${sec.name}</span>`}
               </div>
               <div class="prio-group-right" style="gap:8px;">
                 ${isToday ? '' : `<button type="button" class="gear-btn" data-add-in-sec="${sec.id}" title="إضافة مهمة في هذا القسم" style="font-weight:800; padding:2px 8px;">+</button>`}
