@@ -8,6 +8,9 @@
   <meta name="apple-mobile-web-app-title" content="مهام الساعة">
   <link rel="apple-touch-icon" sizes="180x180" href="icon.png">
   <link rel="icon" type="image/png" href="icon.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Readex+Pro:wght@300..700&display=swap">
   <title>مهام الساعة القادمة</title>
   <style>
     :root {
@@ -1110,7 +1113,67 @@
     @keyframes recPulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.35; transform:scale(.8); } }
     #note-rec-btn.is-recording { background:var(--red) !important; color:#fff !important; }
     .keep-chip { border:1px solid var(--border); background:var(--card); color:var(--text-soft); padding:6px 11px; border-radius:999px; font-size:12px; font-weight:700; font-family:inherit; cursor:pointer; }
-    .keep-chip.is-active { background:var(--blue); border-color:var(--blue); color:#fff; }
+    .keep-chip.is-active { background:var(--blue); border-color:var(--blue); color:var(--on-accent, #fff); }
+
+    /* ===== Visual refresh: calm, flat, one accent. Layout and behaviour untouched. ===== */
+    :root {
+      --bg:#f2f4f7; --card:#ffffff; --card-muted:#f8f9fb; --item:#f4f5f8; --item-hover:#ebedf2;
+      --text:#101828; --text-soft:#475467; --muted:#8a93a5; --border:#e8ebf1; --border-focus:#5568f6;
+      --red:#ef4f55; --red-soft:#fdecec; --blue:#5568f6; --blue-soft:#eceeff;
+      --amber:#f5a524; --green:#12a762; --green-soft:#e3f6ec;
+      --toast-bg:#101828; --toast-text:#f9fafb; --bar-slate:#98a2b3;
+      --card-shadow:none; --card-border:1px solid rgba(16,24,40,0.05);
+      --ink:#101828; --on-ink:#ffffff; --on-accent:#ffffff;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root:not([data-theme="light"]) {
+        --bg:#0c0e13; --card:#151922; --card-muted:#1a1f29; --item:#1b212b; --item-hover:#252c38;
+        --text:#f2f4f8; --text-soft:#c3c9d6; --muted:#8590a3; --border:#242b37; --border-focus:#7c8bff;
+        --red:#ff6a6f; --red-soft:#3a1d22; --blue:#7c8bff; --blue-soft:#1c2140;
+        --amber:#f7b84b; --green:#3dd68c; --green-soft:#12301f;
+        --toast-bg:#252c38; --toast-text:#f2f4f8; --bar-slate:#566074;
+        --card-shadow:none; --card-border:1px solid rgba(255,255,255,0.05);
+        --ink:#f2f4f8; --on-ink:#0c0e13; --on-accent:#0c0e13;
+      }
+    }
+    :root[data-theme="dark"] {
+      --bg:#0c0e13; --card:#151922; --card-muted:#1a1f29; --item:#1b212b; --item-hover:#252c38;
+      --text:#f2f4f8; --text-soft:#c3c9d6; --muted:#8590a3; --border:#242b37; --border-focus:#7c8bff;
+      --red:#ff6a6f; --red-soft:#3a1d22; --blue:#7c8bff; --blue-soft:#1c2140;
+      --amber:#f7b84b; --green:#3dd68c; --green-soft:#12301f;
+      --toast-bg:#252c38; --toast-text:#f2f4f8; --bar-slate:#566074;
+      --card-shadow:none; --card-border:1px solid rgba(255,255,255,0.05);
+      --ink:#f2f4f8; --on-ink:#0c0e13; --on-accent:#0c0e13;
+    }
+    html, body, button, input, select, textarea { font-family:'Readex Pro', -apple-system, 'SF Arabic', system-ui, sans-serif; }
+    body { letter-spacing:0; -webkit-font-smoothing:antialiased; }
+    h1 { font-size:15px; font-weight:700; letter-spacing:0; }
+    .tabs-bar { border-radius:22px; padding:4px; gap:4px; box-shadow:none; }
+    .tab-btn { border-radius:18px; font-weight:600; }
+    .tab-btn.is-active { background:var(--ink); color:var(--on-ink); box-shadow:none; }
+    .card { border-radius:26px; }
+    .time-badge { background:var(--blue-soft); color:var(--blue); border-color:transparent; font-weight:600; }
+    .stacked-bar { height:14px; padding:3px; gap:3px; border:none; }
+    .task-row, .bar-row, .tracker-card { border-color:transparent; border-radius:18px; }
+    .task-circle { border-radius:50%; border-width:1.5px; }
+    .task-title { font-weight:600; }
+    .icon-btn, .gear-btn, .count-pill, .task-dur, .delegate-pill { border-color:transparent; background:var(--item-hover); }
+    .icon-btn, .timer-btn { border-radius:12px; font-weight:600; }
+    .timer-btn { background:var(--blue); color:var(--on-accent); box-shadow:none; }
+    .add-btn { background:var(--ink); color:var(--on-ink); box-shadow:none; border-radius:14px; }
+    .input-field { background:var(--item); border-color:transparent; border-radius:14px; }
+    .input-field:focus { border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-soft); }
+    .prio-group { border-radius:24px; box-shadow:none; }
+    .prio-group-header { background:transparent; border-bottom:none; }
+    .prio-group-body { background:transparent; }
+    .today-summary { border-color:transparent; border-radius:16px; font-weight:600; }
+    .drag-handle { opacity:.4; }
+    .inbox-mini-circle { background:var(--item); border-color:transparent; box-shadow:none; filter:grayscale(1); }
+    .modal-overlay { background:rgba(16,24,40,.45); backdrop-filter:blur(6px); -webkit-backdrop-filter:blur(6px); }
+    .modal-box { border-radius:28px; box-shadow:0 30px 60px -20px rgba(16,24,40,.35); }
+    .modal-head, .modal-foot { background:var(--card); }
+    .toast { border-radius:16px; border-color:transparent; box-shadow:0 12px 32px rgba(16,24,40,.25); }
+    .celebrate-card { background:#5568f6; border-radius:30px; box-shadow:0 30px 70px rgba(85,104,246,.45); }
   </style>
 </head>
 <body>
@@ -1529,7 +1592,7 @@
   <script>
     const STORAGE_KEY = 'hourly_tracker_standalone_v2';
     const TWO_DAYS_MS = 48 * 60 * 60 * 1000;
-    const PALETTE = ['#4f75ff', '#22c55e', '#ec4899', '#e09f3e', '#8b5cf6', '#06b6d4', '#e25c5c', '#84cc16'];
+    const PALETTE = ['#5568f6', '#12a762', '#f5a524', '#ef4f55', '#9b6bff', '#12b5cb', '#ee6aa7', '#7dc242'];
 
     const DEFAULT_INBOX_SECTIONS = [
       { id: 'sec-1', name: 'النصف الأول من اليوم', color: '#4f75ff' },
