@@ -1174,6 +1174,8 @@
     .modal-head, .modal-foot { background:var(--card); }
     .toast { border-radius:16px; border-color:transparent; box-shadow:0 12px 32px rgba(16,24,40,.25); }
     .celebrate-card { background:#5568f6; border-radius:30px; box-shadow:0 30px 70px rgba(85,104,246,.45); }
+    .header-row h1 { font-size:13px; }
+    .header-row .time-badge { font-size:10.5px; padding:3px 9px; flex-shrink:0; }
   </style>
 </head>
 <body>
@@ -1190,7 +1192,7 @@
     <div id="view-live" class="container" style="margin:0; gap:14px;">
       <!-- Unified Card: Hour Allocation + Bar + Checklist (Swipe left/right for actions) -->
       <div class="card">
-        <div class="header-row" style="flex-wrap:nowrap; gap:8px;">
+        <div class="header-row" style="flex-wrap:wrap; gap:8px;">
           <div style="display:flex; align-items:center; gap:8px; min-width:0;">
             <button type="button" class="inbox-mini-btn" id="open-inbox-modal-btn" title="صندوق المهام (Inbox)">
               <span class="inbox-mini-circle">📥</span>
@@ -1983,6 +1985,7 @@
     let delegatingLiveTaskId = null;
     let swipedInboxId = null;
     let pickingDayInboxId = null;
+    let pendingDayInbox = null; // { id, key } waiting for a mandatory duration
     let swipedNoteId = null;
     let editingNoteId = null;
     let swipedRoutineId = null;
@@ -2102,7 +2105,7 @@
     const sectionsModal = document.getElementById('modal-inbox-sections');
 
     function openInboxModal() {
-      editingInboxId = null; movingInboxId = null; promotingInboxId = null; addingToInboxSecId = null; swipedInboxId = null; pickingDayInboxId = null;
+      editingInboxId = null; movingInboxId = null; promotingInboxId = null; addingToInboxSecId = null; swipedInboxId = null; pickingDayInboxId = null; pendingDayInbox = null;
       inboxModal.classList.remove('hidden');
       renderInboxInsideModal();
     }
@@ -3708,7 +3711,84 @@
       const bg = kind === 'late' ? 'var(--red-soft)' : kind === 'today' ? 'var(--green-soft)' : 'var(--blue-soft)';
       return `<button type="button" data-pick-day="${item.id}" title="غيّر اليوم" style="border:none; background:${bg}; color:${color}; font-weight:800; font-size:11px; padding:4px 9px; border-radius:999px; cursor:pointer; font-family:inherit; white-space:nowrap; flex-shrink:0;">📅 ${text}</button>`;
     }
+    // ----- Smart "Today" list + per-day time budget -----
+    const TODAY_SEC_ID = '__today__';
+    const DAY_CAP_MINS = 240; // a day can hold at most 4 hours of planned tasks
+    function fmtHM(m) { return toAr(Math.floor(m / 60)) + ':' + toAr(pad2(m % 60)); }
+    function dayLoadMins(key, exceptId) {
+      return INBOX.filter(x => x.dueDate === key && x.id !== exceptId).reduce((sum, x) => sum + (Number(x.mins) || 0), 0);
+    }
+    // Assign a day to a task, enforcing: duration is mandatory and the day stays within 4 hours.
+    function tryAssignDay(item, key, mins) {
+      const m = mins > 0 ? mins : Number(item.mins) || 0;
+      if (!(m > 0)) return false;
+      const load = dayLoadMins(key, item.id);
+      if (load + m > DAY_CAP_MINS) {
+        const left = Math.max(0, DAY_CAP_MINS - load);
+        showWarningToast(`اليوم ده وصل ${fmtHM(load)} من ٤:٠٠ ساعات — المتبقي ${toAr(left)} دقيقة بس`);
+        return false;
+      }
+      item.mins = m;
+      if (!item.running) item.remainingSec = m * 60;
+      item.dueDate = key;
+      return true;
+    }
+    function applyDayChoice(item, key) {
+      if (dayDiff(key) < 0) { showWarningToast('التاريخ ده فات — اختار النهارده أو يوم جاي'); renderInboxInsideModal(); return; }
+      if (item.mins > 0) {
+        if (tryAssignDay(item, key, 0)) { pickingDayInboxId = null; pendingDayInbox = null; saveState(); }
+      } else {
+        pendingDayInbox = { id: item.id, key };
+      }
+      renderInboxInsideModal();
+    }
+    function confirmPendingMins(id, mins) {
+      const item = INBOX.find(x => x.id === id);
+      if (!item || !pendingDayInbox) return;
+      const m = Math.min(60, mins);
+      if (!(m > 0)) { showWarningToast('اختار مدة المهمة الأول'); return; }
+      if (tryAssignDay(item, pendingDayInbox.key, m)) { pickingDayInboxId = null; pendingDayInbox = null; saveState(); }
+      renderInboxInsideModal();
+    }
+    function pendingMinsHtml(item) {
+      const when = dueLabel(pendingDayInbox.key).text;
+      const chips = [10, 15, 30, 45, 60].map(m => `<button type="button" class="keep-chip" data-pend-for="${item.id}" data-pend-mins="${m}">${toAr(m)} د</button>`).join('');
+      return `
+        <div class="promote-box" style="padding:8px 10px; background:var(--item); border-radius:12px; border:1px solid var(--border); margin-top:0; flex-direction:column; align-items:stretch; gap:6px;">
+          <span class="max-hint">الميعاد: ${when} — لازم تحدد مدة المهمة (أقصى ٦٠ دقيقة):</span>
+          <div style="display:flex; gap:5px; flex-wrap:wrap;">${chips}</div>
+          <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <input type="text" inputmode="numeric" class="input-field input-mins" id="pend-mins-${item.id}" placeholder="مدة تانية بالدقائق">
+            <button type="button" class="timer-btn" data-pend-confirm="${item.id}">تأكيد</button>
+            <button type="button" class="icon-btn" data-pend-cancel="1">رجوع</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function promoteInboxNow(id, mins) {
+      const idx = INBOX.findIndex(x => x.id === id);
+      if (idx === -1) return;
+      const [item] = INBOX.splice(idx, 1);
+      const sec = INBOX_SECTIONS.find(s => s.id === item.sectionId) || INBOX_SECTIONS[0];
+      TASKS.push({
+        id: Date.now(),
+        label: item.label,
+        note: item.note || '',
+        mins,
+        color: nextDistinctColor(),
+        priorityColor: sec ? sec.color : '#4f75ff',
+        remainingSec: mins * 60,
+        running: false,
+        endAt: null,
+        completing: false
+      });
+      promotingInboxId = null;
+      closeInboxModal();
+      render();
+    }
     function dayPickerHtml(item) {
+      if (pendingDayInbox && pendingDayInbox.id === item.id) return pendingMinsHtml(item);
       const chips = weekOrderFromToday().map(wd => {
         const d = nextDateForWeekday(wd);
         const key = toDateKey(d);
@@ -3737,9 +3817,14 @@
       const isMirror = Boolean(onlySecId);
       const byId = id => inboxGroupsEl.querySelector('[id="' + id + '"]');
 
-      inboxGroupsEl.innerHTML = INBOX_SECTIONS.filter(s => !onlySecId || s.id === onlySecId).map((sec, secIdx) => {
-        const items = INBOX.filter(item => item.sectionId === sec.id);
+      const isToday = onlySecId === TODAY_SEC_ID;
+      const todayKey = toDateKey(logicalToday());
+      const secList = isToday ? [{ id: TODAY_SEC_ID, name: 'Today', color: '#12a762' }] : INBOX_SECTIONS.filter(s => !onlySecId || s.id === onlySecId);
+      inboxGroupsEl.innerHTML = secList.map((sec, secIdx) => {
+        const items = isToday ? INBOX.filter(item => item.dueDate === todayKey).sort((a, b) => (a.todayRank ?? 1e9) - (b.todayRank ?? 1e9)) : INBOX.filter(item => item.sectionId === sec.id);
         const isOpen = Boolean(openMap[sec.id]);
+        const todayMins = isToday ? items.reduce((sum, x) => sum + (Number(x.mins) || 0), 0) : 0;
+        const todayPct = Math.min(100, Math.round(todayMins / DAY_CAP_MINS * 100));
         return `
           <div class="prio-group" data-sec-id="${sec.id}">
             <div class="prio-group-header" data-toggle-sec="${sec.id}" style="cursor:pointer; padding:11px 14px;">
@@ -3748,14 +3833,18 @@
                 <span class="color-dot" style="background:${sec.color || '#4f75ff'};"></span>
                 <span>${sec.name}</span>
               </div>
-              <div class="prio-group-right" style="gap:5px;">
-                <button type="button" class="gear-btn" data-add-in-sec="${sec.id}" title="إضافة مهمة في هذا القسم" style="font-weight:800; padding:2px 8px;">+</button>
-                <span class="count-pill">${sec.maxTasks > 0 ? `${toAr(items.length)}/${toAr(sec.maxTasks)}` : toAr(items.length)}</span>
+              <div class="prio-group-right" style="gap:8px;">
+                ${isToday ? '' : `<button type="button" class="gear-btn" data-add-in-sec="${sec.id}" title="إضافة مهمة في هذا القسم" style="font-weight:800; padding:2px 8px;">+</button>`}
+                <span class="count-pill">${isToday ? toAr(items.length) : (sec.maxTasks > 0 ? `${toAr(items.length)}/${toAr(sec.maxTasks)}` : toAr(items.length))}</span>
+                ${isToday ? `<span class="count-pill" dir="ltr">${fmtHM(todayMins)} / ${fmtHM(DAY_CAP_MINS)}</span>` : ''}
                 <span class="group-arrow">${isOpen ? '▼' : '◀'}</span>
               </div>
             </div>
             ${isOpen ? `
               <div class="prio-group-body">
+                ${isToday && items.length > 0 ? `
+                  <div style="height:5px; border-radius:999px; background:var(--item-hover); overflow:hidden;"><div style="height:100%; width:${todayPct}%; background:${todayPct >= 100 ? 'var(--red)' : 'var(--blue)'};"></div></div>
+                ` : ''}
                 ${addingToInboxSecId === sec.id ? `
                   <div class="promote-box" style="margin-top:0; padding-top:0; border-top:none; padding-bottom:6px; border-bottom:1px dashed var(--border);">
                     <input type="text" class="input-field input-name" id="quick-inbox-input-${sec.id}" placeholder="مهمة جديدة في ${sec.name}...">
@@ -3764,7 +3853,7 @@
                   </div>
                 ` : ''}
                 ${items.length === 0
-                  ? '<div class="empty-msg" style="padding:10px;">لا توجد مهام في هذا القسم بعد.</div>'
+                  ? (isToday ? '<div class="empty-msg" style="padding:10px;">مفيش مهام ليها النهارده — حدد يوم لأي مهمة في الانبوكس وهتظهر هنا لوحدها.</div>' : '<div class="empty-msg" style="padding:10px;">لا توجد مهام في هذا القسم بعد.</div>')
                   : items.map((item, idx) => {
                       const isSwiped = swipedInboxId === item.id;
                       return `
@@ -3778,7 +3867,7 @@
                             <div class="swipe-content" style="transform: translate3d(${isSwiped ? '164px' : '0px'}, 0, 0);">
                               <div class="unified-top">
                                 <span class="drag-handle inbox-task-drag-handle" title="اسحب للترتيب">⋮⋮</span>
-                                <span class="color-dot color-dot-clickable" style="background:${sec.color || '#4f75ff'};" data-move-sec="${item.id}" title="نقل لقسم آخر"></span>
+                                <span class="color-dot color-dot-clickable" style="background:${(isToday ? (INBOX_SECTIONS.find(s => s.id === item.sectionId) || INBOX_SECTIONS[0]) : sec).color || '#4f75ff'};" data-move-sec="${item.id}" title="نقل لقسم آخر"></span>
                                 <div class="task-info" data-edit-inbox="${item.id}" style="cursor:pointer;" title="اضغط لتعديل الاسم أو الوقت">
                                   <span class="task-title">${item.label}</span>
                                   ${item.mins > 0 ? `<span class="task-dur">${toAr(item.mins)} د</span>` : ''}
@@ -3859,6 +3948,15 @@
           '.inbox-item-outer',
           '.inbox-task-drag-handle',
           (from, to) => {
+            if (isToday) {
+              const list = INBOX.filter(x => x.dueDate === todayKey).sort((a, b) => (a.todayRank ?? 1e9) - (b.todayRank ?? 1e9));
+              if (from < list.length && to < list.length) {
+                const [mv] = list.splice(from, 1);
+                list.splice(to, 0, mv);
+                list.forEach((x, i) => { x.todayRank = i; });
+              }
+              return;
+            }
             const secIndices = INBOX.map((x, idx) => ((x.sectionId || INBOX_SECTIONS[0].id) === secId ? idx : -1)).filter(idx => idx !== -1);
             if (from < secIndices.length && to < secIndices.length) {
               const idxA = secIndices[from];
@@ -4021,6 +4119,11 @@
           const nameInp = byId(`edit-inbox-name-${id}`);
           const minsInp = byId(`edit-inbox-mins-${id}`);
           const noteInp = byId(`edit-inbox-note-${id}`);
+          const chkMins = parseMins(minsInp ? minsInp.value : '');
+          if (chkMins > 0 && item.dueDate && dayLoadMins(item.dueDate, item.id) + Math.min(60, chkMins) > DAY_CAP_MINS) {
+            showWarningToast(`المدة دي هتعدّي ٤ ساعات في اليوم ده — المتبقي ${toAr(Math.max(0, DAY_CAP_MINS - dayLoadMins(item.dueDate, item.id)))} دقيقة`);
+            return;
+          }
           if (nameInp && nameInp.value.trim()) item.label = nameInp.value.trim();
           if (noteInp) {
             const n = noteInp.value.trim();
@@ -4084,6 +4187,7 @@
           e.stopPropagation();
           const id = Number(btn.dataset.pickDay);
           editingInboxId = null; movingInboxId = null; promotingInboxId = null; swipedInboxId = null;
+          pendingDayInbox = null;
           pickingDayInboxId = (pickingDayInboxId === id) ? null : id;
           renderInboxInsideModal();
         });
@@ -4093,10 +4197,7 @@
         btn.addEventListener('click', () => {
           const item = INBOX.find(x => x.id === Number(btn.dataset.setDay));
           if (!item) return;
-          item.dueDate = btn.dataset.dayKey;
-          pickingDayInboxId = null;
-          saveState();
-          renderInboxInsideModal();
+          applyDayChoice(item, btn.dataset.dayKey);
         });
       });
 
@@ -4104,11 +4205,15 @@
         inp.addEventListener('change', () => {
           const item = INBOX.find(x => x.id === Number(inp.dataset.dayInput));
           if (!item) return;
-          if (inp.value) item.dueDate = inp.value; else delete item.dueDate;
-          pickingDayInboxId = null;
           inp.blur();
-          saveState();
-          renderInboxInsideModal();
+          if (!inp.value) {
+            delete item.dueDate;
+            pickingDayInboxId = null;
+            saveState();
+            renderInboxInsideModal();
+            return;
+          }
+          applyDayChoice(item, inp.value);
         });
       });
 
@@ -4123,8 +4228,23 @@
         });
       });
 
+      inboxGroupsEl.querySelectorAll('[data-pend-mins]').forEach(btn => {
+        btn.addEventListener('click', () => confirmPendingMins(Number(btn.dataset.pendFor), Number(btn.dataset.pendMins)));
+      });
+      inboxGroupsEl.querySelectorAll('[data-pend-confirm]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.pendConfirm);
+          const inp = byId(`pend-mins-${id}`);
+          confirmPendingMins(id, parseMins(inp ? inp.value : ''));
+        });
+      });
+      inboxGroupsEl.querySelectorAll('[data-pend-cancel]').forEach(btn => {
+        btn.addEventListener('click', () => { pendingDayInbox = null; renderInboxInsideModal(); });
+      });
+
       inboxGroupsEl.querySelectorAll('[data-close-day]').forEach(btn => {
         btn.addEventListener('click', () => {
+          pendingDayInbox = null;
           pickingDayInboxId = null;
           renderInboxInsideModal();
         });
@@ -4155,7 +4275,18 @@
             showWarningToast('الساعة مكتملة (٦٠ دقيقة)');
             return;
           }
-          promotingInboxId = Number(btn.dataset.promote);
+          const pid = Number(btn.dataset.promote);
+          const pItem = INBOX.find(x => x.id === pid);
+          if (pItem && pItem.mins > 0) {
+            const freeNow = Math.max(0, 60 - totalTasksMins);
+            if (pItem.mins <= freeNow) {
+              swipedInboxId = null;
+              promoteInboxNow(pid, pItem.mins);
+              return;
+            }
+            showWarningToast(`المتاح في الساعة ${toAr(freeNow)} د بس — عدّل الوقت وانقلها`);
+          }
+          promotingInboxId = pid;
           editingInboxId = null;
           movingInboxId = null;
           swipedInboxId = null;
@@ -4210,23 +4341,14 @@
       });
     }
 
-    // Live copy of the "Next 5" Inbox partition in the main view — same renderer, handlers and data as the Inbox
-    let next5Open = {};
-    function findNext5Section() {
-      const norm = s => String(s || '').replace(/[\u0660-\u0669]/g, d => d.charCodeAt(0) - 0x0660);
-      return INBOX_SECTIONS.find(s => /(next|نيكست|نكست|ناكست)\s*[-_]?\s*5/i.test(norm(s.name)));
-    }
+    // Smart "Today" list in the main view: a live filter over the Inbox (tasks whose day is today). Read-only list: no adding here.
+    let next5Open = {}; // Today starts collapsed; the user opens it
     function renderNext5Mirror() {
       const box = document.getElementById('next5-mirror');
       if (!box) return;
       const ae = document.activeElement;
       if (ae && ae.tagName === 'INPUT' && box.contains(ae)) return; // don't wipe what the user is typing
-      const sec = findNext5Section();
-      if (!sec) {
-        box.innerHTML = '<div class="empty-msg" style="padding:10px; font-size:12px;">مفيش قسم اسمه Next 5 في الـ Inbox لسه — سمّي أي قسم كده وهيظهر هنا.</div>';
-        return;
-      }
-      renderInboxGroupsInto(box, sec.id, next5Open);
+      renderInboxGroupsInto(box, TODAY_SEC_ID, next5Open);
       const g = box.querySelector('.prio-group');
       if (g) g.style.marginBottom = '0';
     }
