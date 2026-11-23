@@ -1105,6 +1105,12 @@
       .container, .modal-overlay, .toast { display: none !important; }
       #print-area { display: block !important; width: 100%; color: #000; background: #fff; }
     }
+    /* Voice notes */
+    .rec-dot { display:inline-block; width:9px; height:9px; border-radius:50%; background:var(--red); margin-inline-end:6px; animation:recPulse 1s ease-in-out infinite; }
+    @keyframes recPulse { 0%,100% { opacity:1; transform:scale(1); } 50% { opacity:.35; transform:scale(.8); } }
+    #note-rec-btn.is-recording { background:var(--red) !important; color:#fff !important; }
+    .keep-chip { border:1px solid var(--border); background:var(--card); color:var(--text-soft); padding:6px 11px; border-radius:999px; font-size:12px; font-weight:700; font-family:inherit; cursor:pointer; }
+    .keep-chip.is-active { background:var(--blue); border-color:var(--blue); color:#fff; }
   </style>
 </head>
 <body>
@@ -1154,6 +1160,9 @@
           <button type="submit" class="timer-btn">تأكيد</button>
           <button type="button" class="icon-btn" id="live-mins-cancel">إلغاء</button>
         </form>
+
+        <!-- Live mirror of the "Next 5" Inbox partition -->
+        <div id="next5-mirror" style="margin-top:12px;"></div>
       </div>
 
       <!-- Card 5: Completed Log (48h rolling) -->
@@ -1300,6 +1309,17 @@
           <div id="note-read-title" style="font-size:19px; font-weight:900; color:var(--blue); line-height:1.4; padding-bottom:6px; border-bottom:2px solid var(--blue-soft);"></div>
           <div id="note-read-meta" class="completed-meta"></div>
           <div id="note-read-body" style="font-size:15.5px; line-height:1.8; color:var(--text); white-space:pre-wrap; overflow-wrap:break-word; padding:12px 14px; background:var(--item); border-radius:14px; border:1px solid var(--border); min-height:160px;"></div>
+          <div id="note-read-audio" class="hidden" style="flex-direction:column; gap:6px; padding:10px 12px; background:var(--item); border:1px solid var(--border); border-radius:14px;">
+            <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
+              <span id="note-read-audio-msg" style="font-size:12px; font-weight:800; color:var(--blue);"></span>
+              <button type="button" class="icon-btn" id="note-read-audio-share" style="padding:4px 10px; font-size:12px;">⬇️ حفظ / مشاركة</button>
+            </div>
+            <audio id="note-read-audio-el" controls style="width:100%; height:38px;"></audio>
+          </div>
+          <div id="note-read-transcript" class="hidden" style="padding:10px 12px; background:var(--item); border:1px solid var(--border); border-radius:14px;">
+            <div style="font-size:11.5px; font-weight:800; color:var(--blue); margin-bottom:4px;">📝 التفريغ النصي</div>
+            <div id="note-read-transcript-body" style="font-size:15px; line-height:1.8; white-space:pre-wrap; overflow-wrap:break-word;"></div>
+          </div>
         </div>
         <!-- Full Editor Mode -->
         <div id="note-edit-pane" class="hidden" style="display:flex; flex-direction:column; gap:10px;">
@@ -1312,6 +1332,44 @@
             <button type="button" class="icon-btn" id="note-fmt-num" style="padding:5px 12px; font-size:12.5px;">١. ترقيم</button>
           </div>
           <textarea class="input-field" id="note-edit-body" rows="10" placeholder="اكتب تفاصيل الملاحظة براحتك هنا..." style="width:100%; min-height:220px; line-height:1.7; resize:vertical;"></textarea>
+          <div id="note-voice-card" style="display:flex; flex-direction:column; gap:8px; padding:10px 12px; background:var(--item); border:1px solid var(--border); border-radius:14px;">
+            <div style="font-size:12px; font-weight:800; color:var(--blue);">🎙 صوت وتفريغ نصي</div>
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              <button type="button" class="timer-btn" id="note-rec-btn" style="padding:7px 12px; font-size:12.5px;">🎙 سجّل</button>
+              <button type="button" class="icon-btn" id="note-dictate-btn" style="padding:6px 10px; font-size:12.5px;">🗣 إملاء نصي فقط</button>
+              <button type="button" class="icon-btn" id="note-attach-btn" style="padding:6px 10px; font-size:12.5px;">📎 ملف صوتي</button>
+              <input type="file" id="note-attach-input" accept="audio/*" style="display:none;">
+            </div>
+            <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; font-size:12px; color:var(--text-soft);">
+              <label style="display:flex; gap:5px; align-items:center; cursor:pointer;"><input type="checkbox" id="note-live-stt" checked> تفريغ نصي تلقائي أثناء التسجيل</label>
+              <select id="note-stt-lang" class="input-field" style="padding:3px 6px; font-size:12px; width:auto;">
+                <option value="ar-EG">عربي مصري</option>
+                <option value="ar-SA">عربي (سعودي/فصحى)</option>
+                <option value="en-US">English</option>
+              </select>
+            </div>
+            <div id="note-rec-status" class="hidden" style="font-size:13px; font-weight:800; color:var(--red); display:flex; align-items:center;"></div>
+            <div id="note-audio-preview" class="hidden" style="flex-direction:column; gap:6px;">
+              <audio id="note-audio-el" controls style="width:100%; height:38px;"></audio>
+              <div style="display:flex; justify-content:space-between; align-items:center; font-size:12px; color:var(--muted);">
+                <span id="note-audio-meta"></span>
+                <button type="button" class="icon-btn del" id="note-audio-del" style="padding:4px 10px;">🗑 احذف الصوت</button>
+              </div>
+            </div>
+            <div id="note-transcript-wrap" class="hidden" style="flex-direction:column; gap:4px;">
+              <span style="font-size:11.5px; font-weight:800; color:var(--blue);">📝 التفريغ النصي (تقدر تعدله بإيدك):</span>
+              <textarea class="input-field" id="note-edit-transcript" rows="4" placeholder="التفريغ هيظهر هنا أثناء الكلام، أو اكتبه بنفسك..." style="width:100%; min-height:90px; line-height:1.7; resize:vertical;"></textarea>
+            </div>
+            <div id="note-keep-wrap" class="hidden" style="flex-direction:column; gap:5px;">
+              <span class="max-hint">احتفظ بـ:</span>
+              <div style="display:flex; gap:6px; flex-wrap:wrap;">
+                <button type="button" class="keep-chip" data-keep="both">🎙📝 صوت + نص</button>
+                <button type="button" class="keep-chip" data-keep="text">📝 النص فقط</button>
+                <button type="button" class="keep-chip" data-keep="voice">🎙 الصوت فقط</button>
+              </div>
+              <span class="max-hint" id="note-keep-hint"></span>
+            </div>
+          </div>
         </div>
       </div>
       <div class="modal-foot">
@@ -1546,9 +1604,17 @@
       return `${hStr} ${mStr}`;
     }
 
+    // The "day" starts at 3:00 AM: anything done between midnight and 3 AM still belongs to the previous day.
+    const DAY_START_HOUR = 3;
+    function logicalDayKey(ts) {
+      const d = new Date(ts);
+      d.setHours(d.getHours() - DAY_START_HOUR);
+      return d.toDateString();
+    }
+
     function getTodayCompletedStats() {
-      const todayStr = new Date().toDateString();
-      const todayItems = COMPLETED.filter(c => new Date(c.completedAt).toDateString() === todayStr);
+      const todayStr = logicalDayKey(Date.now());
+      const todayItems = COMPLETED.filter(c => logicalDayKey(c.completedAt) === todayStr);
       return {
         count: todayItems.length,
         mins: todayItems.reduce((s, c) => s + (Number(c.mins) || 0), 0)
@@ -1615,10 +1681,12 @@
       }
     }
 
-    function formatCompletedTime(ts) {
+    function formatCompletedTime(ts, useLogicalDay = false) {
       const d = new Date(ts);
       const now = new Date();
-      const isToday = d.toDateString() === now.toDateString();
+      const isToday = useLogicalDay
+        ? logicalDayKey(ts) === logicalDayKey(now.getTime())
+        : d.toDateString() === now.toDateString();
       const dayLabel = isToday ? 'النهارده' : 'أمس';
       let h = d.getHours();
       const m = String(d.getMinutes()).padStart(2, '0');
@@ -1970,6 +2038,7 @@
     const sectionsModal = document.getElementById('modal-inbox-sections');
 
     function openInboxModal() {
+      editingInboxId = null; movingInboxId = null; promotingInboxId = null; addingToInboxSecId = null; swipedInboxId = null;
       inboxModal.classList.remove('hidden');
       renderInboxInsideModal();
     }
@@ -2182,7 +2251,368 @@
       }
     });
 
+    // ===== Voice notes: recording / attached audio / live transcript =====
+    // Audio blobs live in IndexedDB (not localStorage); the note only keeps a small reference.
+    const AUDIO_DB_NAME = 'hourly_tracker_audio_v1';
+    function audioDb() {
+      return new Promise((resolve, reject) => {
+        try {
+          const req = indexedDB.open(AUDIO_DB_NAME, 1);
+          req.onupgradeneeded = () => { req.result.createObjectStore('clips', { keyPath: 'id' }); };
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => reject(req.error);
+        } catch (e) { reject(e); }
+      });
+    }
+    async function putClip(rec) {
+      const db = await audioDb();
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction('clips', 'readwrite');
+        tx.objectStore('clips').put(rec);
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+      });
+    }
+    async function getClip(id) {
+      const db = await audioDb();
+      return new Promise((resolve, reject) => {
+        const req = db.transaction('clips').objectStore('clips').get(id);
+        req.onsuccess = () => resolve(req.result || null);
+        req.onerror = () => reject(req.error);
+      });
+    }
+    async function deleteClip(id) {
+      try {
+        const db = await audioDb();
+        await new Promise(resolve => {
+          const tx = db.transaction('clips', 'readwrite');
+          tx.objectStore('clips').delete(id);
+          tx.oncomplete = () => resolve();
+          tx.onerror = () => resolve();
+          tx.onabort = () => resolve();
+        });
+      } catch (e) {}
+    }
+
+    let draftAudio = null;   // { id, mime, dur, blob|null, isNew, missing }
+    let draftKeep = 'both';  // both | text | voice
+    let mediaRec = null, recStream = null, recChunks = [], recStartAt = 0, recTick = null, recStopWaiters = [];
+    let speechRec = null, speechWanted = false;
+    let voiceAudioUrl = null, voiceAudioFor = null;
+    let readAudioUrl = null, readAudioBlob = null, readAudioMime = '';
+    let closeWarnUntil = 0;
+    const MAX_REC_SECONDS = 20 * 60;
+
+    function $id(id) { return document.getElementById(id); }
+    function fmtClipDur(sec) {
+      const s = Math.max(0, Math.round(sec || 0));
+      return toAr(String(Math.floor(s / 60)).padStart(2, '0')) + ':' + toAr(String(s % 60).padStart(2, '0'));
+    }
+    function pickRecMime() {
+      const cands = ['audio/webm;codecs=opus', 'audio/mp4', 'audio/webm', 'audio/ogg;codecs=opus'];
+      for (const m of cands) { try { if (MediaRecorder.isTypeSupported(m)) return m; } catch (e) {} }
+      return '';
+    }
+    function clipExt(mime) {
+      return /mp4|aac|m4a/.test(mime) ? 'm4a' : /ogg/.test(mime) ? 'ogg' : /mpeg|mp3/.test(mime) ? 'mp3' : /wav/.test(mime) ? 'wav' : 'webm';
+    }
+    function isNoteEditing() {
+      const pane = $id('note-edit-pane');
+      return Boolean(pane && !pane.classList.contains('hidden'));
+    }
+    function isVoiceBusy() { return Boolean((mediaRec && mediaRec.state === 'recording') || speechWanted); }
+
+    function updateRecStatus() {
+      const el = $id('note-rec-status');
+      if (!el) return;
+      const recording = Boolean(mediaRec && mediaRec.state === 'recording');
+      if (recording) {
+        const secs = (Date.now() - recStartAt) / 1000;
+        el.innerHTML = '<span class="rec-dot"></span>بيسجّل… ' + fmtClipDur(secs) + (speechWanted ? ' · وبيفرّغ نص' : '');
+        if (secs >= MAX_REC_SECONDS) stopVoice();
+      } else if (speechWanted) {
+        el.innerHTML = '<span class="rec-dot"></span>بيسمعك… (إملاء نصي)';
+      }
+    }
+
+    function refreshVoiceUI() {
+      const recBtn = $id('note-rec-btn');
+      if (!recBtn) return;
+      const dictBtn = $id('note-dictate-btn'), attachBtn = $id('note-attach-btn');
+      const status = $id('note-rec-status'), prev = $id('note-audio-preview'), audioEl = $id('note-audio-el');
+      const meta = $id('note-audio-meta'), keepWrap = $id('note-keep-wrap'), trWrap = $id('note-transcript-wrap');
+      const tr = $id('note-edit-transcript');
+      const recording = Boolean(mediaRec && mediaRec.state === 'recording');
+      const dictating = speechWanted && !recording;
+      const busy = recording || dictating;
+
+      recBtn.textContent = recording ? '⏹ إيقاف التسجيل' : '🎙 سجّل';
+      recBtn.classList.toggle('is-recording', recording);
+      recBtn.disabled = dictating;
+      dictBtn.textContent = dictating ? '⏹ إيقاف الإملاء' : '🗣 إملاء نصي فقط';
+      dictBtn.disabled = recording;
+      attachBtn.disabled = busy;
+      status.classList.toggle('hidden', !busy);
+      if (busy) updateRecStatus();
+
+      // Audio preview
+      if (draftAudio && !draftAudio.blob && !draftAudio.loading && !draftAudio.missing) {
+        draftAudio.loading = true;
+        const forId = draftAudio.id;
+        getClip(forId).then(rec => {
+          if (draftAudio && draftAudio.id === forId) {
+            if (rec) draftAudio.blob = new Blob([rec.data], { type: rec.mime });
+            else draftAudio.missing = true;
+            draftAudio.loading = false;
+            refreshVoiceUI();
+          }
+        }).catch(() => { if (draftAudio && draftAudio.id === forId) { draftAudio.missing = true; draftAudio.loading = false; refreshVoiceUI(); } });
+      }
+      if (draftAudio) {
+        prev.classList.remove('hidden');
+        if (draftAudio.blob && voiceAudioFor !== draftAudio.id) {
+          if (voiceAudioUrl) URL.revokeObjectURL(voiceAudioUrl);
+          voiceAudioUrl = URL.createObjectURL(draftAudio.blob);
+          voiceAudioFor = draftAudio.id;
+          audioEl.src = voiceAudioUrl;
+        }
+        audioEl.classList.toggle('hidden', !draftAudio.blob);
+        meta.textContent = draftAudio.missing
+          ? 'التسجيل مش موجود على الجهاز ده'
+          : (draftAudio.loading ? 'جاري التحميل…' : ('🎙 ' + (draftAudio.dur > 0 ? fmtClipDur(draftAudio.dur) : 'تسجيل صوتي') + (draftAudio.isNew ? ' · لسه ما اتحفظش' : '')));
+      } else {
+        prev.classList.add('hidden');
+        if (voiceAudioUrl) { URL.revokeObjectURL(voiceAudioUrl); voiceAudioUrl = null; }
+        voiceAudioFor = null;
+        audioEl.removeAttribute('src');
+      }
+
+      // Transcript + keep options
+      const hasTr = Boolean(tr.value.trim());
+      trWrap.classList.toggle('hidden', !(draftAudio || hasTr || busy));
+      const showKeep = Boolean(draftAudio && hasTr && !busy);
+      keepWrap.classList.toggle('hidden', !showKeep);
+      keepWrap.querySelectorAll('[data-keep]').forEach(b => b.classList.toggle('is-active', b.dataset.keep === draftKeep));
+      const hint = $id('note-keep-hint');
+      if (hint) hint.textContent = draftKeep === 'text' ? 'الصوت هيتحذف لما تحفظ، والنص بس هو اللي يفضل.' : (draftKeep === 'voice' ? 'النص المفرّغ هيتحذف لما تحفظ، والصوت بس هو اللي يفضل.' : '');
+    }
+
+    function startSpeech() {
+      const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+      if (!SR) {
+        showWarningToast('التفريغ النصي المباشر مش مدعوم في المتصفح ده — اكتب النص بإيدك');
+        return false;
+      }
+      const ta = $id('note-edit-transcript');
+      const base = ta.value ? ta.value.replace(/\s*$/, '') + ' ' : '';
+      let finalText = '';
+      speechRec = new SR();
+      speechRec.lang = ($id('note-stt-lang') && $id('note-stt-lang').value) || 'ar-EG';
+      speechRec.continuous = true;
+      speechRec.interimResults = true;
+      speechRec.onresult = ev => {
+        let interim = '';
+        for (let i = ev.resultIndex; i < ev.results.length; i++) {
+          const r = ev.results[i];
+          if (r.isFinal) finalText += r[0].transcript.trim() + ' ';
+          else interim += r[0].transcript;
+        }
+        ta.value = base + finalText + interim;
+        ta.scrollTop = ta.scrollHeight;
+      };
+      speechRec.onend = () => {
+        if (speechWanted) { try { speechRec.start(); } catch (e) {} }
+      };
+      speechRec.onerror = ev => {
+        if (ev.error === 'not-allowed' || ev.error === 'service-not-allowed') {
+          speechWanted = false;
+          showWarningToast('التفريغ النصي محتاج إذن الميكروفون/الكلام — اسمح بيه وجرّب تاني');
+          refreshVoiceUI();
+        }
+      };
+      speechWanted = true;
+      try { speechRec.start(); } catch (e) { speechWanted = false; return false; }
+      return true;
+    }
+
+    async function startRecording() {
+      if (mediaRec || speechWanted) return;
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia || typeof MediaRecorder === 'undefined') {
+        showWarningToast('المتصفح ده مش بيدعم التسجيل الصوتي');
+        return;
+      }
+      try {
+        recStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      } catch (e) {
+        showWarningToast('الميكروفون مش متاح — اسمح بالوصول له (ولو بتجرّب من المعاينة جرّب من التطبيق نفسه)');
+        return;
+      }
+      const mime = pickRecMime();
+      try {
+        mediaRec = new MediaRecorder(recStream, mime ? { mimeType: mime } : undefined);
+      } catch (e) {
+        try { recStream.getTracks().forEach(t => t.stop()); } catch (_) {}
+        recStream = null; mediaRec = null;
+        showWarningToast('مقدرتش أبدأ التسجيل على المتصفح ده');
+        return;
+      }
+      recChunks = [];
+      mediaRec.ondataavailable = e => { if (e.data && e.data.size) recChunks.push(e.data); };
+      mediaRec.onstop = () => {
+        const dur = (Date.now() - recStartAt) / 1000;
+        const type = (recChunks[0] && recChunks[0].type) || mime || 'audio/webm';
+        const blob = new Blob(recChunks, { type });
+        try { recStream && recStream.getTracks().forEach(t => t.stop()); } catch (e) {}
+        recStream = null; mediaRec = null; recChunks = [];
+        if (recTick) { clearInterval(recTick); recTick = null; }
+        if (blob.size > 0) {
+          draftAudio = { id: 'clip_' + Date.now(), mime: type, dur, blob, isNew: true };
+          draftKeep = 'both';
+        } else {
+          showWarningToast('التسجيل طلع فاضي — جرّب تاني (ولو التفريغ التلقائي شغال على آيفون قفّله)');
+        }
+        recStopWaiters.splice(0).forEach(fn => fn());
+        refreshVoiceUI();
+      };
+      recStartAt = Date.now();
+      mediaRec.start(1000);
+      if ($id('note-live-stt').checked) startSpeech();
+      if (recTick) clearInterval(recTick);
+      recTick = setInterval(updateRecStatus, 500);
+      refreshVoiceUI();
+    }
+
+    function stopVoice() {
+      return new Promise(resolve => {
+        speechWanted = false;
+        try { if (speechRec) speechRec.stop(); } catch (e) {}
+        if (mediaRec && mediaRec.state !== 'inactive') {
+          recStopWaiters.push(resolve);
+          try { mediaRec.stop(); } catch (e) { recStopWaiters.splice(0).forEach(fn => fn()); }
+        } else {
+          if (recTick) { clearInterval(recTick); recTick = null; }
+          refreshVoiceUI();
+          resolve();
+        }
+      });
+    }
+
+    function abortVoice() {
+      speechWanted = false;
+      try { if (speechRec) speechRec.stop(); } catch (e) {}
+      if (mediaRec) { mediaRec.onstop = null; try { if (mediaRec.state !== 'inactive') mediaRec.stop(); } catch (e) {} }
+      if (recStream) { try { recStream.getTracks().forEach(t => t.stop()); } catch (e) {} recStream = null; }
+      mediaRec = null; recChunks = [];
+      if (recTick) { clearInterval(recTick); recTick = null; }
+    }
+
+    function initVoiceDraft(note) {
+      draftAudio = note && note.audio ? { id: note.audio.id, mime: note.audio.mime, dur: note.audio.dur, blob: null, isNew: false } : null;
+      draftKeep = 'both';
+      voiceAudioFor = null;
+      $id('note-edit-transcript').value = note ? (note.transcript || '') : '';
+      refreshVoiceUI();
+    }
+
+    $id('note-rec-btn').addEventListener('click', () => {
+      if (mediaRec && mediaRec.state === 'recording') stopVoice(); else startRecording();
+    });
+    $id('note-dictate-btn').addEventListener('click', () => {
+      if (speechWanted && !(mediaRec && mediaRec.state === 'recording')) { stopVoice(); return; }
+      if (mediaRec) return;
+      if (startSpeech()) refreshVoiceUI();
+      if (speechWanted) recTick = recTick || setInterval(updateRecStatus, 500);
+    });
+    $id('note-attach-btn').addEventListener('click', () => $id('note-attach-input').click());
+    $id('note-attach-input').addEventListener('change', e => {
+      const f = e.target.files && e.target.files[0];
+      e.target.value = '';
+      if (!f) return;
+      if (f.size > 25 * 1024 * 1024) { showWarningToast('الملف كبير — أقصى حجم ٢٥ ميجا'); return; }
+      const url = URL.createObjectURL(f);
+      const probe = new Audio();
+      probe.preload = 'metadata';
+      const done = d => {
+        URL.revokeObjectURL(url);
+        draftAudio = { id: 'clip_' + Date.now(), mime: f.type || 'audio/mpeg', dur: Number.isFinite(d) ? d : 0, blob: f, isNew: true };
+        draftKeep = 'both';
+        refreshVoiceUI();
+      };
+      probe.onloadedmetadata = () => done(probe.duration);
+      probe.onerror = () => done(0);
+      probe.src = url;
+    });
+    $id('note-audio-del').addEventListener('click', () => { draftAudio = null; draftKeep = 'both'; refreshVoiceUI(); });
+    $id('note-edit-transcript').addEventListener('input', refreshVoiceUI);
+    $id('note-keep-wrap').addEventListener('click', e => {
+      const b = e.target.closest('[data-keep]');
+      if (!b) return;
+      draftKeep = b.dataset.keep;
+      refreshVoiceUI();
+    });
+
+    async function renderNoteReadMedia(note) {
+      const aWrap = $id('note-read-audio'), tWrap = $id('note-read-transcript');
+      const audioEl = $id('note-read-audio-el'), msg = $id('note-read-audio-msg');
+      $id('note-read-body').style.display = note.text ? 'block' : 'none';
+      if (note.transcript) {
+        $id('note-read-transcript-body').textContent = note.transcript;
+        tWrap.classList.remove('hidden');
+      } else {
+        tWrap.classList.add('hidden');
+      }
+      try { audioEl.pause(); } catch (e) {}
+      if (readAudioUrl) { URL.revokeObjectURL(readAudioUrl); readAudioUrl = null; }
+      readAudioBlob = null;
+      audioEl.removeAttribute('src');
+      if (!note.audio) { aWrap.classList.add('hidden'); return; }
+      aWrap.classList.remove('hidden');
+      audioEl.classList.add('hidden');
+      msg.textContent = 'جاري تحميل التسجيل…';
+      const forNote = note.id;
+      try {
+        const rec = await getClip(note.audio.id);
+        if (activeViewNoteId !== forNote) return;
+        if (!rec) { msg.textContent = 'التسجيل مش موجود على الجهاز ده'; return; }
+        readAudioBlob = new Blob([rec.data], { type: rec.mime });
+        readAudioMime = rec.mime;
+        readAudioUrl = URL.createObjectURL(readAudioBlob);
+        audioEl.src = readAudioUrl;
+        audioEl.classList.remove('hidden');
+        msg.textContent = '🎙 ' + (note.audio.dur > 0 ? fmtClipDur(note.audio.dur) : 'تسجيل صوتي');
+      } catch (e) {
+        msg.textContent = 'مقدرتش أقرأ التسجيل';
+      }
+    }
+
+    $id('note-read-audio-share').addEventListener('click', async () => {
+      if (!readAudioBlob) return;
+      const note = NOTES.find(n => n.id === activeViewNoteId);
+      const fileName = `note-voice-${activeViewNoteId || Date.now()}.${clipExt(readAudioMime)}`;
+      try {
+        const file = new File([readAudioBlob], fileName, { type: readAudioMime });
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({ files: [file], title: (note && note.title) || 'تسجيل صوتي' });
+          return;
+        }
+      } catch (e) { if (e && e.name === 'AbortError') return; }
+      const url = URL.createObjectURL(readAudioBlob);
+      const a = document.createElement('a');
+      a.href = url; a.download = fileName;
+      document.body.appendChild(a); a.click(); a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    });
+
+    function tryCloseNoteReader() {
+      const unsaved = isNoteEditing() && (isVoiceBusy() || (draftAudio && draftAudio.isNew));
+      if (!unsaved || Date.now() < closeWarnUntil) { closeNoteReader(); return; }
+      closeWarnUntil = Date.now() + 4000;
+      showWarningToast('فيه تسجيل لسه ما اتحفظش — اضغط «حفظ الملاحظة»، أو اضغط إغلاق تاني للتجاهل');
+    }
+
     function openNoteReader(noteId, mode = 'read', defaultSecId = null) {
+      abortVoice();
       activeViewNoteId = noteId;
       activeNewNoteSecId = defaultSecId || NOTE_SECTIONS[0].id;
       noteViewMode = mode;
@@ -2205,6 +2635,7 @@
         document.getElementById('note-read-title').style.display = note.title ? 'block' : 'none';
         document.getElementById('note-read-meta').textContent = formatCompletedTime(note.updatedAt || note.createdAt);
         document.getElementById('note-read-body').innerHTML = formatNoteBodyHtml(note.text || '');
+        renderNoteReadMedia(note);
         readPane.classList.remove('hidden');
         editPane.classList.add('hidden');
         editBtn.classList.remove('hidden');
@@ -2213,6 +2644,7 @@
         headerTitle.textContent = note ? 'تعديل الملاحظة' : 'ملاحظة جديدة';
         document.getElementById('note-edit-title').value = note ? (note.title || '') : '';
         document.getElementById('note-edit-body').value = note ? (note.text || '') : '';
+        initVoiceDraft(note);
 
         readPane.classList.add('hidden');
         editPane.classList.remove('hidden');
@@ -2225,6 +2657,8 @@
     }
 
     function closeNoteReader() {
+      abortVoice();
+      try { $id('note-read-audio-el').pause(); $id('note-audio-el').pause(); } catch (e) {}
       noteViewModal.classList.add('hidden');
       activeViewNoteId = null;
       renderNotesInsideModal();
@@ -2235,41 +2669,77 @@
       if (activeViewNoteId) openNoteReader(activeViewNoteId, 'edit');
     });
 
-    document.getElementById('note-view-save-btn').addEventListener('click', () => {
-      const title = document.getElementById('note-edit-title').value.trim();
-      const text = document.getElementById('note-edit-body').value.trim();
-      if (!text && !title) return;
+    document.getElementById('note-view-save-btn').addEventListener('click', async () => {
+      const btn = document.getElementById('note-view-save-btn');
+      if (btn.disabled) return;
+      btn.disabled = true;
+      try {
+        await stopVoice();
+        const title = document.getElementById('note-edit-title').value.trim();
+        const text = document.getElementById('note-edit-body').value.trim();
+        let transcript = document.getElementById('note-edit-transcript').value.trim();
+        let audio = draftAudio;
 
-      if (activeViewNoteId) {
-        const note = NOTES.find(n => n.id === activeViewNoteId);
-        if (note) {
-          note.title = title;
-          note.text = text || title;
-          note.updatedAt = Date.now();
-          openNoteSections[note.sectionId || NOTE_SECTIONS[0].id] = true;
+        let keep = draftKeep;
+        if (!audio) keep = 'text'; else if (!transcript) keep = 'voice';
+        if (keep === 'text') audio = null;
+        if (keep === 'voice') transcript = '';
+        if (!text && !title && !audio && !transcript) return;
+
+        const existing = activeViewNoteId ? NOTES.find(n => n.id === activeViewNoteId) : null;
+        const oldAudioId = existing && existing.audio ? existing.audio.id : null;
+
+        let audioRef = null;
+        if (audio) {
+          if (audio.isNew && audio.blob) {
+            try {
+              const data = await audio.blob.arrayBuffer();
+              await putClip({ id: audio.id, mime: audio.mime, data });
+              audio.isNew = false;
+            } catch (e) {
+              showWarningToast('مقدرتش أحفظ الصوت على الجهاز ده — جرّب تاني');
+              return;
+            }
+          }
+          audioRef = { id: audio.id, mime: audio.mime, dur: Math.round(audio.dur || 0) };
         }
-        saveState();
-        openNoteReader(activeViewNoteId, 'read');
-      } else {
-        const secId = activeNewNoteSecId || NOTE_SECTIONS[0].id;
-        const newId = Date.now();
-        NOTES.unshift({
-          id: newId,
-          title,
-          text: text || title,
-          sectionId: secId,
-          createdAt: Date.now(),
-          updatedAt: Date.now()
-        });
-        openNoteSections[secId] = true;
-        saveState();
-        openNoteReader(newId, 'read');
+        if (oldAudioId && (!audioRef || audioRef.id !== oldAudioId)) deleteClip(oldAudioId);
+
+        if (existing) {
+          existing.title = title;
+          existing.text = text || title;
+          existing.updatedAt = Date.now();
+          if (audioRef) existing.audio = audioRef; else delete existing.audio;
+          if (transcript) existing.transcript = transcript; else delete existing.transcript;
+          openNoteSections[existing.sectionId || NOTE_SECTIONS[0].id] = true;
+          saveState();
+          openNoteReader(existing.id, 'read');
+        } else {
+          const secId = activeNewNoteSecId || NOTE_SECTIONS[0].id;
+          const newId = Date.now();
+          const created = {
+            id: newId,
+            title,
+            text: text || title,
+            sectionId: secId,
+            createdAt: Date.now(),
+            updatedAt: Date.now()
+          };
+          if (audioRef) created.audio = audioRef;
+          if (transcript) created.transcript = transcript;
+          NOTES.unshift(created);
+          openNoteSections[secId] = true;
+          saveState();
+          openNoteReader(newId, 'read');
+        }
+      } finally {
+        btn.disabled = false;
       }
     });
 
-    document.getElementById('close-note-view').addEventListener('click', closeNoteReader);
-    document.getElementById('close-note-view-2').addEventListener('click', closeNoteReader);
-    noteViewModal.addEventListener('click', e => { if (e.target === noteViewModal) closeNoteReader(); });
+    document.getElementById('close-note-view').addEventListener('click', tryCloseNoteReader);
+    document.getElementById('close-note-view-2').addEventListener('click', tryCloseNoteReader);
+    noteViewModal.addEventListener('click', e => { if (e.target === noteViewModal) tryCloseNoteReader(); });
 
     function renderNotesInsideModal() {
       const listEl = document.getElementById('notes-list');
@@ -2300,8 +2770,10 @@
                   ? '<div class="empty-msg" style="padding:10px;">لا توجد ملاحظات في هذا القسم بعد.</div>'
                   : items.map(note => {
                       const isSwiped = swipedNoteId === note.id;
-                      const previewTitle = note.title ? note.title : (note.text || '').split('\n')[0];
-                      const previewBody = note.title ? (note.text || '') : (note.text || '').split('\n').slice(1).join(' ');
+                      const baseTxt = note.text || note.transcript || '';
+                      const previewTitle = note.title ? note.title : (baseTxt.split('\n')[0] || (note.audio ? 'تسجيل صوتي' : ''));
+                      const previewBody = note.title ? baseTxt : baseTxt.split('\n').slice(1).join(' ');
+                      const mediaBadge = (note.audio ? `<span class="count-pill" style="margin-inline-start:6px;">🎙 ${note.audio.dur > 0 ? fmtClipDur(note.audio.dur) : ''}</span>` : '') + (note.transcript ? '<span class="count-pill" style="margin-inline-start:4px;">📝 تفريغ</span>' : '');
                       return `
                         <div class="inbox-item-outer">
                           <div class="swipe-wrap" data-note-swipe-id="${note.id}">
@@ -2315,7 +2787,7 @@
                                 <span class="drag-handle note-drag-handle" title="اسحب للترتيب">⋮⋮</span>
                                 <span class="color-dot color-dot-clickable" style="background:${sec.color || '#4f75ff'}; margin-top:5px;" data-move-note-sec="${note.id}" title="نقل لقسم آخر"></span>
                                 <div style="flex:1; min-width:0; cursor:pointer;" data-open-note="${note.id}" title="اضغط لقراءة الملاحظة كاملة">
-                                  <div class="task-title" style="font-size:15px; font-weight:900; line-height:1.4; color:var(--text);">${previewTitle}</div>
+                                  <div class="task-title" style="font-size:15px; font-weight:900; line-height:1.4; color:var(--text);">${previewTitle}${mediaBadge}</div>
                                   ${previewBody ? `<div class="task-note" style="padding-right:0; margin-top:2px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden;">${previewBody}</div>` : ''}
                                   <div class="completed-meta" style="margin-top:3px;">${formatCompletedTime(note.updatedAt || note.createdAt)}</div>
                                 </div>
@@ -2482,6 +2954,8 @@
       listEl.querySelectorAll('[data-del-note]').forEach(btn => {
         btn.addEventListener('click', () => {
           const id = Number(btn.dataset.delNote);
+          const gone = NOTES.find(x => x.id === id);
+          if (gone && gone.audio) deleteClip(gone.audio.id);
           NOTES = NOTES.filter(x => x.id !== id);
           swipedNoteId = null;
           saveState();
@@ -2493,12 +2967,19 @@
       listEl.querySelectorAll('[data-note-to-inbox]').forEach(btn => {
         btn.addEventListener('click', () => {
           const id = Number(btn.dataset.noteToInbox);
+          const srcNote = NOTES.find(x => x.id === id);
+          if (srcNote && srcNote.audio) {
+            swipedNoteId = null;
+            renderNotesInsideModal();
+            showWarningToast('الملاحظة فيها تسجيل صوتي — سيبها في Notes أو احذف الصوت الأول');
+            return;
+          }
           const targetSec = INBOX_SECTIONS[0] ? INBOX_SECTIONS[0].id : 'sec-1';
           if (isInboxSectionFull(targetSec)) return;
           const idx = NOTES.findIndex(x => x.id === id);
           if (idx === -1) return;
           const [moved] = NOTES.splice(idx, 1);
-          INBOX.push({ id: Date.now(), label: moved.title || moved.text, note: moved.title ? moved.text : '', sectionId: targetSec });
+          INBOX.push({ id: Date.now(), label: moved.title || moved.text || moved.transcript || 'ملاحظة', note: moved.title ? (moved.text || moved.transcript || '') : '', sectionId: targetSec });
           openSections[targetSec] = true;
           swipedNoteId = null;
           saveState();
@@ -3103,9 +3584,8 @@
       document.getElementById('toggle-trackers-btn').textContent = trackersOpen ? '▼' : '◀';
     });
 
-    // Render Inbox Modal List
+    // Render Inbox Modal List (and the live copy of the Next 5 partition in the main view)
     function renderInboxInsideModal() {
-      const inboxGroupsEl = document.getElementById('inbox-groups');
       const footerCount = document.getElementById('inbox-footer-count');
       const secSelect = document.getElementById('inbox-section-select');
 
@@ -3117,16 +3597,25 @@
         `).join('');
       }
 
-      if (!inboxGroupsEl) return;
+      renderInboxGroupsInto(document.getElementById('inbox-groups'), null, openSections);
+      renderNext5Mirror();
+    }
 
-      inboxGroupsEl.innerHTML = INBOX_SECTIONS.map((sec, secIdx) => {
+    // Shared renderer: draws Inbox partitions (all, or only `onlySecId`) into any container,
+    // with every Inbox behaviour (swipe, edit time, move, promote to hour, add, delete, drag).
+    function renderInboxGroupsInto(inboxGroupsEl, onlySecId, openMap) {
+      if (!inboxGroupsEl) return;
+      const isMirror = Boolean(onlySecId);
+      const byId = id => inboxGroupsEl.querySelector('[id="' + id + '"]');
+
+      inboxGroupsEl.innerHTML = INBOX_SECTIONS.filter(s => !onlySecId || s.id === onlySecId).map((sec, secIdx) => {
         const items = INBOX.filter(item => item.sectionId === sec.id);
-        const isOpen = Boolean(openSections[sec.id]);
+        const isOpen = Boolean(openMap[sec.id]);
         return `
           <div class="prio-group" data-sec-id="${sec.id}">
             <div class="prio-group-header" data-toggle-sec="${sec.id}" style="cursor:pointer; padding:11px 14px;">
               <div class="prio-group-title">
-                <span class="drag-handle sec-drag-handle" title="اسحب لترتيب القسم">⋮⋮</span>
+                ${isMirror ? '' : '<span class="drag-handle sec-drag-handle" title="اسحب لترتيب القسم">⋮⋮</span>'}
                 <span class="color-dot" style="background:${sec.color || '#4f75ff'};"></span>
                 <span>${sec.name}</span>
               </div>
@@ -3209,13 +3698,13 @@
       inboxGroupsEl.querySelectorAll('[data-toggle-sec]').forEach(header => {
         header.addEventListener('click', () => {
           const id = header.dataset.toggleSec;
-          openSections[id] = !Boolean(openSections[id]);
+          openMap[id] = !Boolean(openMap[id]);
           renderInboxInsideModal();
         });
       });
 
       // Live 60fps drag-and-drop for Inbox Partitions
-      attachLiveSortable(
+      if (!isMirror) attachLiveSortable(
         inboxGroupsEl,
         '.prio-group',
         '.sec-drag-handle',
@@ -3345,11 +3834,11 @@
           e.stopPropagation();
           const secId = btn.dataset.addInSec;
           if (isInboxSectionFull(secId)) return;
-          openSections[secId] = true;
+          openMap[secId] = true;
           addingToInboxSecId = (addingToInboxSecId === secId) ? null : secId;
           renderInboxInsideModal();
           if (addingToInboxSecId) {
-            const inp = document.getElementById(`quick-inbox-input-${secId}`);
+            const inp = byId(`quick-inbox-input-${secId}`);
             if (inp) inp.focus();
           }
         });
@@ -3359,7 +3848,7 @@
         btn.addEventListener('click', () => {
           const secId = btn.dataset.confirmAddSec;
           if (isInboxSectionFull(secId)) return;
-          const inp = document.getElementById(`quick-inbox-input-${secId}`);
+          const inp = byId(`quick-inbox-input-${secId}`);
           const label = inp ? inp.value.trim() : '';
           if (!label) return;
           INBOX.push({ id: Date.now(), label, sectionId: secId });
@@ -3398,9 +3887,9 @@
           const id = Number(btn.dataset.saveInbox);
           const item = INBOX.find(x => x.id === id);
           if (!item) return;
-          const nameInp = document.getElementById(`edit-inbox-name-${id}`);
-          const minsInp = document.getElementById(`edit-inbox-mins-${id}`);
-          const noteInp = document.getElementById(`edit-inbox-note-${id}`);
+          const nameInp = byId(`edit-inbox-name-${id}`);
+          const minsInp = byId(`edit-inbox-mins-${id}`);
+          const noteInp = byId(`edit-inbox-note-${id}`);
           if (nameInp && nameInp.value.trim()) item.label = nameInp.value.trim();
           if (noteInp) {
             const n = noteInp.value.trim();
@@ -3444,6 +3933,7 @@
           if (!item) return;
           if (item.sectionId !== targetSec && isInboxSectionFull(targetSec)) return;
           item.sectionId = targetSec;
+          openMap[targetSec] = true;
           openSections[targetSec] = true;
           movingInboxId = null;
           saveState();
@@ -3488,7 +3978,7 @@
           movingInboxId = null;
           swipedInboxId = null;
           renderInboxInsideModal();
-          const inp = document.getElementById(`promote-mins-${promotingInboxId}`);
+          const inp = byId(`promote-mins-${promotingInboxId}`);
           if (inp) inp.focus();
         });
       });
@@ -3509,7 +3999,7 @@
             return;
           }
           const id = Number(btn.dataset.confirmPromote);
-          const minsInp = document.getElementById(`promote-mins-${id}`);
+          const minsInp = byId(`promote-mins-${id}`);
           const totalTasksMins = TASKS.reduce((s, t) => s + t.mins, 0);
           const freeMins = Math.max(0, 60 - totalTasksMins);
           const rawMins = parseMins(minsInp ? minsInp.value : '0');
@@ -3538,10 +4028,32 @@
       });
     }
 
+    // Live copy of the "Next 5" Inbox partition in the main view — same renderer, handlers and data as the Inbox
+    let next5Open = {};
+    function findNext5Section() {
+      const norm = s => String(s || '').replace(/[\u0660-\u0669]/g, d => d.charCodeAt(0) - 0x0660);
+      return INBOX_SECTIONS.find(s => /(next|نيكست|نكست|ناكست)\s*[-_]?\s*5/i.test(norm(s.name)));
+    }
+    function renderNext5Mirror() {
+      const box = document.getElementById('next5-mirror');
+      if (!box) return;
+      const ae = document.activeElement;
+      if (ae && ae.tagName === 'INPUT' && box.contains(ae)) return; // don't wipe what the user is typing
+      const sec = findNext5Section();
+      if (!sec) {
+        box.innerHTML = '<div class="empty-msg" style="padding:10px; font-size:12px;">مفيش قسم اسمه Next 5 في الـ Inbox لسه — سمّي أي قسم كده وهيظهر هنا.</div>';
+        return;
+      }
+      renderInboxGroupsInto(box, sec.id, next5Open);
+      const g = box.querySelector('.prio-group');
+      if (g) g.style.marginBottom = '0';
+    }
+
     // Main App Render
     function render() {
       saveState();
       ensureTicker();
+      renderNext5Mirror();
 
       const remainingRoutineTotal = ROUTINE.filter(item => !item.doneToday).length;
       document.getElementById('tab-routine').textContent = `Routine (${toAr(remainingRoutineTotal)})`;
@@ -3708,8 +4220,9 @@
             ${COMPLETED.length === 0
               ? '<div class="empty-msg">مفيش مهام مكتملة خلال آخر ٤٨ ساعة.</div>'
               : (() => {
-                  const todayRows = COMPLETED.filter(c => new Date(c.completedAt).toDateString() === new Date().toDateString());
-                  const olderRows = COMPLETED.filter(c => new Date(c.completedAt).toDateString() !== new Date().toDateString());
+                  const todayKey = logicalDayKey(Date.now());
+                  const todayRows = COMPLETED.filter(c => logicalDayKey(c.completedAt) === todayKey);
+                  const olderRows = COMPLETED.filter(c => logicalDayKey(c.completedAt) !== todayKey);
                   let out = '';
                   if (todayRows.length > 0) {
                     out += `<div style="font-size:11.5px; font-weight:800; color:var(--green); padding:2px 4px;">✨ مهام النهارده (${toAr(todayRows.length)})</div>`;
@@ -3718,7 +4231,7 @@
                         <span class="color-dot" style="background:var(--green);"></span>
                         <div class="task-info">
                           <span class="task-title" style="color:var(--text);">${c.label}</span>
-                          <span class="completed-meta" style="color:var(--green); font-weight:700;">${toAr(c.mins)} د · ${formatCompletedTime(c.completedAt)}</span>
+                          <span class="completed-meta" style="color:var(--green); font-weight:700;">${toAr(c.mins)} د · ${formatCompletedTime(c.completedAt, true)}</span>
                         </div>
                       </div>
                     `).join('');
@@ -3730,7 +4243,7 @@
                         <span class="color-dot" style="background:var(--muted);"></span>
                         <div class="task-info">
                           <span class="task-title" style="text-decoration:line-through; color:var(--muted);">${c.label}</span>
-                          <span class="completed-meta">${toAr(c.mins)} د · ${formatCompletedTime(c.completedAt)}</span>
+                          <span class="completed-meta">${toAr(c.mins)} د · ${formatCompletedTime(c.completedAt, true)}</span>
                         </div>
                       </div>
                     `).join('');
