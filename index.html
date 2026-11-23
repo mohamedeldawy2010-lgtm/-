@@ -304,6 +304,17 @@
       font-variant-numeric: tabular-nums;
     }
 
+    /* Empty = grey, has items = calm theme-blue tint */
+    .inbox-mini-circle { transition: background .25s ease, border-color .25s ease, transform .15s ease; }
+    .inbox-mini-circle > span, .inbox-mini-circle { filter: none; }
+    .inbox-mini-btn.is-empty .inbox-mini-circle { filter: grayscale(1); opacity: .55; }
+    .inbox-mini-btn:not(.is-empty) .inbox-mini-circle {
+      background: var(--blue-soft, #eceeff);
+      border-color: var(--blue);
+      filter: saturate(.75);
+    }
+    .inbox-mini-btn:not(.is-empty) .inbox-mini-count { color: var(--blue); }
+
     /* Inbox Launcher Button */
     .inbox-launcher-btn {
       width: 100%;
@@ -4547,6 +4558,10 @@
       if (inboxLauncherPill) inboxLauncherPill.textContent = toAr(INBOX.length);
       const notesLauncherPill = document.getElementById('notes-launcher-pill');
       if (notesLauncherPill) notesLauncherPill.textContent = toAr(NOTES.length);
+      const inboxBtnEl = document.getElementById('open-inbox-modal-btn');
+      if (inboxBtnEl) inboxBtnEl.classList.toggle('is-empty', INBOX.length === 0);
+      const notesBtnEl = document.getElementById('open-notes-modal-btn');
+      if (notesBtnEl) notesBtnEl.classList.toggle('is-empty', NOTES.length === 0);
 
       const totalTasksMins = TASKS.reduce((s, t) => s + t.mins, 0);
       const freeMins = Math.max(0, 60 - totalTasksMins);
