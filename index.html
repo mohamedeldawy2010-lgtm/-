@@ -1176,6 +1176,16 @@
     .celebrate-card { background:#5568f6; border-radius:30px; box-shadow:0 30px 70px rgba(85,104,246,.45); }
     .header-row h1 { font-size:13px; }
     .header-row .time-badge { font-size:10.5px; padding:3px 9px; flex-shrink:0; }
+    .time-badge.is-over { background:var(--red-soft); color:var(--red); }
+    .view-switch { display:inline-flex; gap:10px; align-items:center; }
+    .view-sym { border:1.5px solid var(--border); background:transparent; color:var(--text-soft); border-radius:11px; width:34px; height:34px; padding:0; font-family:inherit; font-size:16px; font-weight:700; line-height:1; cursor:pointer; transition:background .15s, color .15s, border-color .15s; display:inline-flex; align-items:center; justify-content:center; }
+    .view-sym.cal { font-size:13.5px; border-top:6px solid var(--red); border-radius:10px; padding-top:1px; }
+    .view-sym.is-active { background:var(--blue); border-color:var(--blue); color:var(--on-accent); }
+    .view-sym.cal.is-active { border-top-color:var(--red); }
+    .ring-btn { position:relative; width:38px; height:38px; border:none; background:transparent; padding:0; cursor:pointer; flex-shrink:0; font-family:inherit; }
+    .ring-btn svg { display:block; }
+    .ring-label { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; color:var(--text); font-variant-numeric:tabular-nums; }
+    .prio-group-right .count-pill { white-space:nowrap; }
   </style>
 </head>
 <body>
@@ -1822,6 +1832,20 @@
         toast.style.background = '';
         if (closeBtn) closeBtn.style.display = '';
       }, 2000);
+    }
+
+    function showInfoToast(msg) {
+      const toast = document.getElementById('alarm-toast');
+      const closeBtn = document.getElementById('alarm-close');
+      if (closeBtn) closeBtn.style.display = 'none';
+      toast.style.background = '';
+      document.getElementById('alarm-text').textContent = msg;
+      toast.classList.add('is-visible');
+      if (alarmTimeout) clearTimeout(alarmTimeout);
+      alarmTimeout = setTimeout(() => {
+        toast.classList.remove('is-visible');
+        if (closeBtn) closeBtn.style.display = '';
+      }, 2800);
     }
 
     document.getElementById('alarm-close').addEventListener('click', () => {
@@ -3714,6 +3738,41 @@
     // ----- Smart "Today" list + per-day time budget -----
     const TODAY_SEC_ID = '__today__';
     const DAY_CAP_MINS = 240; // a day can hold at most 4 hours of planned tasks
+    const DAY_CAP_COUNT = 15; // ...and at most 15 tasks
+    let todayView = 'today'; // 'today' | 'tomorrow'
+    function viewDayKey() {
+      const d = logicalToday();
+      if (todayView === 'tomorrow') d.setDate(d.getDate() + 1);
+      return toDateKey(d);
+    }
+    function ringHtml(kind, label, frac) {
+      const r = 14, c = 2 * Math.PI * r;
+      const f = Math.max(0, Math.min(1, frac));
+      const color = f >= 1 ? 'var(--red)' : f >= 0.8 ? 'var(--amber)' : 'var(--blue)';
+      return `<button type="button" class="ring-btn" data-ring="${kind}" dir="ltr">
+        <svg viewBox="0 0 36 36" width="38" height="38"><circle cx="18" cy="18" r="${r}" fill="none" stroke="var(--item-hover)" stroke-width="3.2"/><circle cx="18" cy="18" r="${r}" fill="none" stroke="${color}" stroke-width="3.2" stroke-linecap="round" stroke-dasharray="${(c * f).toFixed(2)} ${c.toFixed(2)}" transform="rotate(-90 18 18)"/></svg>
+        <span class="ring-label">${label}</span>
+      </button>`;
+    }
+    function fmtRingTime(m) {
+      if (m <= 0) return toAr(0);
+      if (m < 60) return toAr(m) + 'د';
+      return m % 60 === 0 ? toAr(m / 60) + 'س' : fmtHM(m);
+    }
+    function fmtLongTime(m) {
+      const h = Math.floor(m / 60), mm = m % 60;
+      if (h === 0) return `${toAr(mm)} دقيقة`;
+      if (mm === 0) return h === 1 ? 'ساعة' : (h === 2 ? 'ساعتين' : `${toAr(h)} ساعات`);
+      return `${h === 1 ? 'ساعة' : (h === 2 ? 'ساعتين' : toAr(h) + ' ساعات')} و${toAr(mm)} دقيقة`;
+    }
+    function dayCountFull(key, exceptId) {
+      const n = INBOX.filter(x => x.dueDate === key && x.id !== exceptId).length;
+      if (n >= DAY_CAP_COUNT) {
+        showWarningToast(`اليوم ده وصل الحد الأقصى (${toAr(DAY_CAP_COUNT)} مهمة)`);
+        return true;
+      }
+      return false;
+    }
     function fmtHM(m) { return toAr(Math.floor(m / 60)) + ':' + toAr(pad2(m % 60)); }
     function dayLoadMins(key, exceptId) {
       return INBOX.filter(x => x.dueDate === key && x.id !== exceptId).reduce((sum, x) => sum + (Number(x.mins) || 0), 0);
@@ -3722,6 +3781,7 @@
     function tryAssignDay(item, key, mins) {
       const m = mins > 0 ? mins : Number(item.mins) || 0;
       if (!(m > 0)) return false;
+      if (dayCountFull(key, item.id)) return false;
       const load = dayLoadMins(key, item.id);
       if (load + m > DAY_CAP_MINS) {
         const left = Math.max(0, DAY_CAP_MINS - load);
@@ -3735,6 +3795,7 @@
     }
     function applyDayChoice(item, key) {
       if (dayDiff(key) < 0) { showWarningToast('التاريخ ده فات — اختار النهارده أو يوم جاي'); renderInboxInsideModal(); return; }
+      if (dayCountFull(key, item.id)) { renderInboxInsideModal(); return; }
       if (item.mins > 0) {
         if (tryAssignDay(item, key, 0)) { pickingDayInboxId = null; pendingDayInbox = null; saveState(); }
       } else {
@@ -3766,6 +3827,11 @@
       `;
     }
 
+    function noteOverHour(newTotal) {
+      if (newTotal > 60) {
+        showWarningToast(`الساعة عدّت الحد: ${toAr(newTotal)} / ٦٠ د (زيادة ${toAr(newTotal - 60)} د) — دي آخر مهمة`);
+      }
+    }
     function promoteInboxNow(id, mins) {
       const idx = INBOX.findIndex(x => x.id === id);
       if (idx === -1) return;
@@ -3818,7 +3884,7 @@
       const byId = id => inboxGroupsEl.querySelector('[id="' + id + '"]');
 
       const isToday = onlySecId === TODAY_SEC_ID;
-      const todayKey = toDateKey(logicalToday());
+      const todayKey = viewDayKey();
       const secList = isToday ? [{ id: TODAY_SEC_ID, name: 'Today', color: '#12a762' }] : INBOX_SECTIONS.filter(s => !onlySecId || s.id === onlySecId);
       inboxGroupsEl.innerHTML = secList.map((sec, secIdx) => {
         const items = isToday ? INBOX.filter(item => item.dueDate === todayKey).sort((a, b) => (a.todayRank ?? 1e9) - (b.todayRank ?? 1e9)) : INBOX.filter(item => item.sectionId === sec.id);
@@ -3831,12 +3897,11 @@
               <div class="prio-group-title">
                 ${isMirror ? '' : '<span class="drag-handle sec-drag-handle" title="اسحب لترتيب القسم">⋮⋮</span>'}
                 <span class="color-dot" style="background:${sec.color || '#4f75ff'};"></span>
-                <span>${sec.name}</span>
+                ${isToday ? `<span class="view-switch"><button type="button" class="view-sym cal ${todayView === 'today' ? 'is-active' : ''}" data-today-view="today" title="النهارده" aria-label="النهارده">${toAr(logicalToday().getDate())}</button><button type="button" class="view-sym ${todayView === 'tomorrow' ? 'is-active' : ''}" data-today-view="tomorrow" title="بكرة" aria-label="بكرة">←</button></span>` : `<span>${sec.name}</span>`}
               </div>
               <div class="prio-group-right" style="gap:8px;">
                 ${isToday ? '' : `<button type="button" class="gear-btn" data-add-in-sec="${sec.id}" title="إضافة مهمة في هذا القسم" style="font-weight:800; padding:2px 8px;">+</button>`}
-                <span class="count-pill">${isToday ? toAr(items.length) : (sec.maxTasks > 0 ? `${toAr(items.length)}/${toAr(sec.maxTasks)}` : toAr(items.length))}</span>
-                ${isToday ? `<span class="count-pill" dir="ltr">${fmtHM(todayMins)} / ${fmtHM(DAY_CAP_MINS)}</span>` : ''}
+                ${isToday ? ringHtml('count', toAr(items.length), items.length / DAY_CAP_COUNT) + ringHtml('time', fmtRingTime(todayMins), todayMins / DAY_CAP_MINS) : `<span class="count-pill">${(sec.maxTasks > 0 ? `${toAr(items.length)}/${toAr(sec.maxTasks)}` : toAr(items.length))}</span>`}
                 <span class="group-arrow">${isOpen ? '▼' : '◀'}</span>
               </div>
             </div>
@@ -3853,7 +3918,7 @@
                   </div>
                 ` : ''}
                 ${items.length === 0
-                  ? (isToday ? '<div class="empty-msg" style="padding:10px;">مفيش مهام ليها النهارده — حدد يوم لأي مهمة في الانبوكس وهتظهر هنا لوحدها.</div>' : '<div class="empty-msg" style="padding:10px;">لا توجد مهام في هذا القسم بعد.</div>')
+                  ? (isToday ? `<div class="empty-msg" style="padding:10px;">مفيش مهام ليها ${todayView === 'tomorrow' ? 'بكرة' : 'النهارده'} — حدد يوم لأي مهمة في الانبوكس وهتظهر هنا لوحدها.</div>` : '<div class="empty-msg" style="padding:10px;">لا توجد مهام في هذا القسم بعد.</div>')
                   : items.map((item, idx) => {
                       const isSwiped = swipedInboxId === item.id;
                       return `
@@ -4228,6 +4293,30 @@
         });
       });
 
+      inboxGroupsEl.querySelectorAll('[data-ring]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const dayKey = viewDayKey();
+          const list = INBOX.filter(x => x.dueDate === dayKey);
+          const mins = list.reduce((sum, x) => sum + (Number(x.mins) || 0), 0);
+          const when = todayView === 'tomorrow' ? 'بكرة' : 'النهارده';
+          if (btn.dataset.ring === 'count') {
+            showInfoToast(`${when}: ${toAr(list.length)} ${list.length === 1 ? 'مهمة' : 'مهام'} من ${toAr(DAY_CAP_COUNT)} مهمة`);
+          } else {
+            showInfoToast(`${when}: ${fmtLongTime(mins)} من ٤ ساعات`);
+          }
+        });
+      });
+
+      inboxGroupsEl.querySelectorAll('[data-today-view]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          todayView = btn.dataset.todayView;
+          pickingDayInboxId = null; pendingDayInbox = null; swipedInboxId = null;
+          renderInboxInsideModal();
+        });
+      });
+
       inboxGroupsEl.querySelectorAll('[data-pend-mins]').forEach(btn => {
         btn.addEventListener('click', () => confirmPendingMins(Number(btn.dataset.pendFor), Number(btn.dataset.pendMins)));
       });
@@ -4278,13 +4367,11 @@
           const pid = Number(btn.dataset.promote);
           const pItem = INBOX.find(x => x.id === pid);
           if (pItem && pItem.mins > 0) {
-            const freeNow = Math.max(0, 60 - totalTasksMins);
-            if (pItem.mins <= freeNow) {
-              swipedInboxId = null;
-              promoteInboxNow(pid, pItem.mins);
-              return;
-            }
-            showWarningToast(`المتاح في الساعة ${toAr(freeNow)} د بس — عدّل الوقت وانقلها`);
+            const pm = Math.min(60, pItem.mins);
+            swipedInboxId = null;
+            noteOverHour(totalTasksMins + pm);
+            promoteInboxNow(pid, pm);
+            return;
           }
           promotingInboxId = pid;
           editingInboxId = null;
@@ -4317,7 +4404,8 @@
           const freeMins = Math.max(0, 60 - totalTasksMins);
           const rawMins = parseMins(minsInp ? minsInp.value : '0');
           if (!(rawMins > 0) || freeMins <= 0) return;
-          const mins = Math.min(freeMins, rawMins);
+          const mins = Math.min(60, rawMins);
+          noteOverHour(totalTasksMins + mins);
           const idx = INBOX.findIndex(x => x.id === id);
           if (idx === -1) return;
           const [item] = INBOX.splice(idx, 1);
@@ -4384,9 +4472,11 @@
         badgeEl.textContent = '٦٠ دقيقة فراغ';
         statsEl.textContent = 'مفيش مهام حالياً';
       } else {
-        badgeEl.textContent = freeMins > 0
-          ? `${toAr(totalTasksMins)} د مهام · ${toAr(freeMins)} د فراغ`
-          : `${toAr(totalTasksMins)} دقيقة مهام`;
+        badgeEl.textContent = totalTasksMins > 60
+          ? `⚠️ ${toAr(totalTasksMins)} / ٦٠ د · زيادة ${toAr(totalTasksMins - 60)} د`
+          : (freeMins > 0
+            ? `${toAr(totalTasksMins)} د مهام · ${toAr(freeMins)} د فراغ`
+            : `${toAr(totalTasksMins)} دقيقة مهام`);
         const overNote = totalTasksMins > 60 ? ` (زيادة ${toAr(totalTasksMins - 60)} د عن الساعة)` : '';
         statsEl.textContent = `المهام الحالية: ${toAr(TASKS.length)} / ٥${overNote}`;
       }
@@ -4396,6 +4486,10 @@
         const pct = (t.mins / graphSum) * 100;
         return `<div class="stacked-seg" style="width:${pct}%; background:${t.color};" title="${t.label}"></div>`;
       }).join('');
+      const overHour = totalTasksMins > 60;
+      badgeEl.classList.toggle('is-over', overHour);
+      statsEl.style.color = overHour ? 'var(--red)' : '';
+      stackedEl.style.boxShadow = overHour ? '0 0 0 1.5px var(--red)' : '';
 
       const freeRowHtml = freeMins > 0 ? `
         <div class="free-summary-row">
@@ -5334,7 +5428,8 @@
           const id = Number(btn.dataset.useRoutine);
           const item = ROUTINE.find(x => x.id === id);
           if (!item) return;
-          const mins = Math.min(freeMins, item.mins);
+          const mins = Math.min(60, item.mins);
+          noteOverHour(totalTasksMins + mins);
           TASKS.push({
             id: Date.now() + Math.floor(Math.random() * 1000),
             label: item.label,
@@ -5428,7 +5523,7 @@
       }
 
       pendingLiveLabel = label;
-      liveMinsLabelEl.textContent = `وقت «${label}» (متاح: ${toAr(freeMins)} د):`;
+      liveMinsLabelEl.textContent = `وقت «${label}» (متاح: ${toAr(freeMins)} د — لو زوّدت عنه تبقى آخر مهمة):`;
       liveMinsInputEl.classList.remove('hidden');
       livePromptEl.querySelector('button[type="submit"]').classList.remove('hidden');
       liveMinsInputEl.value = '';
@@ -5449,7 +5544,8 @@
       const rawMins = parseMins(liveMinsInputEl.value);
       if (!(rawMins > 0) || freeMins <= 0) return;
 
-      const mins = Math.min(freeMins, rawMins);
+      const mins = Math.min(60, rawMins);
+          noteOverHour(totalTasksMins + mins);
       TASKS.push({
         id: Date.now(),
         label: pendingLiveLabel,
