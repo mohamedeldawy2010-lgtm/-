@@ -1,3 +1,4 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
 <!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -998,6 +999,8 @@
     select.input-field {
       font-size: 16px !important;
     }
+    /* iOS zooms into any field under 16px — keep every field at 16px so the page never zooms */
+    input, select, textarea { font-size: 16px !important; }
 
     /* Toasts */
     .toast {
@@ -2101,7 +2104,7 @@
       else applyTheme(null);
     } catch (e) { applyTheme(null); }
 
-    // ---- Copy everything (live hour + Today + routine + trackers) as one plain-text block for an AI agent ----
+    // ---- Copy the current hour + Today tasks as one plain-text block for an AI agent ----
     function buildDayPlanText() {
       const now = new Date();
       const L = [];
@@ -2123,45 +2126,13 @@
 
       const key = toDateKey(logicalToday());
       const today = INBOX.filter(x => x.dueDate === key).sort((a, b) => (a.todayRank ?? 1e9) - (b.todayRank ?? 1e9));
-      const tmr = logicalToday(); tmr.setDate(tmr.getDate() + 1);
-      const tomorrow = INBOX.filter(x => x.dueDate === toDateKey(tmr)).sort((a, b) => (a.todayRank ?? 1e9) - (b.todayRank ?? 1e9));
       const todayMins = today.reduce((n, x) => n + (x.mins || 0), 0);
       L.push(`## مهام Today (${today.length} من ${DAY_CAP_COUNT} · ${dm(todayMins)} من ${dm(DAY_CAP_MINS)})`);
       if (!today.length) L.push('- لا يوجد');
       today.forEach(x => L.push(line(x)));
-      if (tomorrow.length) {
-        L.push('');
-        L.push(`## مهام بكرة (${tomorrow.length} · ${dm(tomorrow.reduce((n, x) => n + (x.mins || 0), 0))})`);
-        tomorrow.forEach(x => L.push(line(x)));
-      }
       L.push('');
 
-      L.push('## الروتين');
-      ROUTINE_SECTIONS.forEach(sec => {
-        const items = ROUTINE.filter(r => r.sectionId === sec.id);
-        if (!items.length) return;
-        const left = items.filter(r => !r.doneToday).length;
-        L.push(`### ${clean(sec.name)} (فاضل ${left} من ${items.length})`);
-        items.forEach(r => L.push(`- [${r.doneToday ? 'x' : ' '}] ${clean(r.label)}${r.mins ? ` (${dm(r.mins)})` : ''}`));
-      });
-      if (!ROUTINE.length) L.push('- لا يوجد');
-      L.push('');
-
-      L.push('## العدادات والأهداف اليومية (التقدم حتى الآن)');
-      if (!TRACKERS.length) L.push('- لا يوجد');
-      TRACKERS.forEach(tr => {
-        if (tr.type === 'checks') {
-          const items = tr.items || [], done = tr.done || [];
-          const rem = items.filter(i => !done.includes(i));
-          L.push(`- ${clean(tr.name)}: تم ${done.length} من ${items.length}${rem.length ? ` · فاضل: ${rem.join('، ')}` : ' ✓ مكتمل'}`);
-        } else {
-          const val = tr.val || 0, goal = tr.goal || 1, u = tr.unit ? ` ${tr.unit}` : '';
-          const rem = Math.max(0, goal - val);
-          L.push(`- ${clean(tr.name)}: ${val} من ${goal}${u} (${Math.min(100, Math.round(val / goal * 100))}%)${rem ? ` · فاضل ${rem}${u}` : ' ✓ مكتمل'}`);
-        }
-      });
-      L.push('');
-      L.push('المطلوب: رتّب لي باقي اليوم بجدول زمني واقعي يراعي الساعة الحالية، ويوزّع المهام والروتين، ويحقق أهداف العدادات.');
+      L.push('المطلوب: رتّب لي مهام الساعة الحالية ومهام Today في خطة لباقي اليوم بجدول زمني واقعي يبدأ من الوقت الحالي.');
       return L.join('\n');
     }
     async function copyDayPlan() {
@@ -2180,6 +2151,54 @@
       showInfoToast(ok ? '📋 اتنسخت خطة اليوم — الصقها في أي Agent' : 'تعذّر النسخ تلقائيًا');
     }
     document.getElementById('copy-plan-btn').addEventListener('click', copyDayPlan);
+
+    // ---- Enter = go to the next step, everywhere ----
+    // Enter in a field jumps to the next field in the same box; on the last field it presses the box's confirm button.
+    (function setupEnterNext() {
+      const FIELD_SEL = 'input:not([type=hidden]):not([type=checkbox]):not([type=radio]):not([type=file]):not([type=range]):not([disabled]):not([readonly]), select:not([disabled])';
+      const isVisible = el => !!(el.offsetWidth || el.offsetHeight || el.getClientRects().length);
+      const CANCEL_RE = /إلغاء|الغاء|رجوع|إغلاق|اغلاق|حذف|إزالة|✕|×/;
+      function findBox(el) {
+        let node = el.parentElement;
+        while (node && node !== document.body) {
+          const hasBtn = Array.from(node.querySelectorAll('button')).some(b => isVisible(b) && !b.disabled);
+          if (node.tagName === 'FORM' || node.classList.contains('promote-box') || node.classList.contains('modal-box') || node.classList.contains('modal-overlay')) return node;
+          if (hasBtn) return node;
+          node = node.parentElement;
+        }
+        return el.closest('form') || el.parentElement;
+      }
+      function confirmButton(box, field) {
+        const btns = Array.from(box.querySelectorAll('button, input[type=submit]')).filter(b => isVisible(b) && !b.disabled);
+        const after = btns.filter(b => field.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+        const pick = list => list.find(b => b.type === 'submit' && b.tagName !== 'BUTTON' || b.getAttribute('type') === 'submit')
+          || list.find(b => b.classList.contains('timer-btn') && !CANCEL_RE.test(b.textContent))
+          || list.find(b => !b.classList.contains('icon-btn') && !b.classList.contains('keep-chip') && !CANCEL_RE.test(b.textContent) && !b.classList.contains('del'));
+        return pick(after) || pick(btns);
+      }
+      document.addEventListener('keydown', e => {
+        if (e.key !== 'Enter' || e.isComposing || e.shiftKey || e.defaultPrevented) return;
+        const el = e.target;
+        if (!el || !el.matches || !el.matches(FIELD_SEL)) return;
+        const box = findBox(el);
+        if (!box) return;
+        e.preventDefault();
+        const fields = Array.from(box.querySelectorAll(FIELD_SEL)).filter(f => isVisible(f) && (f === el || f.type !== 'date'));
+        const idx = fields.indexOf(el);
+        const next = idx >= 0 ? fields[idx + 1] : null;
+        if (next) {
+          next.focus();
+          if (typeof next.select === 'function' && next.tagName === 'INPUT') { try { next.select(); } catch (err) {} }
+          return;
+        }
+        if (box.tagName === 'FORM') {
+          if (typeof box.requestSubmit === 'function') box.requestSubmit(); else box.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+          return;
+        }
+        const btn = confirmButton(box, el);
+        if (btn) { el.blur(); btn.click(); }
+      }, true);
+    })();
 
     document.getElementById('theme-toggle-btn').addEventListener('click', () => {
       applyTheme(isCurrentlyDark() ? 'light' : 'dark');
@@ -4002,7 +4021,7 @@
           <div style="display:flex; gap:5px; flex-wrap:wrap;">${chips}</div>
           <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
             <span class="max-hint">أو تاريخ محدد:</span>
-            <input type="date" class="input-field" data-day-input="${item.id}" value="${item.dueDate || ''}" style="width:auto; font-size:13px;">
+            <input type="date" class="input-field" data-day-input="${item.id}" value="${item.dueDate || ''}" style="width:auto;">
             ${item.dueDate ? `<button type="button" class="icon-btn del" data-clear-day="${item.id}">إزالة اليوم</button>` : ''}
             <button type="button" class="icon-btn" data-close-day="1">إغلاق</button>
           </div>
@@ -4046,9 +4065,20 @@
                 ` : ''}
                 ${addingToInboxSecId === sec.id ? `
                   <div class="promote-box" style="margin-top:0; padding-top:0; border-top:none; padding-bottom:6px; border-bottom:1px dashed var(--border);">
-                    <input type="text" class="input-field input-name" id="quick-inbox-input-${sec.id}" placeholder="مهمة جديدة في ${sec.name}...">
-                    <button type="button" class="timer-btn" data-confirm-add-sec="${sec.id}">إضافة</button>
-                    <button type="button" class="icon-btn" data-cancel-add-sec="1">إلغاء</button>
+                    <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
+                      <input type="text" class="input-field input-name" id="quick-inbox-input-${sec.id}" placeholder="مهمة جديدة في ${sec.name}..." style="width:100%; flex:none;">
+                      <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+                        <input type="text" inputmode="numeric" class="input-field input-mins" id="quick-inbox-mins-${sec.id}" placeholder="المدة بالدقايق" style="width:auto; flex:1 1 110px;">
+                        <input type="date" class="input-field" id="quick-inbox-date-${sec.id}" style="width:auto;" title="يوم محدد (اختياري)">
+                      </div>
+                      <div style="display:flex; gap:5px; flex-wrap:wrap;" data-quick-day-chips="${sec.id}">
+                        ${weekOrderFromToday().map(wd => { const d = nextDateForWeekday(wd); const key = toDateKey(d); const sub = dayDiff(key) === 0 ? 'النهارده' : fmtShortDate(d, 'short'); return `<button type="button" class="keep-chip" data-quick-day="${key}" style="line-height:1.35; padding:5px 9px;">${DAY_SHORT_AR[wd]}<br><span style="font-size:10.5px; opacity:.85;">${sub}</span></button>`; }).join('')}
+                      </div>
+                      <div style="display:flex; gap:6px; align-items:center;">
+                        <button type="button" class="timer-btn" data-confirm-add-sec="${sec.id}">إضافة</button>
+                        <button type="button" class="icon-btn" data-cancel-add-sec="1">إلغاء</button>
+                      </div>
+                    </div>
                   </div>
                 ` : ''}
                 ${items.length === 0
@@ -4280,12 +4310,38 @@
           const inp = byId(`quick-inbox-input-${secId}`);
           const label = inp ? inp.value.trim() : '';
           if (!label) return;
-          INBOX.push({ id: Date.now(), label, sectionId: secId });
+          const minsInp = byId(`quick-inbox-mins-${secId}`);
+          const dateInp = byId(`quick-inbox-date-${secId}`);
+          const mins = Math.min(60, parseMins(minsInp ? minsInp.value : ''));
+          const dayKey = dateInp ? dateInp.value : '';
+          const newItem = { id: Date.now(), label, sectionId: secId };
+          if (mins > 0) { newItem.mins = mins; newItem.remainingSec = mins * 60; }
+          if (dayKey) {
+            if (dayDiff(dayKey) < 0) { showWarningToast('التاريخ ده فات — اختار النهارده أو يوم جاي'); return; }
+            if (!(mins > 0)) { showWarningToast('عشان تحدد يوم لازم تكتب مدة المهمة (أقصى ٦٠ دقيقة)'); if (minsInp) minsInp.focus(); return; }
+            if (!tryAssignDay(newItem, dayKey, mins)) return;
+          }
+          INBOX.unshift(newItem);
           addingToInboxSecId = null;
           saveState();
           render();
           renderInboxInsideModal();
         });
+      });
+
+      inboxGroupsEl.querySelectorAll('[data-quick-day-chips]').forEach(box => {
+        const secId = box.dataset.quickDayChips;
+        const dateInp = byId(`quick-inbox-date-${secId}`);
+        const sync = () => box.querySelectorAll('[data-quick-day]').forEach(c => c.classList.toggle('is-active', !!dateInp && c.dataset.quickDay === dateInp.value));
+        box.querySelectorAll('[data-quick-day]').forEach(chip => {
+          chip.addEventListener('click', e => {
+            e.stopPropagation();
+            if (!dateInp) return;
+            dateInp.value = (dateInp.value === chip.dataset.quickDay) ? '' : chip.dataset.quickDay;
+            sync();
+          });
+        });
+        if (dateInp) dateInp.addEventListener('change', sync);
       });
 
       inboxGroupsEl.querySelectorAll('[data-cancel-add-sec]').forEach(btn => {
@@ -5344,7 +5400,7 @@
           const label = nameInp ? nameInp.value.trim() : '';
           const mins = parseMins(minsInp ? minsInp.value : '0');
           if (!label || !(mins > 0)) return;
-          ROUTINE.push({ id: Date.now(), label, mins: Math.min(60, mins), sectionId: secId });
+          ROUTINE.unshift({ id: Date.now(), label, mins: Math.min(60, mins), sectionId: secId });
           addingToRoutineSecId = null;
           render();
         });
@@ -6239,3 +6295,5 @@
   </script>
 </body>
 </html>
+
+</body></html>
