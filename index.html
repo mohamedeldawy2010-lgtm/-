@@ -1015,8 +1015,8 @@
     .az-celebrate .az-time { font-size:34px; font-weight:800; font-variant-numeric:tabular-nums; direction:ltr; }
     .az-confetti { position:absolute; top:-30px; font-size:22px; animation:azFall linear forwards; pointer-events:none; }
     @keyframes azFall { to { transform: translateY(110vh) rotate(360deg); opacity:.9; } }
-    .qr-text { font-size: 24px; line-height: 2.4; text-align: center; font-weight: 500; padding: 6px 2px; }
-    .qr-img { width:100%; height:auto; display:block; border-radius:10px; background:#fff; }
+    .qr-text { font-size: calc(24px * var(--qz, 1)); line-height: 2.4; text-align: center; font-weight: 500; padding: 6px 2px; }
+    .qr-img { width:calc(100% * var(--qz, 1)); max-width:none; height:auto; display:block; border-radius:10px; background:#fff; }
     .qr-img.inv { filter: invert(1) hue-rotate(180deg); }
     .qr-surah { text-align:center; font-weight:800; color:var(--green); font-size:20px; margin:12px 0 4px; padding:6px; border-radius:12px; background:var(--card-muted); }
     .qr-num { color:var(--green); font-size:16px; font-weight:700; white-space:nowrap; }
@@ -1024,7 +1024,7 @@
     #modal-azkar.azkar-q.azkar-full .modal-box { height: 100%; height: 100dvh; }
     #modal-azkar.azkar-q #azkar-body { flex: 1 1 auto; min-height: 0; overflow: hidden; padding-bottom: 0; }
     .qr-wrap { display:flex; flex-direction:column; gap:10px; flex:1 1 auto; min-height:0; }
-    .qr-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+    .qr-scroll { flex:1 1 auto; min-height:0; overflow:auto; -webkit-overflow-scrolling:touch; touch-action: pan-x pan-y; }
     .qr-nav { flex:0 0 auto; margin:0 -20px; padding:12px 20px; padding-bottom:max(12px, env(safe-area-inset-bottom)); display:flex; gap:8px; background:var(--card); border-top:1px solid var(--border); }
     .qr-nav .az-timer-btn { padding:12px 18px; font-size:15px; }
     .qr-nav .qr-sec { background:var(--card-muted); color:var(--text); border:1px solid var(--border); }
@@ -2602,7 +2602,7 @@
       });
       return base;
     })();
-    let QURAN = Object.assign({ page: 1, start: null, end: null, khatmat: 0 }, (state.quran && typeof state.quran === 'object') ? state.quran : {});
+    let QURAN = Object.assign({ page: 1, acc: 0, sacc: 0, sFrom: 1, run: null, khatmat: 0 }, (state.quran && typeof state.quran === 'object') ? state.quran : {});
     let AZKAR_PROGRESS = (state.azkarProgress && typeof state.azkarProgress === 'object') ? state.azkarProgress : { day: '', left: {} };
     let TRACKERS = state.trackers;
     let TRACKERS_LOGS = state.trackersLogs;
@@ -6929,16 +6929,12 @@
       const slot = document.getElementById('azkar-timer-slot');
       if (!slot) return;
       if (azkarView === 'quran') {
-        if (!QURAN.start) slot.innerHTML = `<button type="button" class="az-timer-btn" id="qr-start">▶ ابدأ</button>`;
-        else if (!QURAN.end) slot.innerHTML = `<span class="az-timer-run" id="qr-timer-txt" dir="ltr">⏱ ${azFmt(Date.now() - QURAN.start)}</span><button type="button" class="az-timer-btn" id="qr-end" style="margin-inline-start:6px; background:var(--red);">انتهاء</button>`;
-        else slot.innerHTML = `<span class="az-timer-run" dir="ltr">✓ ${azFmt(QURAN.end - QURAN.start)}</span>`;
+        if (QURAN.run) slot.innerHTML = `<span class="az-timer-run" id="qr-timer-txt" dir="ltr">⏱ ${azFmt(qrElapsed())}</span><button type="button" class="az-timer-btn" id="qr-stop" style="margin-inline-start:6px; background:var(--red);">⏹ إيقاف</button>`;
+        else slot.innerHTML = (QURAN.sacc > 0 ? `<span class="az-timer-run" dir="ltr">⏸ ${azFmt(QURAN.sacc)}</span>` : '') + `<button type="button" class="az-timer-btn" id="qr-start" style="${QURAN.sacc > 0 ? 'margin-inline-start:6px;' : ''}">${QURAN.sacc > 0 ? '▶ كمّل' : '▶ ابدأ'}</button>`;
         const sb = document.getElementById('qr-start');
-        if (sb) sb.addEventListener('click', () => { QURAN.start = Date.now(); QURAN.end = null; saveState(); renderAzkar(); });
-        const eb = document.getElementById('qr-end');
-        if (eb) eb.addEventListener('click', () => {
-          QURAN.end = Date.now(); QURAN.khatmat = (QURAN.khatmat || 0) + 1; saveState(); renderAzkar();
-          azCelebrate({ name: 'ختمة القرآن الكريم' }, QURAN.end - QURAN.start);
-        });
+        if (sb) sb.addEventListener('click', () => { if (!(QURAN.sacc > 0)) QURAN.sFrom = Math.min(QURAN_PAGES, QURAN.page); QURAN.run = Date.now(); saveState(); azRenderTimerSlot(); });
+        const eb = document.getElementById('qr-stop');
+        if (eb) eb.addEventListener('click', () => { qrStop(); saveState(); azRenderTimerSlot(); });
         return;
       }
       const cat = AZKAR_CATS.find(c => c.id === azkarView);
@@ -6960,7 +6956,7 @@
       const t = AZ_TIMERS[azkarView];
       if (el && t && !t.end) el.textContent = '⏱ ' + azFmt(Date.now() - t.start);
       const qe = document.getElementById('qr-timer-txt');
-      if (qe && QURAN.start && !QURAN.end) qe.textContent = '⏱ ' + azFmt(Date.now() - QURAN.start);
+      if (qe && QURAN.run) qe.textContent = '⏱ ' + azFmt(qrElapsed());
     }, 500);
     function azCelebrate(cat, ms) {
       const box = azkarModal.querySelector('.modal-box');
@@ -6976,6 +6972,28 @@
       try { if (navigator.vibrate) navigator.vibrate([40, 60, 40]); } catch (e) {}
     }
     const QURAN_PAGES = 604;
+    function qrSummary(o) {
+      const box = azkarModal.querySelector('.modal-box');
+      const old = box.querySelector('.az-celebrate'); if (old) old.remove();
+      const d = document.createElement('div');
+      d.className = 'az-celebrate';
+      const n = o.to - o.from + 1;
+      d.innerHTML = `<div style="font-size:60px;">🤍</div>
+        <h3>${o.khatma ? 'مبروك! ختمت القرآن الكريم 🎉' : 'تقبّل الله منك الورد اليومي'}</h3>
+        <div style="display:flex; flex-direction:column; gap:10px; align-items:center; font-weight:700;">
+          <div><span style="font-size:34px; font-weight:800;">${n}</span> <span style="color:var(--muted);">${n === 1 ? 'page read' : 'pages read'}</span></div>
+          <div dir="ltr" style="color:var(--muted);">Page ${o.from} → Page ${o.to}</div>
+          <div dir="ltr">⏱ ${azFmt(o.ms)}</div>
+          ${o.khatma ? `<div dir="ltr" style="color:var(--muted);">Total: ${azFmt(o.total)}</div>` : ''}
+        </div>
+        <button type="button" class="az-timer-btn" style="padding:10px 28px; font-size:15px;">تمام</button>`;
+      d.querySelector('button').addEventListener('click', () => { d.remove(); azkarView = null; renderAzkar(); azkarBody.scrollTop = 0; });
+      box.appendChild(d);
+      try { if (navigator.vibrate) navigator.vibrate([30, 50, 30]); } catch (e) {}
+    }
+    function qrElapsed() { return (QURAN.sacc || 0) + (QURAN.run ? Date.now() - QURAN.run : 0); }
+    function qrStop() { if (QURAN.run) { const d = Date.now() - QURAN.run; QURAN.acc = (QURAN.acc || 0) + d; QURAN.sacc = (QURAN.sacc || 0) + d; QURAN.run = null; } }
+    let QR_ZOOM = (() => { let z = 1; try { z = parseFloat(localStorage.getItem('quran_zoom')) || 1; } catch (e) {} return Math.min(4, Math.max(1, z)); })();
     const QURAN_CACHE = {};
     function azQuranCatHtml() {
       const done = Math.min(QURAN_PAGES, Math.max(0, QURAN.page - 1));
@@ -7012,15 +7030,17 @@
         <div style="display:flex; align-items:center; gap:8px; justify-content:space-between; flex-wrap:wrap; font-weight:800; font-size:13px;">
           <span id="qr-pagelabel" dir="ltr">${finished ? 'تمت كل الصفحات ✓' : 'Page ' + page}</span>
           <span style="display:flex; gap:6px; align-items:center;">
-            <input type="number" id="qr-jump" class="input-field" min="1" max="${QURAN_PAGES}" placeholder="رقم" style="width:76px; padding:6px 8px;" dir="ltr">
+            <input type="number" id="qr-jump" class="input-field" min="1" max="${QURAN_PAGES}" placeholder="رقم" style="width:60px; padding:6px 8px;" dir="ltr">
             <button type="button" class="icon-btn" id="qr-go">اذهب</button>
+            <button type="button" class="icon-btn" id="qr-zm" title="تصغير" style="font-weight:800;">−</button>
+            <button type="button" class="icon-btn" id="qr-zp" title="تكبير" style="font-weight:800;">+</button>
             <button type="button" class="icon-btn" id="qr-inv" title="عكس الألوان">◐</button>
           </span>
         </div>
-        <div class="qr-scroll"><div id="qr-content" class="qr-text" style="min-height:200px;">${finished ? '' : '<span style="color:var(--muted); font-size:15px;">جاري التحميل…</span>'}</div></div>
+        <div class="qr-scroll" id="qr-scroll" style="--qz:${QR_ZOOM}"><div id="qr-content" class="qr-text" style="min-height:200px;">${finished ? '' : '<span style="color:var(--muted); font-size:15px;">جاري التحميل…</span>'}</div></div>
         <div class="qr-nav">
-          <button type="button" class="az-timer-btn qr-sec" id="qr-prev" ${page <= 1 ? 'disabled' : ''}>→ السابقة</button>
-          ${finished ? `<button type="button" class="az-timer-btn qr-sec" id="qr-new" style="flex:1;">↺ ختمة جديدة</button>` : `<button type="button" class="az-timer-btn" id="qr-done" style="flex:1;">تم ✓</button>`}
+          <button type="button" class="az-timer-btn qr-sec" id="qr-prev" ${QURAN.page <= 1 ? 'disabled' : ''}>→ السابقة</button>
+          ${finished ? `<button type="button" class="az-timer-btn qr-sec" id="qr-new" style="flex:1;">↺ ختمة جديدة</button>` : `<button type="button" class="az-timer-btn" id="qr-done" style="flex:1;">تم ✓</button><button type="button" class="az-timer-btn qr-sec" id="qr-next" ${page >= QURAN_PAGES ? 'disabled' : ''}>التالي ←</button>`}
         </div></div>`;
       document.getElementById('qr-inv').addEventListener('click', () => {
         const nv = !qrInvert();
@@ -7031,16 +7051,36 @@
         const v = parseInt(document.getElementById('qr-jump').value, 10);
         if (v >= 1 && v <= QURAN_PAGES) { QURAN.page = v; saveState(); renderAzkar(); azkarBody.scrollTop = 0; }
       });
-      document.getElementById('qr-prev').addEventListener('click', () => { if (QURAN.page > 1) { QURAN.page = Math.min(QURAN.page, QURAN_PAGES) - 1; saveState(); renderAzkar(); azkarBody.scrollTop = 0; } });
+      document.getElementById('qr-prev').addEventListener('click', () => { if (QURAN.page > 1) { QURAN.page = finished ? QURAN_PAGES : QURAN.page - 1; saveState(); renderAzkar(); } });
+      const nx = document.getElementById('qr-next');
+      if (nx) nx.addEventListener('click', () => { if (page < QURAN_PAGES) { QURAN.page = page + 1; saveState(); renderAzkar(); } });
+      const sc = document.getElementById('qr-scroll');
+      const setZoom = z => {
+        QR_ZOOM = Math.min(4, Math.max(1, Math.round(z * 20) / 20));
+        sc.style.setProperty('--qz', QR_ZOOM);
+        try { localStorage.setItem('quran_zoom', String(QR_ZOOM)); } catch (e) {}
+      };
+      document.getElementById('qr-zp').addEventListener('click', () => setZoom(QR_ZOOM + 0.25));
+      document.getElementById('qr-zm').addEventListener('click', () => setZoom(QR_ZOOM - 0.25));
+      let d0 = 0, z0 = 1;
+      const dist = e => Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
+      sc.addEventListener('touchstart', e => { if (e.touches.length === 2) { d0 = dist(e); z0 = QR_ZOOM; } }, { passive: true });
+      sc.addEventListener('touchmove', e => { if (e.touches.length === 2 && d0) { e.preventDefault(); setZoom(z0 * dist(e) / d0); } }, { passive: false });
+      sc.addEventListener('touchend', e => { if (e.touches.length < 2) d0 = 0; });
       const nb = document.getElementById('qr-new');
-      if (nb) nb.addEventListener('click', () => { QURAN.page = 1; QURAN.start = null; QURAN.end = null; saveState(); renderAzkar(); azkarBody.scrollTop = 0; });
+      if (nb) nb.addEventListener('click', () => { QURAN.page = 1; QURAN.acc = 0; QURAN.sacc = 0; QURAN.sFrom = 1; QURAN.run = null; saveState(); renderAzkar(); });
       const db = document.getElementById('qr-done');
       if (db) db.addEventListener('click', () => {
         try { if (navigator.vibrate) navigator.vibrate(15); } catch (e) {}
-        QURAN.page = page + 1; saveState(); renderAzkar(); azkarBody.scrollTop = 0;
+        qrStop();
+        const from = Math.min(QURAN.sFrom || page, page), ms = QURAN.sacc || 0, khatma = page >= QURAN_PAGES;
+        QURAN.page = page + 1;
+        if (khatma) QURAN.khatmat = (QURAN.khatmat || 0) + 1;
+        saveState();
+        qrSummary({ from, to: page, ms, khatma, total: QURAN.acc || 0 });
       });
       if (finished) {
-        document.getElementById('qr-content').innerHTML = `<div style="font-size:20px; font-weight:800; color:var(--green); padding:30px 0;">أتممت صفحات المصحف كلها 🤍<br><span style="font-size:14px; color:var(--muted);">${QURAN.start && !QURAN.end ? 'دوس "انتهاء" فوق لما تخلص.' : ''}</span></div>`;
+        document.getElementById('qr-content').innerHTML = `<div style="font-size:20px; font-weight:800; color:var(--green); padding:30px 0;">أتممت صفحات المصحف كلها 🤍</div>`;
         return;
       }
       qrShow(page);
@@ -7113,7 +7153,7 @@
             <span class="count-pill" dir="ltr">${st.done} / ${st.total}</span>
           </button>`;
         }).join('') + azQuranCatHtml() + `<button type="button" class="icon-btn" id="azkar-open-import" style="align-self:flex-start; margin-top:6px;">⚙️ استيراد / تعديل الأذكار</button></div>`;
-        azkarBody.querySelectorAll('[data-az-open]').forEach(b => b.addEventListener('click', () => { azkarView = b.dataset.azOpen; renderAzkar(); azkarBody.scrollTop = 0; focusNextAzkar(false); }));
+        azkarBody.querySelectorAll('[data-az-open]').forEach(b => b.addEventListener('click', () => { azkarView = b.dataset.azOpen; if (azkarView === 'quran' && !QURAN.run) { QURAN.sFrom = Math.min(QURAN_PAGES, QURAN.page); QURAN.sacc = 0; saveState(); } renderAzkar(); azkarBody.scrollTop = 0; focusNextAzkar(false); }));
         document.getElementById('azkar-open-import').addEventListener('click', () => { azkarView = 'import'; renderAzkar(); });
         return;
       }
