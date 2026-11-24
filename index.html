@@ -1249,6 +1249,17 @@
     .prio-group-right .count-pill { white-space:nowrap; }
     .drag-handle { touch-action:pan-y; -webkit-touch-callout:none; }
     .drag-handle.holding { opacity:1; color:var(--blue); transform:scale(1.25); transition:transform .5s ease, color .5s ease; }
+    /* Compact live header */
+    .live-head { flex-wrap:nowrap; gap:8px; margin-bottom:12px; }
+    .live-head-side { display:flex; align-items:center; gap:6px; min-width:0; }
+    .live-head .inbox-mini-btn { flex-direction:row; gap:5px; height:30px; padding:0 10px 0 9px; border-radius:999px; background:var(--item); transition:background .2s ease; }
+    .live-head .inbox-mini-circle { width:auto; height:auto; background:transparent !important; border:none; box-shadow:none; font-size:14px; transform:none !important; }
+    .live-head .inbox-mini-count { font-size:12.5px; }
+    .live-head .inbox-mini-btn:not(.is-empty) { background:var(--blue-soft); }
+    .live-head .inbox-mini-btn.is-empty { opacity:.6; }
+    .live-head .sub-stats { margin:0; font-size:12px; font-weight:700; color:var(--muted); background:var(--item); height:30px; padding:0 10px; border-radius:999px; display:flex; align-items:center; white-space:nowrap; font-variant-numeric:tabular-nums; }
+    .live-head .hour-clock { margin:0; font-size:12px; height:30px; padding:0 10px; border-radius:999px; background:var(--blue-soft); white-space:nowrap; }
+    .live-head .time-badge[hidden] { display:none !important; }
   </style>
 </head>
 <body>
@@ -1257,7 +1268,7 @@
     <div class="tabs-bar">
       <button type="button" class="tab-btn is-active" id="tab-live">الساعة الحالية</button>
       <button type="button" class="tab-btn" id="tab-routine">Routine (0)</button>
-      <button type="button" class="tab-btn" id="copy-plan-btn" title="نسخ كل مهام اليوم والروتين والعدادات كنص واحد" style="flex:0 0 auto; padding:9px 12px; font-size:15px;">📋</button>
+      <button type="button" class="tab-btn" id="copy-plan-btn" title="نسخ مهام الساعة ومهام Today عشان الـ Agent يرتبهم كالندر" style="flex:0 0 auto; padding:9px 12px; font-size:15px;">📋</button>
       <button type="button" class="tab-btn" id="theme-toggle-btn" title="تبديل الوضع الليلي / النهاري" style="flex:0 0 auto; padding:9px 12px; font-size:15px;">🌙</button>
     </div>
 
@@ -1265,8 +1276,8 @@
     <div id="view-live" class="container" style="margin:0; gap:14px;">
       <!-- Unified Card: Hour Allocation + Bar + Checklist (Swipe left/right for actions) -->
       <div class="card">
-        <div class="header-row" style="flex-wrap:wrap; gap:8px;">
-          <div style="display:flex; align-items:center; gap:8px; min-width:0;">
+        <div class="header-row live-head">
+          <div class="live-head-side">
             <button type="button" class="inbox-mini-btn" id="open-inbox-modal-btn" title="صندوق المهام (Inbox)">
               <span class="inbox-mini-circle">📥</span>
               <span class="inbox-mini-count" id="inbox-launcher-pill">0</span>
@@ -1275,13 +1286,12 @@
               <span class="inbox-mini-circle">📝</span>
               <span class="inbox-mini-count" id="notes-launcher-pill">0</span>
             </button>
-            <h1>مهام الساعة القادمة</h1>
           </div>
-          <div class="time-badge" id="remaining-badge">60 دقيقة فراغ</div>
-        </div>
-        <div class="meta-strip">
-          <div class="sub-stats" id="sub-stats" style="margin:0;">مفيش مهام حالياً</div>
-          <div class="hour-clock" id="hour-clock-hint" style="margin:0;"></div>
+          <div class="live-head-side">
+            <div class="sub-stats" id="sub-stats">مفيش مهام</div>
+            <div class="hour-clock" id="hour-clock-hint"></div>
+          </div>
+          <div class="time-badge" id="remaining-badge" hidden>60 دقيقة فراغ</div>
         </div>
 
         <div class="stacked-bar" id="stacked-bar"></div>
@@ -2167,7 +2177,14 @@
       today.forEach(x => L.push(line(x)));
       L.push('');
 
-      L.push('المطلوب: رتّب لي مهام الساعة الحالية ومهام Today في خطة لباقي اليوم بجدول زمني واقعي يبدأ من الوقت الحالي.');
+      L.push('## المطلوب');
+      L.push('رتّب لي مهام الساعة الحالية ومهام Today بس (من غير أي مهام تانية) في خطة لباقي اليوم، تبدأ من الوقت الحالي وبتوقيتات واقعية.');
+      L.push('- اعرضها كأنها كالندر بسيط: Timeline نازل من فوق لتحت، مش جدول. ممنوع تستخدم جداول Markdown أو أعمدة.');
+      L.push('- قسّم اليوم لفترات واضحة (مثلاً: الساعة دي، بعد الظهر، المغرب، بالليل)، وكل فترة عنوانها سطر لوحده وجنبه مداها الزمني.');
+      L.push('- تحت كل فترة: كل مهمة في سطر واحد بالشكل ده بالظبط:  9:00 – 9:30 · اسم المهمة (30 د)');
+      L.push('- مهام الساعة الحالية تيجي الأول وبنفس ترتيبها، وبعدها مهام Today بترتيبها اللي فوق إلا لو فيه سبب واضح يغيّره.');
+      L.push('- سيب فواصل راحة صغيرة بين المهام الطويلة، ولو فيه مهمة مفوّضة اكتب جنبها لمين.');
+      L.push('- خلّي الرد قصير ونضيف: من غير مقدمة ولا شرح، وفي الآخر سطر واحد بإجمالي الوقت ووقت الخلاص المتوقع.');
       return L.join('\n');
     }
     async function copyDayPlan() {
@@ -4803,14 +4820,14 @@
 
       if (TASKS.length === 0) {
         badgeEl.textContent = '60 دقيقة فراغ';
-        statsEl.textContent = 'مفيش مهام حالياً';
+        statsEl.textContent = 'مفيش مهام';
       } else {
         badgeEl.textContent = totalTasksMins > 60
           ? `⚠️ ${toAr(totalTasksMins)} / 60 د · زيادة ${toAr(totalTasksMins - 60)} د`
           : (freeMins > 0
             ? `${toAr(totalTasksMins)} د مهام · ${toAr(freeMins)} د فراغ`
             : `${toAr(totalTasksMins)} دقيقة مهام`);
-        statsEl.textContent = `المهام الحالية: ${toAr(TASKS.length)} / 5`;
+        statsEl.textContent = `${toAr(TASKS.length)}/5 مهام`;
       }
 
       const graphSum = Math.max(60, displayItems.reduce((s, t) => s + t.mins, 0));
@@ -4820,8 +4837,7 @@
       }).join('');
       const overHour = totalTasksMins > 60;
       badgeEl.classList.toggle('is-over', overHour);
-      badgeEl.style.display = overHour ? 'none' : '';
-      statsEl.style.color = '';
+            statsEl.style.color = '';
       stackedEl.style.boxShadow = overHour ? '0 0 0 1.5px var(--red)' : '';
 
       const rawFree = 60 - totalTasksMins;
