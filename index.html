@@ -5412,7 +5412,13 @@
           const idx = TASKS.findIndex(x => x.id === id);
           if (idx === -1) return;
           const [moved] = TASKS.splice(idx, 1);
-          INBOX.push({ id: moved.id, label: moved.label, note: moved.note || '', mins: moved.mins, sectionId: targetSec, ...(moved.delegate ? { delegate: moved.delegate } : {}) });
+          // Came from the hour → it belongs to today, so it lands in the Inbox already dated today (if today still has room)
+          const todayKey = toDateKey(logicalToday());
+          const todayLoad = dayLoadMins(todayKey, moved.id);
+          const todayRoom = INBOX.filter(x => x.dueDate === todayKey && x.id !== moved.id).length < DAY_CAP_COUNT && (todayLoad + (Number(moved.mins) || 0)) <= DAY_CAP_MINS;
+          INBOX.push({ id: moved.id, label: moved.label, note: moved.note || '', mins: moved.mins, sectionId: targetSec, ...(todayRoom ? { dueDate: todayKey } : {}), ...(moved.delegate ? { delegate: moved.delegate } : {}) });
+          if (!todayRoom) showWarningToast('Today مليانة (١٥ مهمة أو ٤ ساعات) — اتنقلت للـ Inbox من غير تاريخ');
+          saveState();
           openSections[targetSec] = true;
           movingLiveToInboxId = null;
           render();
