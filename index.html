@@ -1271,9 +1271,11 @@
         <form class="promote-box hidden" id="live-mins-prompt" style="margin-top:10px;">
           <span class="max-hint" id="live-mins-label">الوقت (دقائق):</span>
           <input type="text" inputmode="numeric" class="input-field input-mins" id="live-mins-input" value="" placeholder="الدقائق" required>
-          <div id="live-dest-box" style="flex:0 0 100%; display:flex; flex-direction:column; gap:6px; order:5;"></div>
-          <button type="submit" class="timer-btn">تأكيد</button>
-          <button type="button" class="icon-btn" id="live-mins-cancel">إلغاء</button>
+          <div id="live-dest-box" style="flex:0 0 100%; display:flex; flex-direction:column; gap:6px;"></div>
+          <div style="flex:0 0 100%; display:flex; gap:8px; align-items:center;">
+            <button type="submit" class="timer-btn">تأكيد</button>
+            <button type="button" class="icon-btn" id="live-mins-cancel">إلغاء</button>
+          </div>
         </form>
 
         <!-- Live mirror of the "Next 5" Inbox partition -->
