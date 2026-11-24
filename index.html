@@ -477,14 +477,34 @@
       transition: width 0.3s ease;
     }
     .free-summary-row {
+      --fr-a: #10b981; --fr-b: #38bdf8; --fr-c: #818cf8;
+      --fr-tint: rgba(16, 185, 129, 0.10); --fr-glow: rgba(16, 185, 129, 0.28);
       display: flex;
       align-items: center;
       gap: 10px;
       padding: 10px 14px;
       border-radius: 14px;
-      background: linear-gradient(135deg, rgba(16, 185, 129, 0.12), rgba(56, 189, 248, 0.12));
-      border: 1px solid rgba(16, 185, 129, 0.32);
+      border: 2px solid transparent;
+      background:
+        linear-gradient(135deg, var(--fr-tint), rgba(56, 189, 248, 0.08)) padding-box,
+        linear-gradient(var(--card), var(--card)) padding-box,
+        linear-gradient(120deg, var(--fr-a), var(--fr-b), var(--fr-c), var(--fr-a)) border-box;
+      background-size: 100% 100%, 100% 100%, 300% 300%;
+      box-shadow: 0 0 0 3px var(--fr-tint), 0 4px 14px var(--fr-glow);
+      animation: frFrame 6s linear infinite, frGlow 2.8s ease-in-out infinite;
     }
+    .free-summary-row.is-zero {
+      --fr-a: #f59e0b; --fr-b: #fbbf24; --fr-c: #f97316;
+      --fr-tint: rgba(245, 158, 11, 0.10); --fr-glow: rgba(245, 158, 11, 0.28);
+    }
+    .free-summary-row.is-negative {
+      --fr-a: #ef4444; --fr-b: #f87171; --fr-c: #f43f5e;
+      --fr-tint: rgba(239, 68, 68, 0.10); --fr-glow: rgba(239, 68, 68, 0.32);
+    }
+    .free-summary-row .fr-mins { direction: ltr; unicode-bidi: isolate; }
+    @keyframes frFrame { to { background-position: 0 0, 0 0, 300% 0; } }
+    @keyframes frGlow { 50% { box-shadow: 0 0 0 4px var(--fr-tint), 0 6px 20px var(--fr-glow); } }
+    @media (prefers-reduced-motion: reduce) { .free-summary-row { animation: none; } }
     .task-row.is-completing, .swipe-wrap.is-completing {
       opacity: 0.45;
     }
@@ -4804,15 +4824,22 @@
       statsEl.style.color = overHour ? 'var(--red)' : '';
       stackedEl.style.boxShadow = overHour ? '0 0 0 1.5px var(--red)' : '';
 
-      const freeRowHtml = freeMins > 0 ? `
-        <div class="free-summary-row">
-          <span class="bar-label" style="color:var(--green); max-width:none;">✨ وقت فراغ</span>
-          <div class="unified-bar-track" style="background:rgba(16, 185, 129, 0.15);">
-            <div class="unified-bar-fill" style="width:${(freeMins / graphSum) * 100}%; background:linear-gradient(90deg, #34d399, #38bdf8);"></div>
+      const rawFree = 60 - totalTasksMins;
+      const frState = rawFree > 0 ? 'is-positive' : (rawFree === 0 ? 'is-zero' : 'is-negative');
+      const frColor = rawFree > 0 ? 'var(--green)' : (rawFree === 0 ? '#f59e0b' : 'var(--red)');
+      const frLabel = rawFree > 0 ? '✨ وقت فراغ' : (rawFree === 0 ? '⏳ مفيش وقت فراغ' : '⚠️ زيادة عن الساعة');
+      const frFillPct = rawFree > 0 ? (freeMins / graphSum) * 100 : (rawFree < 0 ? Math.min(100, (-rawFree / 60) * 100) : 0);
+      const frFillBg = rawFree < 0 ? 'linear-gradient(90deg, #f87171, #ef4444)' : 'linear-gradient(90deg, #34d399, #38bdf8)';
+      const frTrackBg = rawFree > 0 ? 'rgba(16, 185, 129, 0.15)' : (rawFree === 0 ? 'rgba(245, 158, 11, 0.15)' : 'rgba(239, 68, 68, 0.15)');
+      const freeRowHtml = `
+        <div class="free-summary-row ${frState}">
+          <span class="bar-label" style="color:${frColor}; max-width:none;">${frLabel}</span>
+          <div class="unified-bar-track" style="background:${frTrackBg};">
+            <div class="unified-bar-fill" style="width:${frFillPct}%; background:${frFillBg};"></div>
           </div>
-          <span class="bar-mins" style="color:var(--green); font-weight:800;">${freeMins} min</span>
+          <span class="bar-mins fr-mins" style="color:${frColor}; font-weight:800;">${rawFree} min</span>
         </div>
-      ` : '';
+      `;
 
       listEl.innerHTML = (TASKS.length === 0
         ? '<div class="empty-msg is-done">كل المهام خلصت! تقدر تضيف مهمة جديدة من تحت أو تسحب من الـ Inbox أو الـ Routine.</div>'
