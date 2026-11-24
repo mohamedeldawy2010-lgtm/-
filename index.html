@@ -433,6 +433,31 @@
       overflow-wrap: break-word;
       word-break: break-word;
     }
+    .live-time-bar {
+      width: calc(100% - 36px);
+      margin-right: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: flex-end; /* RTL: flex-end = physical left */
+      gap: 6px;
+      padding: 4px 10px;
+      min-height: 28px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      font-family: inherit;
+      color: var(--text);
+      background: linear-gradient(to left, color-mix(in srgb, var(--tc) 30%, transparent) var(--pct), var(--item-hover) var(--pct));
+      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tc) 35%, transparent);
+      -webkit-tap-highlight-color: transparent;
+      transition: transform .12s ease;
+    }
+    .live-time-bar:active { transform: scale(.985); }
+    .live-time-bar .ltb-icon { font-size: 11px; color: var(--tc); }
+    .live-time-bar .task-dur { background: transparent; border: none; padding: 0; font-size: 12.5px; color: var(--text); }
+    .live-time-bar .task-dur.is-running { background: transparent; color: var(--red); }
+    .live-time-bar .task-dur.is-finished { background: transparent; color: var(--green); }
+    .live-time-bar.is-running { box-shadow: inset 0 0 0 1.5px var(--red); }
     .unified-bar-row {
       display: flex;
       align-items: center;
@@ -1246,6 +1271,7 @@
         <form class="promote-box hidden" id="live-mins-prompt" style="margin-top:10px;">
           <span class="max-hint" id="live-mins-label">الوقت (دقائق):</span>
           <input type="text" inputmode="numeric" class="input-field input-mins" id="live-mins-input" value="" placeholder="الدقائق" required>
+          <div id="live-dest-box" style="flex:0 0 100%; display:flex; flex-direction:column; gap:6px; order:5;"></div>
           <button type="submit" class="timer-btn">تأكيد</button>
           <button type="button" class="icon-btn" id="live-mins-cancel">إلغاء</button>
         </form>
@@ -3625,6 +3651,15 @@
       if (source === 'inbox') { saveState(); if (!inboxModal.classList.contains('hidden')) renderInboxInsideModal(); }
     });
 
+    // Fill of the live time bar: idle = share of the hour; running/paused = share of the task's own duration elapsed
+    function livePct(t, idleShare) {
+      const total = (Number(t.mins) || 0) * 60;
+      if (!(total > 0)) return '0.0';
+      // Not started yet → bar shows the task's share of the hour; once started it becomes the task's own timer
+      if (!t.running && typeof t.remainingSec === 'number' && t.remainingSec >= total && idleShare != null) return Number(idleShare).toFixed(1);
+      const left = (t.running && t.endAt) ? Math.max(0, (t.endAt - Date.now()) / 1000) : (typeof t.remainingSec === 'number' ? t.remainingSec : total);
+      return (Math.max(0, Math.min(1, 1 - left / total)) * 100).toFixed(1);
+    }
     function formatDuration(t) {
       if (t.remainingSec <= 0) return '٠٠:٠٠';
       if (!t.running && t.remainingSec === t.mins * 60) {
@@ -3651,6 +3686,8 @@
           if (durEl) {
             durEl.textContent = formatDuration(t);
             durEl.className = `task-dur ${t.running ? 'is-running' : (t.remainingSec === 0 ? 'is-finished' : '')}`;
+            const tb = durEl.closest('.live-time-bar');
+            if (tb) tb.style.setProperty('--pct', livePct(t) + '%');
           }
         }
       });
@@ -4783,12 +4820,11 @@
               <div class="inbox-item-outer" data-live-idx="${idx}">
                 <div class="swipe-wrap ${t.completing ? 'is-completing' : ''}" style="${prioBorder}" data-task-id="${t.id}">
                   <div class="swipe-actions">
-                    <button type="button" class="timer-btn ${t.running ? 'is-stop' : ''}" data-timer="${t.id}">${t.running ? 'إيقاف' : 'بدء'}</button>
                     <button type="button" class="icon-btn" data-live-day="${t.id}" title="تغيير اليوم (يرجع للـ Inbox)">📅</button>
                     <button type="button" class="icon-btn" data-to-inbox="${t.id}" title="تحويل للـ Inbox">للـ Inbox</button>
                     <button type="button" class="icon-btn del" data-del-live="${t.id}" title="حذف">×</button>
                   </div>
-                  <div class="swipe-content" style="transform: translate3d(${isSwiped ? '222px' : '0px'}, 0, 0);">
+                  <div class="swipe-content" style="transform: translate3d(${isSwiped ? '176px' : '0px'}, 0, 0);">
                     <div class="unified-top">
                       <span class="drag-handle" data-drag-idx="${idx}" title="اسحب للترتيب">⋮⋮</span>
                       <div class="task-circle" data-check="${t.id}" title="اضغط هنا لإنهاء المهمة">
@@ -4800,20 +4836,14 @@
                         <span class="task-title" style="padding-top:2px; line-height:1.4;">${t.label}</span>
                         <div class="live-left-stack">
                           <button type="button" class="delegate-pill ${t.delegate ? 'is-assigned' : ''}" data-delegate-btn="${t.id}" title="تفويض المهمة">${t.delegate ? `👤 ${t.delegate}` : 'Delegate'}</button>
-                          <div style="display:flex; align-items:center; gap:5px;">
-                            ${t.running ? `<button type="button" class="timer-btn is-stop" data-timer="${t.id}" style="padding:2px 8px; font-size:11px;">إيقاف</button>` : ''}
-                            <span class="task-dur ${durClass}" id="dur-${t.id}">${formatDuration(t)}</span>
-                          </div>
                         </div>
                       </div>
                     </div>
                     ${t.note ? `<div class="task-note">${t.note}</div>` : ''}
-                    <div class="unified-bar-row">
-                      <span class="color-dot" style="background:${t.color}; width:8px; height:8px; border-radius:50%;"></span>
-                      <div class="unified-bar-track">
-                        <div class="unified-bar-fill" style="width:${barPct}%; background:${t.color};"></div>
-                      </div>
-                    </div>
+                    <button type="button" class="live-time-bar ${t.running ? 'is-running' : ''}" data-timer="${t.id}" title="${t.running ? 'اضغط لإيقاف المهمة' : 'اضغط لبدء المهمة'}" style="--tc:${t.color}; --pct:${livePct(t, barPct)}%;">
+                      <span class="ltb-icon">${t.running ? '■' : '▶'}</span>
+                      <span class="task-dur ${durClass}" id="dur-${t.id}">${formatDuration(t)}</span>
+                    </button>
                   </div>
                 </div>
                 ${delegatingLiveTaskId === t.id ? `
@@ -5136,7 +5166,7 @@
           if (target.closest('.drag-handle') || target.closest('.task-circle') || target.closest('button')) return false;
           sX = cx;
           sY = cy;
-          baseOffset = (swipedTaskId === tId) ? 222 : 0;
+          baseOffset = (swipedTaskId === tId) ? 176 : 0;
           swiping = false;
           lockChecked = false;
           return true;
@@ -5167,7 +5197,7 @@
           const finalX = baseOffset + dx;
           if (finalX > 65) {
             swipedTaskId = tId;
-            content.style.transform = 'translate3d(222px, 0, 0)';
+            content.style.transform = 'translate3d(176px, 0, 0)';
             listEl.querySelectorAll('.swipe-wrap').forEach(other => {
               if (other !== wrap) {
                 const oc = other.querySelector('.swipe-content');
@@ -5804,34 +5834,62 @@
     const liveMinsLabelEl = document.getElementById('live-mins-label');
     const liveMinsInputEl = document.getElementById('live-mins-input');
 
+    // Destination of the new task: hour (default) or inbox (folder required, day optional)
+    let liveDest = 'hour', liveSec = null, liveDay = '';
+    const liveDestBoxEl = document.getElementById('live-dest-box');
+    function hourFreeMins() {
+      if (TASKS.length >= 5) return 0;
+      return Math.max(0, 60 - TASKS.reduce((s, t) => s + t.mins, 0));
+    }
+    function updateLiveMinsLabel() {
+      if (liveDest === 'inbox') {
+        liveMinsLabelEl.textContent = `وقت «${pendingLiveLabel}» (أقصى ٦٠ د):`;
+      } else {
+        liveMinsLabelEl.textContent = `وقت «${pendingLiveLabel}» (متاح: ${toAr(hourFreeMins())} د — لو زوّدت عنه تبقى آخر مهمة):`;
+      }
+    }
+    function renderLiveDest() {
+      const hourOk = hourFreeMins() > 0;
+      let html = `<div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+        <span class="max-hint">تضاف إلى:</span>
+        <button type="button" class="keep-chip ${liveDest === 'hour' ? 'is-active' : ''}" data-dest="hour" ${hourOk ? '' : 'disabled style="opacity:.45;"'}>⏱ الساعة</button>
+        <button type="button" class="keep-chip ${liveDest === 'inbox' ? 'is-active' : ''}" data-dest="inbox">📥 الإنبوكس</button>
+      </div>`;
+      if (!hourOk && liveDest === 'inbox') html += `<span class="max-hint" style="color:var(--red);">الساعة مليانة حاليًا — هتتضاف للإنبوكس.</span>`;
+      if (liveDest === 'inbox') {
+        html += `<div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+          <span class="max-hint">الفولدر (إجباري):</span>
+          ${INBOX_SECTIONS.map(sec => `<button type="button" class="keep-chip ${liveSec === sec.id ? 'is-active' : ''}" data-dest-sec="${sec.id}"><span class="color-dot" style="background:${sec.color || '#4f75ff'}; width:8px; height:8px;"></span> ${sec.name}</button>`).join('')}
+        </div>
+        <div style="display:flex; gap:5px; flex-wrap:wrap; align-items:center;">
+          <span class="max-hint">اليوم (اختياري):</span>
+          ${weekOrderFromToday().map(wd => { const d = nextDateForWeekday(wd); const key = toDateKey(d); const sub = dayDiff(key) === 0 ? 'النهارده' : fmtShortDate(d, 'short'); return `<button type="button" class="keep-chip ${liveDay === key ? 'is-active' : ''}" data-dest-day="${key}" style="line-height:1.35; padding:5px 9px;">${DAY_SHORT_AR[wd]}<br><span style="font-size:10.5px; opacity:.85;">${sub}</span></button>`; }).join('')}
+          <input type="date" class="input-field" id="live-dest-date" value="${liveDay}" style="width:auto;">
+        </div>`;
+      }
+      liveDestBoxEl.innerHTML = html;
+      liveDestBoxEl.querySelectorAll('[data-dest]').forEach(b => b.addEventListener('click', () => {
+        liveDest = b.dataset.dest; renderLiveDest(); updateLiveMinsLabel();
+      }));
+      liveDestBoxEl.querySelectorAll('[data-dest-sec]').forEach(b => b.addEventListener('click', () => { liveSec = b.dataset.destSec; renderLiveDest(); }));
+      liveDestBoxEl.querySelectorAll('[data-dest-day]').forEach(b => b.addEventListener('click', () => {
+        liveDay = (liveDay === b.dataset.destDay) ? '' : b.dataset.destDay; renderLiveDest();
+      }));
+      const di = document.getElementById('live-dest-date');
+      if (di) di.addEventListener('change', () => { liveDay = di.value; renderLiveDest(); });
+    }
+
     addFormEl.addEventListener('submit', e => {
       e.preventDefault();
       const titleInput = document.getElementById('new-title');
       const label = titleInput.value.trim();
       if (!label) return;
-
-      if (TASKS.length >= 5) {
-        showWarningToast('وصلت للحد الأقصى (٥ مهام في الساعة)');
-        liveMinsLabelEl.textContent = 'وصلت للحد الأقصى المسموح (٥ مهام) — خلّص أو حوّل مهمة الأول';
-        liveMinsInputEl.classList.add('hidden');
-        livePromptEl.querySelector('button[type="submit"]').classList.add('hidden');
-        livePromptEl.classList.remove('hidden');
-        return;
-      }
-
-      const totalTasksMins = TASKS.reduce((s, t) => s + t.mins, 0);
-      const freeMins = Math.max(0, 60 - totalTasksMins);
-      if (freeMins <= 0) {
-        showWarningToast('الساعة مكتملة (٦٠ دقيقة)');
-        liveMinsLabelEl.textContent = 'الساعة مكتملة (٦٠ د) — خلّص أو حوّل مهمة الأول';
-        liveMinsInputEl.classList.add('hidden');
-        livePromptEl.querySelector('button[type="submit"]').classList.add('hidden');
-        livePromptEl.classList.remove('hidden');
-        return;
-      }
-
       pendingLiveLabel = label;
-      liveMinsLabelEl.textContent = `وقت «${label}» (متاح: ${toAr(freeMins)} د — لو زوّدت عنه تبقى آخر مهمة):`;
+      liveDest = hourFreeMins() > 0 ? 'hour' : 'inbox';
+      liveSec = null; liveDay = '';
+      if (liveDest === 'inbox') showInfoToast('الساعة مليانة — اختار فولدر في الإنبوكس');
+      renderLiveDest();
+      updateLiveMinsLabel();
       liveMinsInputEl.classList.remove('hidden');
       livePromptEl.querySelector('button[type="submit"]').classList.remove('hidden');
       liveMinsInputEl.value = '';
@@ -5842,33 +5900,45 @@
     livePromptEl.addEventListener('submit', e => {
       e.preventDefault();
       if (!pendingLiveLabel) return;
-      if (TASKS.length >= 5) {
-        showWarningToast('وصلت للحد الأقصى (٥ مهام في الساعة)');
-        livePromptEl.classList.add('hidden');
-        return;
-      }
-      const totalTasksMins = TASKS.reduce((s, t) => s + t.mins, 0);
-      const freeMins = Math.max(0, 60 - totalTasksMins);
       const rawMins = parseMins(liveMinsInputEl.value);
-      if (!(rawMins > 0) || freeMins <= 0) return;
-
+      if (!(rawMins > 0)) { showWarningToast('اكتب مدة المهمة'); return; }
       const mins = Math.min(60, rawMins);
-          noteOverHour(totalTasksMins + mins);
-      TASKS.push({
-        id: Date.now(),
-        label: pendingLiveLabel,
-        mins,
-        color: nextDistinctColor(),
-        remainingSec: mins * 60,
-        running: false,
-        endAt: null,
-        completing: false
-      });
+
+      if (liveDest === 'inbox') {
+        if (!liveSec) { showWarningToast('اختار الفولدر اللي هتتضاف فيه في الإنبوكس'); return; }
+        const newItem = { id: Date.now(), label: pendingLiveLabel, sectionId: liveSec, mins, remainingSec: mins * 60 };
+        if (liveDay) {
+          if (dayDiff(liveDay) < 0) { showWarningToast('التاريخ ده فات — اختار النهارده أو يوم جاي'); return; }
+          if (!tryAssignDay(newItem, liveDay, mins)) return;
+        }
+        INBOX.unshift(newItem);
+        openSections[liveSec] = true;
+        const secName = (INBOX_SECTIONS.find(x => x.id === liveSec) || {}).name || '';
+        showInfoToast(`اتضافت للإنبوكس — ${secName}${liveDay ? ' · ' + dueLabel(liveDay).text : ''}`);
+        saveState();
+      } else {
+        if (TASKS.length >= 5) { showWarningToast('وصلت للحد الأقصى (٥ مهام في الساعة)'); return; }
+        const totalTasksMins = TASKS.reduce((s, t) => s + t.mins, 0);
+        if (totalTasksMins >= 60) { showWarningToast('الساعة مكتملة (٦٠ دقيقة)'); return; }
+        noteOverHour(totalTasksMins + mins);
+        TASKS.push({
+          id: Date.now(),
+          label: pendingLiveLabel,
+          mins,
+          color: nextDistinctColor(),
+          remainingSec: mins * 60,
+          running: false,
+          endAt: null,
+          completing: false
+        });
+      }
       pendingLiveLabel = '';
+      liveSec = null; liveDay = '';
       document.getElementById('new-title').value = '';
       liveMinsInputEl.value = '';
       livePromptEl.classList.add('hidden');
       render();
+      if (!inboxModal.classList.contains('hidden')) renderInboxInsideModal();
     });
 
     document.getElementById('live-mins-cancel').addEventListener('click', () => {
