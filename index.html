@@ -4810,8 +4810,7 @@
           : (freeMins > 0
             ? `${toAr(totalTasksMins)} د مهام · ${toAr(freeMins)} د فراغ`
             : `${toAr(totalTasksMins)} دقيقة مهام`);
-        const overNote = totalTasksMins > 60 ? ` (زيادة ${toAr(totalTasksMins - 60)} د عن الساعة)` : '';
-        statsEl.textContent = `المهام الحالية: ${toAr(TASKS.length)} / 5${overNote}`;
+        statsEl.textContent = `المهام الحالية: ${toAr(TASKS.length)} / 5`;
       }
 
       const graphSum = Math.max(60, displayItems.reduce((s, t) => s + t.mins, 0));
@@ -4821,7 +4820,8 @@
       }).join('');
       const overHour = totalTasksMins > 60;
       badgeEl.classList.toggle('is-over', overHour);
-      statsEl.style.color = overHour ? 'var(--red)' : '';
+      badgeEl.style.display = overHour ? 'none' : '';
+      statsEl.style.color = '';
       stackedEl.style.boxShadow = overHour ? '0 0 0 1.5px var(--red)' : '';
 
       const rawFree = 60 - totalTasksMins;
