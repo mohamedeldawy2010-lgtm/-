@@ -1353,7 +1353,6 @@
       </div>
       <div class="modal-foot">
         <span class="max-hint" id="inbox-footer-count">إجمالي المهام: ٠</span>
-        <button type="button" class="timer-btn" id="close-inbox-modal-2">تم</button>
       </div>
     </div>
   </div>
@@ -1378,7 +1377,6 @@
       </div>
       <div class="modal-foot">
         <span class="max-hint" id="notes-footer-count">إجمالي الملاحظات: ٠</span>
-        <button type="button" class="timer-btn" id="close-notes-modal-2">تم</button>
       </div>
     </div>
   </div>
@@ -1398,9 +1396,6 @@
           <input type="color" id="new-note-section-color" value="#4f75ff" style="width:38px; height:38px; border:none; border-radius:10px; cursor:pointer; background:transparent;">
           <button type="submit" class="timer-btn">+ إضافة قسم</button>
         </form>
-      </div>
-      <div class="modal-foot">
-        <button type="button" class="timer-btn" id="close-note-sections-2">حفظ والعودة</button>
       </div>
     </div>
   </div>
@@ -1491,7 +1486,6 @@
         <span class="max-hint" id="note-view-sec-badge"></span>
         <div style="display:flex; gap:8px;">
           <button type="button" class="timer-btn hidden" id="note-view-save-btn">حفظ الملاحظة</button>
-          <button type="button" class="icon-btn" id="close-note-view-2">إغلاق</button>
         </div>
       </div>
     </div>
@@ -1515,9 +1509,6 @@
           <button type="submit" class="timer-btn">+ إضافة قسم</button>
         </form>
       </div>
-      <div class="modal-foot">
-        <button type="button" class="timer-btn" id="close-inbox-sections-2">حفظ والعودة</button>
-      </div>
     </div>
   </div>
 
@@ -1538,9 +1529,6 @@
           <button type="submit" class="timer-btn">+ إضافة قسم</button>
         </form>
       </div>
-      <div class="modal-foot">
-        <button type="button" class="timer-btn" id="close-routine-sections-2">حفظ والعودة</button>
-      </div>
     </div>
   </div>
 
@@ -1559,9 +1547,6 @@
           <input type="text" class="input-field input-name" id="new-delegate-name" placeholder="اسم الشخص أو الجهة..." required>
           <button type="submit" class="timer-btn">+ إضافة</button>
         </form>
-      </div>
-      <div class="modal-foot">
-        <button type="button" class="timer-btn" id="close-delegates-modal-2">حفظ وإغلاق</button>
       </div>
     </div>
   </div>
@@ -1582,9 +1567,6 @@
           <textarea class="input-field" id="import-backup-text" rows="3" placeholder="الصق كود النسخة الاحتياطية هنا..." style="width:100%; font-size:14px; direction:ltr;"></textarea>
           <button type="button" class="add-btn" id="import-backup-btn" style="padding:10px 14px; font-size:14px;">استعادة البيانات الآن</button>
         </div>
-      </div>
-      <div class="modal-foot">
-        <button type="button" class="icon-btn" id="close-backup-modal-2">إغلاق</button>
       </div>
     </div>
   </div>
@@ -1614,7 +1596,6 @@
       <div class="modal-body" id="trackers-log-body"></div>
       <div class="modal-foot">
         <button type="button" class="icon-btn" id="print-pdf-btn">📄 تنزيل / طباعة PDF</button>
-        <button type="button" class="timer-btn" id="close-trackers-log-2">إغلاق</button>
       </div>
     </div>
   </div>
@@ -2279,7 +2260,6 @@
 
     document.getElementById('open-inbox-modal-btn').addEventListener('click', openInboxModal);
     document.getElementById('close-inbox-modal').addEventListener('click', closeInboxModal);
-    document.getElementById('close-inbox-modal-2').addEventListener('click', closeInboxModal);
     inboxModal.addEventListener('click', e => {
       if (e.target === inboxModal) closeInboxModal();
     });
@@ -2301,7 +2281,6 @@
     }
     document.getElementById('open-notes-modal-btn').addEventListener('click', openNotesModal);
     document.getElementById('close-notes-modal').addEventListener('click', closeNotesModal);
-    document.getElementById('close-notes-modal-2').addEventListener('click', closeNotesModal);
     notesModal.addEventListener('click', e => {
       if (e.target === notesModal) closeNotesModal();
     });
@@ -2318,7 +2297,6 @@
     }
     document.getElementById('open-note-sections-mgr-btn').addEventListener('click', openNoteSectionsManager);
     document.getElementById('close-note-sections').addEventListener('click', closeNoteSectionsManager);
-    document.getElementById('close-note-sections-2').addEventListener('click', closeNoteSectionsManager);
     noteSectionsModal.addEventListener('click', e => {
       if (e.target === noteSectionsModal) closeNoteSectionsManager();
     });
@@ -2967,7 +2945,6 @@
     });
 
     document.getElementById('close-note-view').addEventListener('click', tryCloseNoteReader);
-    document.getElementById('close-note-view-2').addEventListener('click', tryCloseNoteReader);
     noteViewModal.addEventListener('click', e => { if (e.target === noteViewModal) tryCloseNoteReader(); });
 
     function renderNotesInsideModal() {
@@ -3231,7 +3208,6 @@
 
     document.getElementById('open-inbox-sections-mgr-btn').addEventListener('click', openSectionsManager);
     document.getElementById('close-inbox-sections').addEventListener('click', closeSectionsManager);
-    document.getElementById('close-inbox-sections-2').addEventListener('click', closeSectionsManager);
     sectionsModal.addEventListener('click', e => {
       if (e.target === sectionsModal) closeSectionsManager();
     });
@@ -3353,7 +3329,6 @@
     }
     document.getElementById('open-routine-sections-mgr-btn').addEventListener('click', openRoutineSectionsManager);
     document.getElementById('close-routine-sections').addEventListener('click', closeRoutineSectionsManager);
-    document.getElementById('close-routine-sections-2').addEventListener('click', closeRoutineSectionsManager);
     routineSectionsModal.addEventListener('click', e => {
       if (e.target === routineSectionsModal) closeRoutineSectionsManager();
     });
@@ -5965,7 +5940,6 @@
       render();
     }
     document.getElementById('close-delegates-modal').addEventListener('click', closeDelegatesModal);
-    document.getElementById('close-delegates-modal-2').addEventListener('click', closeDelegatesModal);
     delegatesModal.addEventListener('click', e => {
       if (e.target === delegatesModal) closeDelegatesModal();
     });
@@ -6025,7 +5999,6 @@
       backupModal.classList.remove('hidden');
     });
     document.getElementById('close-backup-modal').addEventListener('click', () => backupModal.classList.add('hidden'));
-    document.getElementById('close-backup-modal-2').addEventListener('click', () => backupModal.classList.add('hidden'));
     backupModal.addEventListener('click', e => { if (e.target === backupModal) backupModal.classList.add('hidden'); });
 
     document.getElementById('export-backup-btn').addEventListener('click', async () => {
@@ -6282,9 +6255,6 @@
 
     document.getElementById('open-trackers-log-btn').addEventListener('click', openTrackersLog);
     document.getElementById('close-trackers-log').addEventListener('click', () => {
-      document.getElementById('modal-trackers-log').classList.add('hidden');
-    });
-    document.getElementById('close-trackers-log-2').addEventListener('click', () => {
       document.getElementById('modal-trackers-log').classList.add('hidden');
     });
 
