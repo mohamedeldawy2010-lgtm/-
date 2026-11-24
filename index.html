@@ -3600,8 +3600,8 @@
       render();
     }
 
-    function showUndo(task, index, completedId) {
-      lastRemoved = { task, index, completedId };
+    function showUndo(task, index, completedId, source) {
+      lastRemoved = { task, index, completedId, source: source || 'hour' };
       const toast = document.getElementById('undo-toast');
       toast.classList.add('is-visible');
       if (undoTimeout) clearTimeout(undoTimeout);
@@ -3613,13 +3613,15 @@
 
     document.getElementById('undo-btn').addEventListener('click', () => {
       if (!lastRemoved) return;
-      const { task, index, completedId } = lastRemoved;
-      TASKS.splice(Math.min(index, TASKS.length), 0, { ...task, completing: false });
+      const { task, index, completedId, source } = lastRemoved;
+      if (source === 'inbox') INBOX.splice(Math.min(index, INBOX.length), 0, task);
+      else TASKS.splice(Math.min(index, TASKS.length), 0, { ...task, completing: false });
       COMPLETED = COMPLETED.filter(c => c.logId !== completedId);
       lastRemoved = null;
       if (undoTimeout) clearTimeout(undoTimeout);
       document.getElementById('undo-toast').classList.remove('is-visible');
       render();
+      if (source === 'inbox') { saveState(); if (!inboxModal.classList.contains('hidden')) renderInboxInsideModal(); }
     });
 
     function formatDuration(t) {
@@ -4089,11 +4091,12 @@
                         <div class="inbox-item-outer" data-inbox-id="${item.id}">
                           <div class="swipe-wrap" data-inbox-swipe-id="${item.id}">
                             <div class="swipe-actions">
+                              <button type="button" class="timer-btn" data-done-inbox="${item.id}" title="تم — تتسجل في المكتملة" style="padding:6px 10px; background:var(--green);">✓ تم</button>
                               <button type="button" class="timer-btn" data-promote="${item.id}" style="padding:6px 10px;">للساعة</button>
                               <button type="button" class="icon-btn" data-move-sec="${item.id}" title="نقل لقسم آخر">نقل</button>
                               <button type="button" class="icon-btn del" data-del-inbox="${item.id}" title="حذف">×</button>
                             </div>
-                            <div class="swipe-content" style="transform: translate3d(${isSwiped ? '164px' : '0px'}, 0, 0);">
+                            <div class="swipe-content" style="transform: translate3d(${isSwiped ? '226px' : '0px'}, 0, 0);">
                               <div class="unified-top">
                                 <span class="drag-handle inbox-task-drag-handle" title="اسحب للترتيب">⋮⋮</span>
                                 <span class="color-dot color-dot-clickable" style="background:${(isToday ? (INBOX_SECTIONS.find(s => s.id === item.sectionId) || INBOX_SECTIONS[0]) : sec).color || '#4f75ff'};" data-move-sec="${item.id}" title="نقل لقسم آخر"></span>
@@ -4215,7 +4218,7 @@
           if (target.closest('.drag-handle') || target.closest('.color-dot-clickable') || target.closest('button')) return false;
           sX = cx;
           sY = cy;
-          baseOffset = (swipedInboxId === itemId) ? 164 : 0;
+          baseOffset = (swipedInboxId === itemId) ? 226 : 0;
           swiping = false;
           lockChecked = false;
           return true;
@@ -4234,7 +4237,7 @@
           }
           if (swiping) {
             if (ev && ev.cancelable) ev.preventDefault();
-            const nextX = Math.max(0, Math.min(174, baseOffset + dx));
+            const nextX = Math.max(0, Math.min(236, baseOffset + dx));
             content.style.transform = `translate3d(${nextX}px, 0, 0)`;
           }
         }
@@ -4246,7 +4249,7 @@
           const finalX = baseOffset + dx;
           if (finalX > 60) {
             swipedInboxId = itemId;
-            content.style.transform = 'translate3d(164px, 0, 0)';
+            content.style.transform = 'translate3d(226px, 0, 0)';
             inboxGroupsEl.querySelectorAll('.swipe-wrap').forEach(other => {
               if (other !== wrap) {
                 const oc = other.querySelector('.swipe-content');
@@ -4567,6 +4570,25 @@
           pendingDayInbox = null;
           pickingDayInboxId = null;
           renderInboxInsideModal();
+        });
+      });
+
+      inboxGroupsEl.querySelectorAll('[data-done-inbox]').forEach(btn => {
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const id = Number(btn.dataset.doneInbox);
+          const idx = INBOX.findIndex(x => x.id === id);
+          if (idx === -1) return;
+          const removed = INBOX[idx];
+          INBOX.splice(idx, 1);
+          const logId = Date.now() + Math.floor(Math.random() * 1000);
+          COMPLETED.unshift({ logId, label: removed.label, mins: removed.mins || 0, completedAt: Date.now() });
+          swipedInboxId = null;
+          showUndo(removed, idx, logId, 'inbox');
+          saveState();
+          render();
+          renderInboxInsideModal();
+          checkCompletedMilestoneToast();
         });
       });
 
