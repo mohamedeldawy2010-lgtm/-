@@ -1249,17 +1249,17 @@
     .prio-group-right .count-pill { white-space:nowrap; }
     .drag-handle { touch-action:pan-y; -webkit-touch-callout:none; }
     .drag-handle.holding { opacity:1; color:var(--blue); transform:scale(1.25); transition:transform .5s ease, color .5s ease; }
-    /* Compact live header */
-    .live-head { flex-wrap:nowrap; gap:8px; margin-bottom:12px; }
-    .live-head-side { display:flex; align-items:center; gap:6px; min-width:0; }
-    .live-head .inbox-mini-btn { flex-direction:row; gap:5px; height:30px; padding:0 10px 0 9px; border-radius:999px; background:var(--item); transition:background .2s ease; }
+    /* Compact live header: Inbox · clock · Notes */
+    .live-head { display:flex; flex-wrap:nowrap; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px; }
+    .live-head .inbox-mini-btn { flex-direction:row; gap:5px; height:30px; min-width:58px; justify-content:center; padding:0 10px; border-radius:999px; background:var(--item); transition:background .2s ease; }
     .live-head .inbox-mini-circle { width:auto; height:auto; background:transparent !important; border:none; box-shadow:none; font-size:14px; transform:none !important; }
     .live-head .inbox-mini-count { font-size:12.5px; }
     .live-head .inbox-mini-btn:not(.is-empty) { background:var(--blue-soft); }
     .live-head .inbox-mini-btn.is-empty { opacity:.6; }
-    .live-head .sub-stats { margin:0; font-size:12px; font-weight:700; color:var(--muted); background:var(--item); height:30px; padding:0 10px; border-radius:999px; display:flex; align-items:center; white-space:nowrap; font-variant-numeric:tabular-nums; }
-    .live-head .hour-clock { margin:0; font-size:12px; height:30px; padding:0 10px; border-radius:999px; background:var(--blue-soft); white-space:nowrap; }
-    .live-head .time-badge[hidden] { display:none !important; }
+    .live-head .hour-clock { margin:0; flex:1 1 auto; justify-content:center; font-size:14px; font-weight:700; color:var(--text); white-space:nowrap; }
+    .live-head .hour-clock b { color:var(--blue); font-weight:800; }
+    .live-head .hour-clock small { color:var(--muted); font-size:12px; font-weight:600; }
+    .live-head [hidden] { display:none !important; }
   </style>
 </head>
 <body>
@@ -1277,20 +1277,16 @@
       <!-- Unified Card: Hour Allocation + Bar + Checklist (Swipe left/right for actions) -->
       <div class="card">
         <div class="header-row live-head">
-          <div class="live-head-side">
-            <button type="button" class="inbox-mini-btn" id="open-inbox-modal-btn" title="صندوق المهام (Inbox)">
-              <span class="inbox-mini-circle">📥</span>
-              <span class="inbox-mini-count" id="inbox-launcher-pill">0</span>
-            </button>
-            <button type="button" class="inbox-mini-btn" id="open-notes-modal-btn" title="الملاحظات (Notes)">
-              <span class="inbox-mini-circle">📝</span>
-              <span class="inbox-mini-count" id="notes-launcher-pill">0</span>
-            </button>
-          </div>
-          <div class="live-head-side">
-            <div class="sub-stats" id="sub-stats">مفيش مهام</div>
-            <div class="hour-clock" id="hour-clock-hint"></div>
-          </div>
+          <button type="button" class="inbox-mini-btn" id="open-inbox-modal-btn" title="صندوق المهام (Inbox)">
+            <span class="inbox-mini-circle">📥</span>
+            <span class="inbox-mini-count" id="inbox-launcher-pill">0</span>
+          </button>
+          <div class="hour-clock" id="hour-clock-hint"></div>
+          <button type="button" class="inbox-mini-btn" id="open-notes-modal-btn" title="الملاحظات (Notes)">
+            <span class="inbox-mini-circle">📝</span>
+            <span class="inbox-mini-count" id="notes-launcher-pill">0</span>
+          </button>
+          <div class="sub-stats" id="sub-stats" hidden></div>
           <div class="time-badge" id="remaining-badge" hidden>60 دقيقة فراغ</div>
         </div>
 
@@ -1709,7 +1705,7 @@
       const nextHour24 = (now.getHours() + 1) % 24;
       const ampm = nextHour24 >= 12 ? 'م' : 'ص';
       const nextHour12 = nextHour24 % 12 || 12;
-      el.textContent = `⏱ ${toAr(String(minsLeft).padStart(2, '0'))}:${toAr(String(sLeft).padStart(2, '0'))} على ${toAr(nextHour12)}:00 ${ampm}`;
+      el.innerHTML = `<b>${toAr(String(minsLeft).padStart(2, '0'))}:${toAr(String(sLeft).padStart(2, '0'))}</b> <small>على ${toAr(nextHour12)}:00 ${ampm}</small>`;
     }
 
     function formatTotalTimeAr(totalMins) {
@@ -4812,6 +4808,7 @@
         displayItems.push({ id: 'free', label: 'وقت فراغ', mins: freeMins, color: 'linear-gradient(90deg, #34d399, #38bdf8)', isFree: true });
       }
 
+      document.getElementById('tab-live').textContent = TASKS.length ? `الساعة الحالية (${toAr(TASKS.length)}/5)` : 'الساعة الحالية';
       const badgeEl = document.getElementById('remaining-badge');
       const statsEl = document.getElementById('sub-stats');
       const stackedEl = document.getElementById('stacked-bar');
