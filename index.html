@@ -1205,6 +1205,7 @@
     <div class="tabs-bar">
       <button type="button" class="tab-btn is-active" id="tab-live">الساعة الحالية</button>
       <button type="button" class="tab-btn" id="tab-routine">Routine (٠)</button>
+      <button type="button" class="tab-btn" id="copy-plan-btn" title="نسخ كل مهام اليوم والروتين والعدادات كنص واحد" style="flex:0 0 auto; padding:9px 12px; font-size:15px;">📋</button>
       <button type="button" class="tab-btn" id="theme-toggle-btn" title="تبديل الوضع الليلي / النهاري" style="flex:0 0 auto; padding:9px 12px; font-size:15px;">🌙</button>
     </div>
 
@@ -2099,6 +2100,86 @@
       if (savedTheme === 'dark' || savedTheme === 'light') applyTheme(savedTheme);
       else applyTheme(null);
     } catch (e) { applyTheme(null); }
+
+    // ---- Copy everything (live hour + Today + routine + trackers) as one plain-text block for an AI agent ----
+    function buildDayPlanText() {
+      const now = new Date();
+      const L = [];
+      const dm = m => m >= 60 ? (m % 60 === 0 ? `${m / 60} ساعة` : `${Math.floor(m / 60)} ساعة و${m % 60} دقيقة`) : `${m} دقيقة`;
+      const clean = x => String(x == null ? '' : x).replace(/\s+/g, ' ').trim();
+      const line = (t, extra) => `- ${clean(t.label)}${t.mins ? ` (${dm(t.mins)})` : ''}${extra || ''}${t.delegate ? ` — مفوّضة لـ ${t.delegate}` : ''}${t.note ? ` — ملاحظة: ${clean(t.note)}` : ''}`;
+      L.push('# خطة يومي — رتّبها لي');
+      L.push(`الآن: ${now.toLocaleDateString('ar-EG', { weekday: 'long', day: 'numeric', month: 'long' })} · ${now.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit' })} (القاهرة). اليوم عندي يبدأ الساعة ٣ صباحًا.`);
+      L.push('');
+
+      const used = TASKS.reduce((n, t) => n + t.mins, 0);
+      L.push(`## مهام الساعة الحالية (${TASKS.length} مهام · ${dm(used)} من ٦٠ دقيقة)`);
+      if (!TASKS.length) L.push('- لا يوجد');
+      TASKS.forEach(t => {
+        const left = typeof t.remainingSec === 'number' && t.remainingSec < t.mins * 60 ? ` · متبقي ${dm(Math.ceil(t.remainingSec / 60))}` : '';
+        L.push(line(t, left + (t.running ? ' · شغّالة الآن' : '')));
+      });
+      L.push('');
+
+      const key = toDateKey(logicalToday());
+      const today = INBOX.filter(x => x.dueDate === key).sort((a, b) => (a.todayRank ?? 1e9) - (b.todayRank ?? 1e9));
+      const tmr = logicalToday(); tmr.setDate(tmr.getDate() + 1);
+      const tomorrow = INBOX.filter(x => x.dueDate === toDateKey(tmr)).sort((a, b) => (a.todayRank ?? 1e9) - (b.todayRank ?? 1e9));
+      const todayMins = today.reduce((n, x) => n + (x.mins || 0), 0);
+      L.push(`## مهام Today (${today.length} من ${DAY_CAP_COUNT} · ${dm(todayMins)} من ${dm(DAY_CAP_MINS)})`);
+      if (!today.length) L.push('- لا يوجد');
+      today.forEach(x => L.push(line(x)));
+      if (tomorrow.length) {
+        L.push('');
+        L.push(`## مهام بكرة (${tomorrow.length} · ${dm(tomorrow.reduce((n, x) => n + (x.mins || 0), 0))})`);
+        tomorrow.forEach(x => L.push(line(x)));
+      }
+      L.push('');
+
+      L.push('## الروتين');
+      ROUTINE_SECTIONS.forEach(sec => {
+        const items = ROUTINE.filter(r => r.sectionId === sec.id);
+        if (!items.length) return;
+        const left = items.filter(r => !r.doneToday).length;
+        L.push(`### ${clean(sec.name)} (فاضل ${left} من ${items.length})`);
+        items.forEach(r => L.push(`- [${r.doneToday ? 'x' : ' '}] ${clean(r.label)}${r.mins ? ` (${dm(r.mins)})` : ''}`));
+      });
+      if (!ROUTINE.length) L.push('- لا يوجد');
+      L.push('');
+
+      L.push('## العدادات والأهداف اليومية (التقدم حتى الآن)');
+      if (!TRACKERS.length) L.push('- لا يوجد');
+      TRACKERS.forEach(tr => {
+        if (tr.type === 'checks') {
+          const items = tr.items || [], done = tr.done || [];
+          const rem = items.filter(i => !done.includes(i));
+          L.push(`- ${clean(tr.name)}: تم ${done.length} من ${items.length}${rem.length ? ` · فاضل: ${rem.join('، ')}` : ' ✓ مكتمل'}`);
+        } else {
+          const val = tr.val || 0, goal = tr.goal || 1, u = tr.unit ? ` ${tr.unit}` : '';
+          const rem = Math.max(0, goal - val);
+          L.push(`- ${clean(tr.name)}: ${val} من ${goal}${u} (${Math.min(100, Math.round(val / goal * 100))}%)${rem ? ` · فاضل ${rem}${u}` : ' ✓ مكتمل'}`);
+        }
+      });
+      L.push('');
+      L.push('المطلوب: رتّب لي باقي اليوم بجدول زمني واقعي يراعي الساعة الحالية، ويوزّع المهام والروتين، ويحقق أهداف العدادات.');
+      return L.join('\n');
+    }
+    async function copyDayPlan() {
+      const text = buildDayPlanText();
+      let ok = false;
+      try { await navigator.clipboard.writeText(text); ok = true; } catch (e) {}
+      if (!ok) {
+        try {
+          const ta = document.createElement('textarea');
+          ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;top:0;left:0;opacity:0;';
+          document.body.appendChild(ta); ta.select(); ta.setSelectionRange(0, text.length);
+          ok = document.execCommand('copy');
+          document.body.removeChild(ta);
+        } catch (e) {}
+      }
+      showInfoToast(ok ? '📋 اتنسخت خطة اليوم — الصقها في أي Agent' : 'تعذّر النسخ تلقائيًا');
+    }
+    document.getElementById('copy-plan-btn').addEventListener('click', copyDayPlan);
 
     document.getElementById('theme-toggle-btn').addEventListener('click', () => {
       applyTheme(isCurrentlyDark() ? 'light' : 'dark');
