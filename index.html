@@ -1012,7 +1012,12 @@
     .qr-text { font-size: 24px; line-height: 2.4; text-align: center; font-weight: 500; padding: 6px 2px; }
     .qr-surah { text-align:center; font-weight:800; color:var(--green); font-size:20px; margin:12px 0 4px; padding:6px; border-radius:12px; background:var(--card-muted); }
     .qr-num { color:var(--green); font-size:16px; font-weight:700; white-space:nowrap; }
-    .qr-nav { position:sticky; bottom:-18px; margin:0 -20px -18px; padding:12px 20px; display:flex; gap:8px; background:var(--card); border-top:1px solid var(--border); }
+    #modal-azkar.azkar-q .modal-box { height: 85vh; height: 85dvh; }
+    #modal-azkar.azkar-q.azkar-full .modal-box { height: 100%; height: 100dvh; }
+    #modal-azkar.azkar-q #azkar-body { flex: 1 1 auto; min-height: 0; overflow: hidden; padding-bottom: 0; }
+    .qr-wrap { display:flex; flex-direction:column; gap:10px; flex:1 1 auto; min-height:0; }
+    .qr-scroll { flex:1 1 auto; min-height:0; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+    .qr-nav { flex:0 0 auto; margin:0 -20px; padding:12px 20px; padding-bottom:max(12px, env(safe-area-inset-bottom)); display:flex; gap:8px; background:var(--card); border-top:1px solid var(--border); }
     .qr-nav .az-timer-btn { padding:12px 18px; font-size:15px; }
     .qr-nav .qr-sec { background:var(--card-muted); color:var(--text); border:1px solid var(--border); }
     #modal-azkar.azkar-full { padding: 0; align-items: stretch; }
@@ -1674,7 +1679,7 @@
           <span id="azkar-timer-slot" style="display:inline-flex; align-items:center;"></span>
         </div>
         <div style="display:flex; align-items:center; gap:6px;">
-          <button type="button" class="icon-btn" id="azkar-full-btn" title="ملء الشاشة" style="padding: 6px 10px; font-size: 14px;">⛶</button>
+          <button type="button" class="icon-btn" id="azkar-full-btn" title="ملء الشاشة" style="padding: 6px 10px; font-size: 14px; display:inline-flex; align-items:center;"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
           <button type="button" class="icon-btn" id="close-azkar" style="padding: 6px 12px; font-size: 14px;">✕</button>
         </div>
       </div>
@@ -6986,7 +6991,7 @@
       const page = Math.min(QURAN_PAGES, Math.max(1, QURAN.page));
       const done = Math.min(QURAN_PAGES, QURAN.page - 1);
       const pct = Math.round(done / QURAN_PAGES * 100);
-      azkarBody.innerHTML = `
+      azkarBody.innerHTML = `<div class="qr-wrap">
         <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px;">
           <div class="azkar-bar" style="flex:1;"><i style="width:${pct}%"></i></div>
           <span class="count-pill" dir="ltr">${done} / ${QURAN_PAGES} · ${pct}%</span>
@@ -6998,11 +7003,11 @@
             <button type="button" class="icon-btn" id="qr-go">اذهب</button>
           </span>
         </div>
-        <div id="qr-content" class="qr-text" style="min-height:200px;">${finished ? '' : '<span style="color:var(--muted); font-size:15px;">جاري التحميل…</span>'}</div>
+        <div class="qr-scroll"><div id="qr-content" class="qr-text" style="min-height:200px;">${finished ? '' : '<span style="color:var(--muted); font-size:15px;">جاري التحميل…</span>'}</div></div>
         <div class="qr-nav">
           <button type="button" class="az-timer-btn qr-sec" id="qr-prev" ${page <= 1 ? 'disabled' : ''}>→ السابقة</button>
           ${finished ? `<button type="button" class="az-timer-btn qr-sec" id="qr-new" style="flex:1;">↺ ختمة جديدة</button>` : `<button type="button" class="az-timer-btn" id="qr-done" style="flex:1;">تم ✓</button>`}
-        </div>`;
+        </div></div>`;
       document.getElementById('qr-go').addEventListener('click', () => {
         const v = parseInt(document.getElementById('qr-jump').value, 10);
         if (v >= 1 && v <= QURAN_PAGES) { QURAN.page = v; saveState(); renderAzkar(); azkarBody.scrollTop = 0; }
@@ -7038,6 +7043,7 @@
     }
     function renderAzkar() {
       azkarEnsureDay();
+      azkarModal.classList.toggle('azkar-q', azkarView === 'quran');
       azRenderTimerSlot();
       const back = document.getElementById('azkar-back');
       const title = document.getElementById('azkar-title');
@@ -7150,7 +7156,8 @@
     function setAzkarFull(on, save) {
       azkarModal.classList.toggle('azkar-full', !!on);
       const b = document.getElementById('azkar-full-btn');
-      if (b) { b.textContent = on ? '🗗' : '⛶'; b.title = on ? 'تصغير' : 'ملء الشاشة'; }
+      const AZ_ICO = { exp: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>', cmp: '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4v5H4M15 4v5h5M9 20v-5H4M15 20v-5h5"/></svg>' };
+      if (b) { b.innerHTML = on ? AZ_ICO.cmp : AZ_ICO.exp; b.title = on ? 'تصغير' : 'ملء الشاشة'; }
       if (save) { try { localStorage.setItem('azkar_full', on ? '1' : '0'); } catch (e) {} }
     }
     (function () { let v = false; try { v = localStorage.getItem('azkar_full') === '1'; } catch (e) {} setAzkarFull(v, false); })();
