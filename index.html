@@ -4888,22 +4888,36 @@
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitRowMeta(document));
     function fmt12(t) { if (!t) return ''; const [h, m] = t.split(':').map(Number); return ((h % 12) || 12) + ':' + pad2(m) + ' ' + (h < 12 ? 'AM' : 'PM'); }
 
-    // Own time picker with explicit confirm (iOS native picker auto-fills "now" the moment it opens)
-    function openTimePicker(cur, onSave) {
+    // Default start for a new time: end of the latest timed task on that day (start + duration), else 9:00 AM
+    function smartDefaultTime(dateKey, excludeId) {
+      let best = null;
+      if (dateKey) INBOX.forEach(it => {
+        if (it.id === excludeId || it.dueDate !== dateKey || !it.dueTime) return;
+        const [H, M] = it.dueTime.split(':').map(Number);
+        const end = H * 60 + M + (Number(it.mins) || 0);
+        if (best === null || end > best) best = end;
+      });
+      if (best === null) return '09:00';
+      best = Math.min(best, 23 * 60 + 55);
+      return pad2(Math.floor(best / 60)) + ':' + pad2(best % 60);
+    }
+    // iOS-style wheel time picker with explicit confirm (the native iOS picker auto-fills "now" on open)
+    function openTimePicker(cur, onSave, dateKey, excludeId) {
       const old = document.getElementById('tp-picker'); if (old) old.remove();
-      let h = 9, m = 0, ap = 'AM';
-      const src = cur || (() => { const d = new Date(); return pad2(d.getHours()) + ':' + pad2(Math.round(d.getMinutes() / 5) * 5 % 60); })();
-      { const [H, M] = src.split(':').map(Number); h = (H % 12) || 12; m = M; ap = H < 12 ? 'AM' : 'PM'; }
+      const src = cur || smartDefaultTime(dateKey, excludeId);
+      const [H0, M0] = src.split(':').map(Number);
+      const H = (H0 % 12) || 12, M = M0, AP = H0 < 12 ? 0 : 1;
+      const IH = 40;
       const ov = document.createElement('div');
       ov.className = 'modal-overlay'; ov.id = 'tp-picker'; ov.style.zIndex = '500';
-      const selStyle = 'font-size:22px; font-weight:800; padding:8px 6px; border-radius:12px; border:1px solid var(--border); background:var(--item); color:var(--text); min-width:66px; text-align:center;';
-      ov.innerHTML = `<div class="modal-box" style="max-width:320px;">
+      const col = (id, labels0, sel, w, loop) => { const labels = loop ? Array.from({ length: 7 }, () => labels0).flat() : labels0; return `<div class="tp-col" id="${id}" data-len="${labels0.length}" data-loop="${loop ? 1 : 0}" style="width:${w}px; height:${IH * 5}px; overflow-y:scroll; overscroll-behavior:contain; scroll-snap-type:y mandatory; -webkit-overflow-scrolling:touch; scrollbar-width:none; padding:${IH * 2}px 0; box-sizing:border-box; touch-action:pan-y; -webkit-mask-image:linear-gradient(transparent, #000 28%, #000 72%, transparent); mask-image:linear-gradient(transparent, #000 28%, #000 72%, transparent);">${labels.map((l, i) => `<div data-i="${i}" style="height:${IH}px; line-height:${IH}px; text-align:center; font-size:23px; font-weight:800; scroll-snap-align:center; scroll-snap-stop:always; cursor:pointer; opacity:.25;">${l}</div>`).join('')}</div>`; };
+      ov.innerHTML = `<style>.tp-col::-webkit-scrollbar{display:none}</style><div class="modal-box" style="max-width:320px;">
         <div class="modal-head"><div style="display:flex; align-items:center; gap:8px;"><span>⏰</span><h2>الساعة</h2></div><button type="button" class="icon-btn" id="tp-x">✕</button></div>
-        <div dir="ltr" style="display:flex; gap:8px; justify-content:center; align-items:center; padding:10px 0;">
-          <select id="tp-h" style="${selStyle}">${Array.from({ length: 12 }, (_, i) => i + 1).map(v => `<option ${v === h ? 'selected' : ''}>${v}</option>`).join('')}</select>
-          <span style="font-size:22px; font-weight:800;">:</span>
-          <select id="tp-m" style="${selStyle}">${Array.from({ length: 60 }, (_, i) => i).map(v => `<option value="${v}" ${v === m ? 'selected' : ''}>${pad2(v)}</option>`).join('')}</select>
-          <select id="tp-a" style="${selStyle}"><option ${ap === 'AM' ? 'selected' : ''}>AM</option><option ${ap === 'PM' ? 'selected' : ''}>PM</option></select>
+        <div dir="ltr" style="position:relative; display:flex; gap:4px; justify-content:center; padding:6px 0 10px;">
+          <div style="position:absolute; left:14px; right:14px; top:${6 + IH * 2}px; height:${IH}px; border-radius:12px; background:var(--item-hover); pointer-events:none;"></div>
+          ${col('tp-h', Array.from({ length: 12 }, (_, i) => i + 1), H - 1, 84, true)}
+          ${col('tp-m', Array.from({ length: 60 }, (_, i) => pad2(i)), M, 84, true)}
+          ${col('tp-a', ['AM', 'PM'], AP, 84, false)}
         </div>
         <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
           <button type="button" class="timer-btn" id="tp-ok">تم ✓</button>
@@ -4911,13 +4925,41 @@
           <button type="button" class="icon-btn" id="tp-cancel">إلغاء</button>
         </div></div>`;
       document.body.appendChild(ov);
+      const cols = { h: ov.querySelector('#tp-h'), m: ov.querySelector('#tp-m'), a: ov.querySelector('#tp-a') };
+      const lenOf = c => Number(c.dataset.len), isLoop = c => c.dataset.loop === '1';
+      const rawIdx = c => Math.max(0, Math.min(c.children.length - 1, Math.round(c.scrollTop / IH)));
+      const idxOf = c => rawIdx(c) % lenOf(c);
+      const lastPainted = new Map();
+      const paint = c => {
+        const pos = c.scrollTop / IH, lo = Math.max(0, Math.floor(pos) - 3), hi = Math.min(c.children.length - 1, Math.ceil(pos) + 3);
+        (lastPainted.get(c) || []).forEach(el => { el.style.opacity = '.25'; el.style.transform = 'scale(1)'; });
+        const cur = [];
+        for (let k = lo; k <= hi; k++) { const el = c.children[k], d = Math.abs(k - pos); el.style.opacity = String(Math.max(0.25, 1 - d * 0.3)); el.style.transform = d < 0.5 ? 'scale(1.08)' : 'scale(1)'; cur.push(el); }
+        lastPainted.set(c, cur);
+      };
+      [['h', H - 1], ['m', M], ['a', AP]].forEach(([k, v]) => {
+        const c = cols[k], len = lenOf(c);
+        c.scrollTop = (isLoop(c) ? len * 3 + v : v) * IH; paint(c);
+        let t = null;
+        c.addEventListener('scroll', () => {
+          requestAnimationFrame(() => paint(c));
+          if (!isLoop(c)) return;
+          clearTimeout(t);
+          t = setTimeout(() => {   // re-center on the middle copy so the wheel never hits an end
+            const r = rawIdx(c);
+            if (r < len * 2 || r >= len * 5) { c.scrollTop = (len * 3 + (r % len)) * IH; paint(c); }
+          }, 160);
+        });
+        c.addEventListener('click', e => { const it = e.target.closest('[data-i]'); if (it) c.scrollTo({ top: Number(it.dataset.i) * IH, behavior: 'smooth' }); });
+      });
       const close = () => ov.remove();
       ov.querySelector('#tp-x').onclick = close; ov.querySelector('#tp-cancel').onclick = close;
       ov.querySelector('#tp-clear').onclick = () => { close(); onSave(''); };
       ov.querySelector('#tp-ok').onclick = () => {
-        let H = Number(ov.querySelector('#tp-h').value) % 12;
-        if (ov.querySelector('#tp-a').value === 'PM') H += 12;
-        close(); onSave(pad2(H) + ':' + pad2(Number(ov.querySelector('#tp-m').value)));
+        let hh = (idxOf(cols.h) + 1) % 12;
+        if (idxOf(cols.a) === 1) hh += 12;
+        const mm = idxOf(cols.m);
+        close(); onSave(pad2(hh) + ':' + pad2(mm));
       };
     }
     function inboxTimeCtl(item) {
@@ -5264,7 +5306,7 @@
           if (tI && tL) { tL.textContent = tI.value ? '⏰ ' + fmt12(tI.value) : '⏰ الساعة'; tL.parentElement.classList.toggle('is-active', !!tI.value); }
         };
         { const tI0 = byId(`quick-inbox-time-${secId}`), tB = inboxGroupsEl.querySelector('[data-quick-time="' + secId + '"]');
-          if (tI0 && tB) tB.addEventListener('click', e => { e.stopPropagation(); openTimePicker(tI0.value, v => { tI0.value = v; sync(); }); }); }
+          if (tI0 && tB) tB.addEventListener('click', e => { e.stopPropagation(); openTimePicker(tI0.value, v => { tI0.value = v; sync(); }, (byId(`quick-inbox-date-${secId}`) || {}).value || '', 0); }); }
         box.querySelectorAll('[data-quick-day]').forEach(chip => {
           chip.addEventListener('click', e => {
             e.stopPropagation();
@@ -5319,7 +5361,7 @@
           openTimePicker(item.dueTime || '', v => {
             if (v) item.dueTime = v; else delete item.dueTime;
             saveState(); render(); renderInboxInsideModal();
-          });
+          }, item.dueDate, item.id);
         });
       });
       inboxGroupsEl.querySelectorAll('[data-edit-rep]').forEach(btn => {
@@ -6850,7 +6892,7 @@
       }
       liveDestBoxEl.innerHTML = html;
       const ti = document.getElementById('live-dest-time');
-      if (ti) ti.addEventListener('click', () => openTimePicker(liveTime, v => { liveTime = v; renderLiveDest(); }));
+      if (ti) ti.addEventListener('click', () => openTimePicker(liveTime, v => { liveTime = v; renderLiveDest(); }, liveDay || '', 0));
       const rb = document.getElementById('live-dest-rep');
       if (rb) rb.addEventListener('click', () => openRepeatPicker(liveRep, r => { liveRep = r; renderLiveDest(); }, liveDay || null));
       liveDestBoxEl.querySelectorAll('[data-dest]').forEach(b => b.addEventListener('click', () => {
