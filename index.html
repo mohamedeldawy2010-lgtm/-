@@ -7819,7 +7819,14 @@
     }
     function focusNextAzkar(smooth) {
       const el = azkarBody.querySelector('.azkar-item.is-active');
-      if (el) el.scrollIntoView({ block: 'center', behavior: smooth ? 'smooth' : 'auto' });
+      if (!el) return;
+      // put the active dikr right under the previous (done) dikr's green bar, which stays barely visible at the top
+      const body = azkarBody.getBoundingClientRect();
+      const prev = el.previousElementSibling;
+      const bar = prev && prev.classList.contains('azkar-item') ? (prev.querySelector('.azkar-count') || prev.querySelector('button')) : null;
+      const anchorTop = bar ? bar.getBoundingClientRect().top : el.getBoundingClientRect().top;
+      const top = Math.max(0, azkarBody.scrollTop + (anchorTop - body.top) - 10);
+      azkarBody.scrollTo({ top, behavior: smooth ? 'smooth' : 'auto' });
     }
     function tapAzkar(catId, itemId, all) {
       const list = AZKAR[catId] || [];
