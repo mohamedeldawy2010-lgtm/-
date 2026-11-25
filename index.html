@@ -5582,7 +5582,7 @@
                         <span class="color-dot" style="background:var(--green);"></span>
                         <div class="task-info">
                           <span class="task-title" style="color:var(--text);">${c.label}</span>
-                          <span class="completed-meta" style="color:var(--green); font-weight:700;">${toAr(c.mins)} د · ${formatCompletedTime(c.completedAt, true)}</span>
+                          <span class="completed-meta" style="color:var(--green); font-weight:700;">${c.secs != null ? fmtSecs(c.secs) : toAr(c.mins) + ' د'} · ${formatCompletedTime(c.completedAt, true)}</span>
                         </div>
                       </div>
                     `).join('');
@@ -5594,7 +5594,7 @@
                         <span class="color-dot" style="background:var(--muted);"></span>
                         <div class="task-info">
                           <span class="task-title" style="text-decoration:line-through; color:var(--muted);">${c.label}</span>
-                          <span class="completed-meta">${toAr(c.mins)} د · ${formatCompletedTime(c.completedAt, true)}</span>
+                          <span class="completed-meta">${c.secs != null ? fmtSecs(c.secs) : toAr(c.mins) + ' د'} · ${formatCompletedTime(c.completedAt, true)}</span>
                         </div>
                       </div>
                     `).join('');
@@ -6959,6 +6959,16 @@
         }
       } catch (e) {}
     }
+    function fmtSecs(sec) { sec = Math.max(0, Math.round(sec)); return sec < 60 ? sec + ' ث' : Math.floor(sec / 60) + ' د' + (sec % 60 ? ' ' + (sec % 60) + ' ث' : ''); }
+    function azLogCompleted(label, ms) {
+      try {
+        const sec = Math.max(0, Math.round((ms || 0) / 1000));
+        const logId = Date.now() + Math.floor(Math.random() * 1000);
+        COMPLETED.unshift({ logId, label, mins: Math.max(1, Math.round(sec / 60)), secs: sec, completedAt: Date.now() });
+        saveState();
+        try { render(); } catch (e) {}
+      } catch (e) {}
+    }
     const AZ_TIMERS = {};
     function azTEl(t) { return (t.acc || 0) + (t.run ? Date.now() - t.run : 0); }
     function azSyncTimers() {
@@ -7173,6 +7183,7 @@
         qrStop();
         const khatma = qrComplete(page);
         const o = { from: Math.min(QURAN.sFrom || page, page), to: QURAN.sTo || page, n: QURAN.sCount || 1, ms: QURAN.sacc || 0, khatma, total: QURAN.acc || 0 };
+        azLogCompleted(`ورد القرآن (${o.n === 1 ? 'صفحة' : o.n === 2 ? 'صفحتين' : o.n + ' صفحات'})`, o.ms);
         saveState();
         qrSummary(o);
       });
@@ -7356,7 +7367,9 @@
         azkarView = null;
         renderAzkar();
         azkarBody.scrollTop = 0;
-        azCelebrate(AZKAR_CATS.find(c => c.id === catId), t.acc);
+        const doneCat = AZKAR_CATS.find(c => c.id === catId);
+        azLogCompleted(doneCat.name, t.acc);
+        azCelebrate(doneCat, t.acc);
         return;
       }
       if (next > 0) {
