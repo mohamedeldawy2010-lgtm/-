@@ -1154,9 +1154,11 @@
     .az-ctl { display:flex; flex-direction:column; align-items:center; gap:6px; flex-shrink:0; }
     .azkar-all { border:1px solid var(--green); background:transparent; color:var(--green); border-radius:999px; padding:4px 14px; font-weight:800; font-size:12px; font-family:inherit; cursor:pointer; touch-action:manipulation; }
     .azkar-all.armed { background:var(--green); color:#fff; }
-    .az-ctl-row { display:flex; gap:8px; }
-    .az-ctl-row .azkar-count { flex:1; }
-    .azkar-item.is-long .azkar-all { padding:0 20px; border-radius:18px; font-size:14px; }
+    .azkar-del { align-self:flex-start; border:0; background:transparent; color:var(--muted); font-family:inherit; font-size:12px; font-weight:700; padding:2px 4px; cursor:pointer; }
+    .azkar-del.armed { color:var(--red); }
+    .az-ctl-row { display:flex; flex-direction:column; gap:20px; }
+    .az-ctl-row .azkar-count { width:100%; }
+    .azkar-item.is-long .azkar-all { align-self:flex-start; padding:5px 14px; border-radius:999px; font-size:12px; margin-top:4px; }
     .azkar-item.is-long { flex-direction:column; align-items:stretch; }
     .azkar-item.is-long .azkar-count { width:100%; height:58px; border-radius:18px; flex-direction:row; gap:8px; }
     .azkar-item.is-long .azkar-count small { margin-top:0; font-size:12px; }
@@ -2087,6 +2089,11 @@
           "id": "az-e30",
           "text": "سُبْحَانَ اللهِ وَبِحَمْدِهِ.",
           "count": 100
+        },
+        {
+          "id": "az-e31",
+          "text": "أَسْتَغْفِرُ اللَّهَ الْعَظِيمَ وَأَتُوبُ إِلَيْهِ",
+          "count": 100
         }
       ],
       afterprayer: [
@@ -2613,8 +2620,10 @@
       if (!saved) return base;
       Object.keys(base).forEach(k => {
         const arr = saved[k];
-        const onlySamples = !Array.isArray(arr) || arr.length === 0 || arr.every(it => it && (it.sample || /^az-[meswp]\d+$/.test(String(it.id))));
-        if (!onlySamples) base[k] = arr;
+        const isUser = it => it && /^az-u/.test(String(it.id));
+        const onlyDefaults = !Array.isArray(arr) || arr.length === 0 || arr.every(it => it && (it.sample || isUser(it) || /^az-[meswp]\d+$/.test(String(it.id))));
+        if (!onlyDefaults) base[k] = arr;
+        else if (Array.isArray(arr)) base[k] = base[k].concat(arr.filter(isUser));
       });
       return base;
     })();
@@ -6950,7 +6959,24 @@
         return l;
       } catch (e) { return null; }
     })();
+    let AZ_SOUND = (() => { try { return localStorage.getItem('az_sound') === '1'; } catch (e) { return false; } })();
+    let AZ_AC = null;
+    function azTick(n) {
+      if (!AZ_SOUND) return;
+      try {
+        AZ_AC = AZ_AC || new (window.AudioContext || window.webkitAudioContext)();
+        if (AZ_AC.state === 'suspended') AZ_AC.resume();
+        const t0 = AZ_AC.currentTime, o = AZ_AC.createOscillator(), g = AZ_AC.createGain();
+        o.type = 'sine'; o.frequency.value = n > 1 ? 880 : 620;
+        g.gain.setValueAtTime(0.0001, t0);
+        g.gain.exponentialRampToValueAtTime(0.2, t0 + 0.006);
+        g.gain.exponentialRampToValueAtTime(0.0001, t0 + (n > 1 ? 0.14 : 0.05));
+        o.connect(g); g.connect(AZ_AC.destination);
+        o.start(t0); o.stop(t0 + 0.16);
+      } catch (e) {}
+    }
     function azHaptic(n) {
+      azTick(n);
       try {
         if (navigator.vibrate) { navigator.vibrate(n > 1 ? [25, 45, 25] : 12); return; }
         if (AZ_HAPTIC_EL) {
@@ -7257,9 +7283,23 @@
             <span class="ac-main"><span class="ac-name">${c.name}</span><span class="azkar-bar"><i style="width:${pct}%"></i></span></span>
             <span class="count-pill" dir="ltr">${st.done} / ${st.total}</span>
           </button>`;
-        }).join('') + azQuranCatHtml() + `<button type="button" class="icon-btn" id="azkar-open-import" style="align-self:flex-start; margin-top:6px;">⚙️ استيراد / تعديل الأذكار</button><div dir="ltr" style="font-size:11px; color:var(--muted); opacity:.7;">build quran-v59 · Quran page ${QURAN.page}</div></div>`;
+        }).join('') + azQuranCatHtml() + `<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:4px;">
+            <button type="button" class="icon-btn" id="az-haptic-test" style="font-size:12px;">📳 اختبر الاهتزاز</button>
+            <button type="button" class="icon-btn" id="az-sound-btn" style="font-size:12px;">${AZ_SOUND ? '🔔 صوت النقر: شغال' : '🔕 صوت النقر: مقفول'}</button>
+          </div>
+          <div id="az-haptic-info" dir="ltr" style="font-size:11px; color:var(--muted); opacity:.8;">build v64</div></div>`;
         azkarBody.querySelectorAll('[data-az-open]').forEach(b => b.addEventListener('click', () => { azkarView = b.dataset.azOpen; if (azkarView === 'quran' && !QURAN.run) { QURAN.sFrom = Math.min(QURAN_PAGES, QURAN.page); QURAN.sacc = 0; saveState(); } renderAzkar(); azkarBody.scrollTop = 0; focusNextAzkar(false); }));
-        document.getElementById('azkar-open-import').addEventListener('click', () => { azkarView = 'import'; renderAzkar(); });
+        document.getElementById('az-haptic-test').addEventListener('click', () => {
+          azHaptic(2);
+          const hasV = !!navigator.vibrate, sa = !!navigator.standalone;
+          document.getElementById('az-haptic-info').textContent = `build v64 · vibrate API: ${hasV ? 'yes' : 'no'} · home-screen app: ${sa ? 'yes' : 'no'} · sound: ${AZ_SOUND ? 'on' : 'off'}`;
+        });
+        document.getElementById('az-sound-btn').addEventListener('click', () => {
+          AZ_SOUND = !AZ_SOUND;
+          try { localStorage.setItem('az_sound', AZ_SOUND ? '1' : '0'); } catch (e) {}
+          azHaptic(1);
+          renderAzkar();
+        });
         return;
       }
       if (azkarView === 'quran' || azkarView === 'quran-read') { renderQuran(); return; }
@@ -7311,15 +7351,17 @@
       items.forEach((it, i) => {
         const left = azkarLeft(it);
         const done = left === 0;
-        const isLong = String(it.text).length > 250;
+        const isLong = true; // all counters are full-width rectangles under the text
         const cbtn = `<button type="button" class="azkar-count" data-az-tap="${it.id}" dir="ltr" aria-label="عدّ">${done ? '✓' : left}${done ? '' : `<small>of ${it.count}</small>`}</button>`;
         const allBtn = (i === activeIdx && !done && it.count >= 30) ? `<button type="button" class="azkar-all" data-az-all="${it.id}">تم ✓</button>` : '';
         html += `<div class="azkar-item ${isLong ? 'is-long' : ''} ${done ? 'is-done' : ''} ${i === activeIdx ? 'is-active' : ''}" data-az-item="${it.id}">
           ${isLong ? '' : `<div class="az-ctl">${cbtn}${allBtn}</div>`}
           <div class="az-text">${escapeHtml(it.text)}${it.note ? `<span class="az-note">${escapeHtml(it.note)}</span>` : ''}</div>
+          ${/^az-u/.test(String(it.id)) ? `<button type="button" class="azkar-del" data-az-del="${it.id}">🗑 حذف</button>` : ''}
           ${isLong ? `<div class="az-ctl-row">${cbtn}${allBtn}</div>` : ''}
         </div>`;
       });
+      html += `<div id="az-add-wrap" style="margin-top:6px;"><button type="button" class="icon-btn" id="az-add-open">＋ إضافة ذكر</button></div>`;
       if (items.length && activeIdx === -1) {
         html += `<div style="text-align:center; padding:16px 8px; display:flex; flex-direction:column; gap:10px; align-items:center;">
           <div style="font-size:20px; font-weight:800; color:var(--green);">تقبّل الله منك 🤍</div>
@@ -7329,12 +7371,54 @@
       azkarBody.innerHTML = html;
       azkarBody.scrollTop = scroll;
       azkarBody.querySelectorAll('[data-az-tap]').forEach(b => b.addEventListener('click', () => tapAzkar(cat.id, b.dataset.azTap)));
+      const addOpen = document.getElementById('az-add-open');
+      if (addOpen) addOpen.addEventListener('click', () => {
+        const wrap = document.getElementById('az-add-wrap');
+        wrap.innerHTML = `<div style="display:flex; flex-direction:column; gap:8px; padding:12px; border:1px solid var(--border); border-radius:18px; background:var(--item);">
+          <textarea id="az-add-text" class="input-field" rows="4" placeholder="نص الذكر" style="width:100%; font-weight:600; line-height:1.8;"></textarea>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-weight:700; font-size:13px;">العدد</span>
+            <input type="number" id="az-add-count" class="input-field" min="1" value="1" dir="ltr" style="width:90px;">
+          </div>
+          <div style="display:flex; gap:8px;">
+            <button type="button" class="timer-btn" id="az-add-save">حفظ</button>
+            <button type="button" class="icon-btn" id="az-add-cancel">إلغاء</button>
+          </div>
+        </div>`;
+        document.getElementById('az-add-text').focus();
+        document.getElementById('az-add-cancel').addEventListener('click', () => renderAzkar());
+        document.getElementById('az-add-save').addEventListener('click', () => {
+          const text = document.getElementById('az-add-text').value.trim();
+          const count = Math.max(1, parseInt(document.getElementById('az-add-count').value, 10) || 1);
+          if (!text) { document.getElementById('az-add-text').focus(); return; }
+          if (!Array.isArray(AZKAR[cat.id])) AZKAR[cat.id] = [];
+          AZKAR[cat.id].push({ id: 'az-u' + Date.now(), text, count });
+          saveState();
+          renderAzkar();
+          azkarBody.scrollTop = azkarBody.scrollHeight;
+        });
+      });
+      azkarBody.querySelectorAll('[data-az-del]').forEach(b => {
+        let armed = null;
+        b.addEventListener('click', () => {
+          if (!armed) {
+            b.textContent = 'تأكيد الحذف؟'; b.classList.add('armed');
+            armed = setTimeout(() => { armed = null; b.textContent = '🗑 حذف'; b.classList.remove('armed'); }, 3000);
+            return;
+          }
+          clearTimeout(armed);
+          const id = b.dataset.azDel;
+          AZKAR[cat.id] = (AZKAR[cat.id] || []).filter(x => x.id !== id);
+          delete AZKAR_PROGRESS.left[id];
+          saveState(); renderAzkar();
+        });
+      });
       azkarBody.querySelectorAll('[data-az-all]').forEach(b => {
         let armed = null;
         b.addEventListener('click', () => {
           if (!armed) {
             azHaptic(1);
-            b.textContent = 'تأكيد؟';
+            b.textContent = 'اضغط تاني للتأكيد';
             b.classList.add('armed');
             armed = setTimeout(() => { armed = null; b.textContent = 'تم ✓'; b.classList.remove('armed'); }, 3000);
             return;
