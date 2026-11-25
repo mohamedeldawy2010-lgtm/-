@@ -2644,6 +2644,7 @@
     let noteViewMode = 'read';
     let openRoutineSections = {};
     ROUTINE_SECTIONS.forEach(s => { openRoutineSections[s.id] = false; });
+    const showRtnHidden = {};
 
     let currentTab = 'live';
     let promotingInboxId = null;
@@ -3711,7 +3712,7 @@
         let sX = 0, sY = 0, baseOffset = 0, swiping = false, lockChecked = false;
 
         function onStart(cx, cy, target) {
-          if (target.closest('.drag-handle') || target.closest('.color-dot-clickable') || target.closest('button')) return false;
+          if (target.closest('.drag-handle') || target.closest('.color-dot-clickable') || target.closest('button') || target.closest('label')) return false;
           sX = cx; sY = cy;
           baseOffset = (swipedNoteId === noteId) ? 176 : 0;
           swiping = false; lockChecked = false;
@@ -4239,6 +4240,187 @@
       render();
     }
 
+
+    // ===== Repeat engine (shared by Routine + Inbox) =====
+    const REP_WD_AR = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+    const REP_WD_ORDER = [6,0,1,2,3,4,5];
+    function repDN(key) { const [y, m, d] = String(key).split('-').map(Number); return Math.round(Date.UTC(y, (m || 1) - 1, d || 1) / 86400000); }
+    function repKey(dn) { const d = new Date(dn * 86400000); return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate()); }
+    function repParts(key) { const [y, m, d] = String(key).split('-').map(Number); return { y, m, d, wd: new Date(Date.UTC(y, m - 1, d)).getUTCDay() }; }
+    function repDim(y, m) { return new Date(Date.UTC(y, m, 0)).getUTCDate(); }
+    function repTodayKey() { return toDateKey(logicalToday()); }
+    function repSatStart(dn) { return dn - ((new Date(dn * 86400000).getUTCDay() + 1) % 7); }
+    function repOccursOn(rule, key, anchor) {
+      const every = Math.max(1, Number(rule.every) || 1);
+      const a = repParts(anchor), p = repParts(key);
+      const diff = repDN(key) - repDN(anchor);
+      if (diff < 0) return false;
+      if (rule.freq === 'day') return diff % every === 0;
+      if (rule.freq === 'week') {
+        const wds = (rule.wdays && rule.wdays.length) ? rule.wdays : [a.wd];
+        if (!wds.includes(p.wd)) return false;
+        return Math.round((repSatStart(repDN(key)) - repSatStart(repDN(anchor))) / 7) % every === 0;
+      }
+      if (rule.freq === 'month') {
+        const md = (p.y - a.y) * 12 + (p.m - a.m);
+        if (md < 0 || md % every) return false;
+        const days = (rule.mdays && rule.mdays.length) ? rule.mdays : [a.d];
+        const dim = repDim(p.y, p.m);
+        return days.some(x => Math.min(x, dim) === p.d);
+      }
+      if (rule.freq === 'year') {
+        const yd = p.y - a.y;
+        if (yd < 0 || yd % every) return false;
+        return p.m === a.m && Math.min(a.d, repDim(p.y, p.m)) === p.d;
+      }
+      return false;
+    }
+    function repAddUnits(key, rule) {
+      const every = Math.max(1, Number(rule.every) || 1);
+      const p = repParts(key);
+      if (rule.freq === 'day') return repKey(repDN(key) + every);
+      if (rule.freq === 'week') return repKey(repDN(key) + 7 * every);
+      let y = p.y, m = p.m;
+      if (rule.freq === 'month') { m += every; y += Math.floor((m - 1) / 12); m = ((m - 1) % 12) + 1; }
+      else { y += every; }
+      return y + '-' + pad2(m) + '-' + pad2(Math.min(p.d, repDim(y, m)));
+    }
+    // next date strictly after fromKey (completion mode: fromKey = completion date)
+    function repAfter(rule, fromKey, anchor) {
+      if (rule.mode === 'completion') return repAddUnits(fromKey, rule);
+      const base = repDN(fromKey);
+      for (let i = 1; i <= 4000; i++) {
+        const k = repKey(base + i);
+        if (repOccursOn(rule, k, anchor || fromKey)) return k;
+      }
+      return repKey(base + 1);
+    }
+    // is a routine item due on this day?
+    function repDueOn(item, key) {
+      if (!item.repeat) return true;
+      if (item.repeat.mode === 'completion') return !item.nextDue || item.nextDue <= key;
+      return repOccursOn(item.repeat, key, item.repAnchor || key);
+    }
+    function repLabel(rule) {
+      if (!rule) return 'بدون تكرار';
+      const n = Math.max(1, Number(rule.every) || 1);
+      let t = '';
+      if (rule.freq === 'day') t = n === 1 ? 'كل يوم' : `كل ${n} يوم`;
+      else if (rule.freq === 'week') {
+        const wds = (rule.wdays || []).slice().sort((a, b) => REP_WD_ORDER.indexOf(a) - REP_WD_ORDER.indexOf(b)).map(w => REP_WD_AR[w]);
+        t = (n === 1 ? 'كل أسبوع' : `كل ${n} أسابيع`) + (wds.length ? ` (${wds.join('، ')})` : '');
+      } else if (rule.freq === 'month') {
+        const md = (rule.mdays || []).slice().sort((a, b) => a - b);
+        t = (n === 1 ? 'كل شهر' : `كل ${n} شهور`) + (md.length ? ` (يوم ${md.join('، ')})` : '');
+      } else t = n === 1 ? 'كل سنة' : `كل ${n} سنين`;
+      return t + (rule.mode === 'completion' ? ' · بعد الإنجاز' : '');
+    }
+    function openRepeatPicker(current, onSave, anchorKey) {
+      const old = document.getElementById('rep-picker'); if (old) old.remove();
+      const ak = anchorKey || repTodayKey();
+      const ap = repParts(ak);
+      let r = current ? JSON.parse(JSON.stringify(current)) : null;
+      const ov = document.createElement('div');
+      ov.className = 'modal-overlay'; ov.id = 'rep-picker'; ov.style.zIndex = '400';
+      document.body.appendChild(ov);
+      const close = () => ov.remove();
+      const presets = [
+        ['none', 'بدون', null],
+        ['day', 'يوميًا', { freq: 'day', every: 1 }],
+        ['week', 'أسبوعيًا', { freq: 'week', every: 1, wdays: [ap.wd] }],
+        ['month', 'شهريًا', { freq: 'month', every: 1, mdays: [ap.d] }],
+        ['year', 'سنويًا', { freq: 'year', every: 1 }],
+        ['wk', 'أيام الأسبوع (الحد–الخميس)', { freq: 'week', every: 1, wdays: [0, 1, 2, 3, 4] }]
+      ];
+      const sameAs = pr => { if (!pr && !r) return true; if (!pr || !r) return false; return JSON.stringify({ f: pr.freq, e: pr.every, w: pr.wdays || [], m: pr.mdays || [] }) === JSON.stringify({ f: r.freq, e: r.every, w: r.wdays || [], m: r.mdays || [] }); };
+      function draw() {
+        const due = !r || r.mode !== 'completion';
+        ov.innerHTML = `<div class="modal-box" style="max-width:480px; max-height:88vh; overflow:auto;">
+          <div class="modal-head"><div style="display:flex; align-items:center; gap:8px;"><span>🔁</span><h2>التكرار</h2></div>
+            <button type="button" class="icon-btn" id="rep-x">✕</button></div>
+          <div style="display:flex; flex-direction:column; gap:12px; padding:4px 2px;">
+            <div style="display:flex; gap:6px; flex-wrap:wrap;">
+              ${presets.map(([id, name, pr]) => `<button type="button" class="keep-chip ${sameAs(pr) ? 'is-active' : ''}" data-rp="${id}">${name}</button>`).join('')}
+            </div>
+            ${r ? `
+            <div style="display:flex; gap:6px; flex-wrap:wrap; align-items:center;">
+              <span class="max-hint">النوع:</span>
+              <button type="button" class="keep-chip ${due ? 'is-active' : ''}" data-rmode="due">حسب الموعد</button>
+              <button type="button" class="keep-chip ${!due ? 'is-active' : ''}" data-rmode="completion">حسب الإنجاز</button>
+            </div>
+            <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+              <span class="max-hint">كل</span>
+              <input type="text" inputmode="numeric" class="input-field input-mins" id="rep-every" value="${r.every || 1}" style="width:70px; flex:none; text-align:center;">
+              <select id="rep-freq" class="input-field" style="width:auto; padding:8px 10px; font-size:16px; font-weight:700;">
+                ${[['day', 'يوم'], ['week', 'أسبوع'], ['month', 'شهر'], ['year', 'سنة']].map(([v, n]) => `<option value="${v}" ${r.freq === v ? 'selected' : ''}>${n}</option>`).join('')}
+              </select>
+            </div>
+            ${due && r.freq === 'week' ? `<div style="display:flex; gap:6px; flex-wrap:wrap;">
+              ${REP_WD_ORDER.map(w => `<button type="button" class="keep-chip ${(r.wdays || []).includes(w) ? 'is-active' : ''}" data-rwd="${w}">${REP_WD_AR[w]}</button>`).join('')}
+            </div>` : ''}
+            ${due && r.freq === 'month' ? `<div style="display:grid; grid-template-columns:repeat(7,1fr); gap:5px;" dir="ltr">
+              ${Array.from({ length: 31 }, (_, i) => i + 1).map(d => `<button type="button" class="keep-chip ${(r.mdays || []).includes(d) ? 'is-active' : ''}" data-rmd="${d}" style="justify-content:center; padding:7px 0;">${d}</button>`).join('')}
+            </div><span class="max-hint">لو اخترت يوم 31 وفي شهر مفيهوش، بيتنفذ آخر يوم في الشهر.</span>` : ''}
+            ${!due ? `<span class="max-hint">التكرار الجاي بيتحسب من يوم ما تخلّص المهمة فعلًا.</span>` : ''}
+            <div class="max-hint" style="font-weight:800; color:var(--blue);">${repLabel(r)}</div>` : ''}
+            <div style="display:flex; gap:8px;">
+              <button type="button" class="timer-btn" id="rep-save">حفظ</button>
+              <button type="button" class="icon-btn" id="rep-cancel">إلغاء</button>
+            </div>
+          </div></div>`;
+        ov.querySelector('#rep-x').onclick = close;
+        ov.querySelector('#rep-cancel').onclick = close;
+        ov.querySelectorAll('[data-rp]').forEach(b => b.onclick = () => {
+          const pr = presets.find(x => x[0] === b.dataset.rp)[2];
+          r = pr ? { ...JSON.parse(JSON.stringify(pr)), mode: (r && r.mode) || 'due' } : null; draw();
+        });
+        ov.querySelectorAll('[data-rmode]').forEach(b => b.onclick = () => { r.mode = b.dataset.rmode; draw(); });
+        const ev = ov.querySelector('#rep-every');
+        if (ev) ev.addEventListener('input', () => { r.every = Math.max(1, Math.min(999, parseInt(ev.value, 10) || 1)); });
+        const fq = ov.querySelector('#rep-freq');
+        if (fq) fq.addEventListener('change', () => {
+          r.freq = fq.value;
+          if (r.freq === 'week' && !(r.wdays || []).length) r.wdays = [ap.wd];
+          if (r.freq === 'month' && !(r.mdays || []).length) r.mdays = [ap.d];
+          draw();
+        });
+        ov.querySelectorAll('[data-rwd]').forEach(b => b.onclick = () => {
+          const w = Number(b.dataset.rwd); const a = r.wdays || [];
+          r.wdays = a.includes(w) ? a.filter(x => x !== w) : a.concat(w); draw();
+        });
+        ov.querySelectorAll('[data-rmd]').forEach(b => b.onclick = () => {
+          const d = Number(b.dataset.rmd); const a = r.mdays || [];
+          r.mdays = a.includes(d) ? a.filter(x => x !== d) : a.concat(d); draw();
+        });
+        ov.querySelector('#rep-save').onclick = () => {
+          if (r) {
+            r.every = Math.max(1, parseInt((ov.querySelector('#rep-every') || {}).value, 10) || r.every || 1);
+            if (r.freq === 'week' && !(r.wdays || []).length) r.wdays = [ap.wd];
+            if (r.freq === 'month' && !(r.mdays || []).length) r.mdays = [ap.d];
+            if (r.freq !== 'week') delete r.wdays;
+            if (r.freq !== 'month') delete r.mdays;
+          }
+          close(); onSave(r);
+        };
+      }
+      draw();
+    }
+    // Inbox: create the next occurrence of a repeating task (returns the new item or null)
+    function inboxSpawnNext(item) {
+      if (!item || !item.repeat) return null;
+      const today = repTodayKey();
+      const base = (item.dueDate && item.dueDate > today) ? item.dueDate : today;
+      const anchor = item.repAnchor || item.dueDate || today;
+      const nd = repAfter(item.repeat, base, anchor);
+      const c = JSON.parse(JSON.stringify(item));
+      c.id = Date.now() + Math.floor(Math.random() * 1000);
+      c.dueDate = nd; c.repAnchor = (item.repeat.mode === 'completion') ? nd : anchor;
+      delete c.todayRank; delete c.running; delete c.endAt;
+      c.remainingSec = (Number(c.mins) || 0) * 60;
+      INBOX.push(c);
+      return c;
+    }
+
     function showUndo(task, index, completedId, source) {
       lastRemoved = { task, index, completedId, source: source || 'hour' };
       const toast = document.getElementById('undo-toast');
@@ -4252,7 +4434,8 @@
 
     document.getElementById('undo-btn').addEventListener('click', () => {
       if (!lastRemoved) return;
-      const { task, index, completedId, source } = lastRemoved;
+      const { task, index, completedId, source, extraId } = lastRemoved;
+      if (extraId) INBOX = INBOX.filter(x => x.id !== extraId);
       if (source === 'inbox') INBOX.splice(Math.min(index, INBOX.length), 0, task);
       else TASKS.splice(Math.min(index, TASKS.length), 0, { ...task, completing: false });
       COMPLETED = COMPLETED.filter(c => c.logId !== completedId);
@@ -4698,11 +4881,52 @@
         if (!title || !title.offsetHeight) return;
         const cs = getComputedStyle(title);
         const lh = parseFloat(cs.lineHeight) || parseFloat(cs.fontSize) * 1.5;
-        if (title.offsetHeight > lh * 1.4) meta.classList.add('is-stacked');
+        if (title.offsetHeight > lh * 2.2) meta.classList.add('is-stacked');
       });
     }
     window.addEventListener('resize', () => fitRowMeta(document));
     if (document.fonts && document.fonts.ready) document.fonts.ready.then(() => fitRowMeta(document));
+    function fmt12(t) { if (!t) return ''; const [h, m] = t.split(':').map(Number); return ((h % 12) || 12) + ':' + pad2(m) + ' ' + (h < 12 ? 'AM' : 'PM'); }
+
+    // Own time picker with explicit confirm (iOS native picker auto-fills "now" the moment it opens)
+    function openTimePicker(cur, onSave) {
+      const old = document.getElementById('tp-picker'); if (old) old.remove();
+      let h = 9, m = 0, ap = 'AM';
+      const src = cur || (() => { const d = new Date(); return pad2(d.getHours()) + ':' + pad2(Math.round(d.getMinutes() / 5) * 5 % 60); })();
+      { const [H, M] = src.split(':').map(Number); h = (H % 12) || 12; m = M; ap = H < 12 ? 'AM' : 'PM'; }
+      const ov = document.createElement('div');
+      ov.className = 'modal-overlay'; ov.id = 'tp-picker'; ov.style.zIndex = '500';
+      const selStyle = 'font-size:22px; font-weight:800; padding:8px 6px; border-radius:12px; border:1px solid var(--border); background:var(--item); color:var(--text); min-width:66px; text-align:center;';
+      ov.innerHTML = `<div class="modal-box" style="max-width:320px;">
+        <div class="modal-head"><div style="display:flex; align-items:center; gap:8px;"><span>⏰</span><h2>الساعة</h2></div><button type="button" class="icon-btn" id="tp-x">✕</button></div>
+        <div dir="ltr" style="display:flex; gap:8px; justify-content:center; align-items:center; padding:10px 0;">
+          <select id="tp-h" style="${selStyle}">${Array.from({ length: 12 }, (_, i) => i + 1).map(v => `<option ${v === h ? 'selected' : ''}>${v}</option>`).join('')}</select>
+          <span style="font-size:22px; font-weight:800;">:</span>
+          <select id="tp-m" style="${selStyle}">${Array.from({ length: 60 }, (_, i) => i).map(v => `<option value="${v}" ${v === m ? 'selected' : ''}>${pad2(v)}</option>`).join('')}</select>
+          <select id="tp-a" style="${selStyle}"><option ${ap === 'AM' ? 'selected' : ''}>AM</option><option ${ap === 'PM' ? 'selected' : ''}>PM</option></select>
+        </div>
+        <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+          <button type="button" class="timer-btn" id="tp-ok">تم ✓</button>
+          <button type="button" class="icon-btn" id="tp-clear">مسح الساعة</button>
+          <button type="button" class="icon-btn" id="tp-cancel">إلغاء</button>
+        </div></div>`;
+      document.body.appendChild(ov);
+      const close = () => ov.remove();
+      ov.querySelector('#tp-x').onclick = close; ov.querySelector('#tp-cancel').onclick = close;
+      ov.querySelector('#tp-clear').onclick = () => { close(); onSave(''); };
+      ov.querySelector('#tp-ok').onclick = () => {
+        let H = Number(ov.querySelector('#tp-h').value) % 12;
+        if (ov.querySelector('#tp-a').value === 'PM') H += 12;
+        close(); onSave(pad2(H) + ':' + pad2(Number(ov.querySelector('#tp-m').value)));
+      };
+    }
+    function inboxTimeCtl(item) {
+      const has = !!item.dueTime;
+      return `<button type="button" data-item-time="${item.id}" title="الساعة" dir="ltr" style="border:none; flex-shrink:0; margin:0; font-family:inherit; font-size:12px; font-weight:800; line-height:1; padding:4px 7px; border-radius:9px; background:${has ? 'var(--blue-soft)' : 'var(--item-hover)'}; color:${has ? 'var(--blue)' : 'var(--text-soft)'};">${has ? fmt12(item.dueTime) : '⏰'}</button>`;
+    }
+    function inboxDateCtl(item) {
+      return `<label style="position:relative; display:inline-flex; flex-shrink:0; margin:0; overflow:hidden; contain:paint; border-radius:7px;" title="تغيير التاريخ"><span style="font-size:9px; line-height:1; padding:2px 4px; border-radius:7px; background:var(--item-hover);">📅</span><input type="date" data-today-date="${item.id}" value="${item.dueDate || ''}" style="position:absolute; left:0; top:0; width:100%; height:100%; min-width:0; max-width:100%; margin:0; padding:0; border:0; opacity:0; font-size:16px; -webkit-appearance:none; appearance:none;"></label>`;
+    }
     function renderInboxGroupsInto(inboxGroupsEl, onlySecId, openMap) {
       if (!inboxGroupsEl) return;
       const isMirror = Boolean(onlySecId);
@@ -4712,7 +4936,7 @@
       const todayKey = viewDayKey();
       const secList = isToday ? [{ id: TODAY_SEC_ID, name: 'Today', color: '#12a762' }] : INBOX_SECTIONS.filter(s => !onlySecId || s.id === onlySecId);
       inboxGroupsEl.innerHTML = secList.map((sec, secIdx) => {
-        const items = isToday ? INBOX.filter(item => item.dueDate === todayKey).sort((a, b) => (a.todayRank ?? 1e9) - (b.todayRank ?? 1e9)) : INBOX.filter(item => item.sectionId === sec.id);
+        const items = isToday ? INBOX.filter(item => item.dueDate === todayKey).sort((a, b) => (a.dueTime && b.dueTime) ? a.dueTime.localeCompare(b.dueTime) : (a.dueTime ? -1 : b.dueTime ? 1 : (a.todayRank ?? 1e9) - (b.todayRank ?? 1e9))) : INBOX.filter(item => item.sectionId === sec.id);
         const isOpen = Boolean(openMap[sec.id]);
         const todayMins = isToday ? items.reduce((sum, x) => sum + (Number(x.mins) || 0), 0) : 0;
         const todayPct = Math.min(100, Math.round(todayMins / DAY_CAP_MINS * 100));
@@ -4740,11 +4964,12 @@
                     <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
                       <input type="text" class="input-field input-name" id="quick-inbox-input-${sec.id}" placeholder="مهمة جديدة في ${sec.name}..." style="width:100%; flex:none;">
                       <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
-                        <input type="text" inputmode="numeric" class="input-field input-mins" id="quick-inbox-mins-${sec.id}" placeholder="المدة بالدقايق" style="width:auto; flex:1 1 110px;">
-                        <input type="date" class="input-field" id="quick-inbox-date-${sec.id}" style="width:auto;" title="يوم محدد (اختياري)">
+                        <input type="text" inputmode="numeric" class="input-field input-mins" id="quick-inbox-mins-${sec.id}" placeholder="المدة (دقايق)" style="width:110px; min-width:0; flex:0 0 110px; font-size:14px; padding:7px 10px;">
+                        <button type="button" class="keep-chip" data-quick-time="${sec.id}" style="margin:0; padding:6px 11px; font-size:13px; flex-shrink:0;" title="وقت المهمة"><span id="quick-time-lbl-${sec.id}">⏰ الساعة</span></button><input type="hidden" id="quick-inbox-time-${sec.id}" value="">
                       </div>
                       <div style="display:flex; gap:5px; flex-wrap:wrap;" data-quick-day-chips="${sec.id}">
-                        ${weekOrderFromToday().map(wd => { const d = nextDateForWeekday(wd); const key = toDateKey(d); const sub = dayDiff(key) === 0 ? 'Today' : fmtDateEn(d); return `<button type="button" class="keep-chip" data-quick-day="${key}" style="line-height:1.35; padding:5px 9px;">${DAY_SHORT_EN[wd]}<br><span style="font-size:10.5px; opacity:.85;">${sub}</span></button>`; }).join('')}
+                        ${weekOrderFromToday().map(wd => { const d = nextDateForWeekday(wd); const key = toDateKey(d); const sub = dayDiff(key) === 0 ? 'Today' : fmtDateEn(d); return `<button type="button" class="keep-chip" data-quick-day="${key}" style="line-height:1.25; padding:3px 8px; font-size:12px;">${DAY_SHORT_EN[wd]}<br><span style="font-size:10.5px; opacity:.85;">${sub}</span></button>`; }).join('')}
+                      <label class="keep-chip" data-quick-custom="1" style="position:relative; overflow:hidden; margin:0; line-height:1.25; padding:3px 8px; font-size:12px; font-size:13px; display:inline-flex; align-items:center;" title="اختار تاريخ تاني"><span>📅 تاريخ آخر</span><input type="date" id="quick-inbox-date-${sec.id}" style="position:absolute; left:0; top:0; width:100%; height:100%; min-width:0; max-width:100%; margin:0; padding:0; border:0; opacity:0; font-size:16px; -webkit-appearance:none; appearance:none;"></label>
                       </div>
                       <div style="display:flex; gap:6px; align-items:center;">
                         <button type="button" class="timer-btn" data-confirm-add-sec="${sec.id}">إضافة</button>
@@ -4763,10 +4988,9 @@
                             <div class="swipe-actions">
                               <button type="button" class="timer-btn" data-done-inbox="${item.id}" title="تم — تتسجل في المكتملة" style="padding:6px 10px; background:var(--green);">✓ تم</button>
                               <button type="button" class="timer-btn" data-promote="${item.id}" style="padding:6px 10px;">للساعة</button>
-                              <button type="button" class="icon-btn" data-move-sec="${item.id}" title="نقل لقسم آخر">نقل</button>
                               <button type="button" class="icon-btn del" data-del-inbox="${item.id}" title="حذف">×</button>
                             </div>
-                            <div class="swipe-content" style="transform: translate3d(${isSwiped ? '226px' : '0px'}, 0, 0);">
+                            <div class="swipe-content" style="transform: translate3d(${isSwiped ? '164px' : '0px'}, 0, 0);">
                               <div class="unified-top">
                                 <span class="drag-handle inbox-task-drag-handle" title="اسحب للترتيب">⋮⋮</span>
                                 <span class="color-dot color-dot-clickable" style="background:${(isToday ? (INBOX_SECTIONS.find(s => s.id === item.sectionId) || INBOX_SECTIONS[0]) : sec).color || '#4f75ff'};" data-move-sec="${item.id}" title="نقل لقسم آخر"></span>
@@ -4775,7 +4999,8 @@
                                 </div>
                                 <div class="row-meta">
                                   ${item.mins > 0 ? `<span class="task-dur" dir="ltr">${item.mins} min</span>` : ''}
-                                  ${isToday ? delegatePillHtml(item) : dueBadgeHtml(item)}
+                                  ${inboxTimeCtl(item)}${item.repeat ? `<span title="${repLabel(item.repeat)}" style="font-size:13px;">🔁</span>` : ''}
+                                  ${isToday ? '' : dueBadgeHtml(item)}
                                 </div>
                               </div>
                               ${item.note ? `<div class="task-note" style="padding-right:34px;">${item.note}</div>` : ''}
@@ -4785,9 +5010,14 @@
                           ${pickingDayInboxId === item.id ? dayPickerHtml(item) : ''}
                           ${editingInboxId === item.id ? `
                             <div class="promote-box" style="padding:8px 10px; background:var(--item); border-radius:12px; border:1px solid var(--border); margin-top:0;">
-                              <input type="text" class="input-field input-name" id="edit-inbox-name-${item.id}" value="${item.label}" placeholder="اسم المهمة">
-                              <input type="text" inputmode="numeric" class="input-field input-mins" id="edit-inbox-mins-${item.id}" value="" placeholder="${item.mins > 0 ? toAr(item.mins) + ' د' : 'الوقت'}">
-                              <input type="text" class="input-field" id="edit-inbox-note-${item.id}" value="${item.note || ''}" placeholder="نوت / ملاحظة (اختياري)..." style="width:100%; font-weight:400;">
+                              <input type="text" class="input-field input-name" id="edit-inbox-name-${item.id}" value="${item.label}" placeholder="اسم المهمة" style="font-size:15px; padding:8px 10px;">
+                              <input type="text" inputmode="numeric" class="input-field input-mins" id="edit-inbox-mins-${item.id}" style="font-size:15px; padding:8px 10px; width:80px;" value="" placeholder="${item.mins > 0 ? toAr(item.mins) + ' د' : 'الوقت'}">
+                              <input type="text" class="input-field" id="edit-inbox-note-${item.id}" value="${item.note || ''}" placeholder="نوت / ملاحظة (اختياري)..." style="width:100%; font-weight:400; font-size:14px; padding:7px 10px;">
+                              <div style="flex:0 0 100%; display:flex; gap:5px; align-items:center; flex-wrap:nowrap;">
+                                <input type="date" class="input-field" id="edit-inbox-date-${item.id}" value="${item.dueDate || ''}" title="اليوم (اختياري)" style="width:auto; flex:0 1 auto; min-width:0; font-size:13px; padding:5px 7px;">
+                                <button type="button" class="keep-chip" data-move-sec="${item.id}" style="font-size:12px; padding:5px 9px; flex-shrink:0;">📂 نقل</button>
+                                <button type="button" class="keep-chip ${item.repeat ? 'is-active' : ''}" data-edit-rep="${item.id}" style="font-size:12px; padding:5px 9px; flex-shrink:0;">🔁 ${item.repeat ? 'متكررة' : 'تكرار'}</button>
+                              </div>
                               <button type="button" class="timer-btn" data-save-inbox="${item.id}">حفظ</button>
                               <button type="button" class="icon-btn" data-cancel-inbox-edit="1">إلغاء</button>
                             </div>
@@ -4884,19 +5114,21 @@
         const itemId = Number(wrap.dataset.inboxSwipeId);
         if (!content) return;
 
-        let sX = 0, sY = 0, baseOffset = 0, swiping = false, lockChecked = false;
+        let sX = 0, sY = 0, baseOffset = 0, swiping = false, lockChecked = false, active = false;
 
         function onStart(cx, cy, target) {
-          if (target.closest('.drag-handle') || target.closest('.color-dot-clickable') || target.closest('button')) return false;
+          if (swipedInboxId !== itemId && (target.closest('.drag-handle') || target.closest('.color-dot-clickable') || target.closest('button') || target.closest('label'))) { active = false; return false; }
+          active = true;
           sX = cx;
           sY = cy;
-          baseOffset = (swipedInboxId === itemId) ? 226 : 0;
+          baseOffset = (swipedInboxId === itemId) ? 164 : 0;
           swiping = false;
           lockChecked = false;
           return true;
         }
 
         function onMove(cx, cy, ev) {
+          if (!active) return;
           const dx = cx - sX;
           const dy = cy - sY;
           if (!lockChecked) {
@@ -4909,19 +5141,21 @@
           }
           if (swiping) {
             if (ev && ev.cancelable) ev.preventDefault();
-            const nextX = Math.max(0, Math.min(236, baseOffset + dx));
+            const nextX = Math.max(0, Math.min(176, baseOffset + dx));
             content.style.transform = `translate3d(${nextX}px, 0, 0)`;
           }
         }
 
         function onEnd(cx) {
           wrap.classList.remove('is-swiping');
+          if (!active) return;
+          active = false;
           if (!swiping) return;
           const dx = cx - sX;
           const finalX = baseOffset + dx;
-          if (finalX > 60) {
+          if (finalX > 50) {
             swipedInboxId = itemId;
-            content.style.transform = 'translate3d(226px, 0, 0)';
+            content.style.transform = 'translate3d(164px, 0, 0)';
             inboxGroupsEl.querySelectorAll('.swipe-wrap').forEach(other => {
               if (other !== wrap) {
                 const oc = other.querySelector('.swipe-content');
@@ -4934,6 +5168,14 @@
           }
           swiping = false;
         }
+
+        // when the row is open, any tap on its visible part closes it (buttons/labels there must not fire)
+        content.addEventListener('click', e => {
+          if (swipedInboxId !== itemId) return;
+          e.stopPropagation(); e.preventDefault();
+          swipedInboxId = null;
+          content.style.transform = 'translate3d(0px, 0, 0)';
+        }, true);
 
         content.addEventListener('touchstart', e => {
           if (!e.touches || !e.touches[0]) return;
@@ -4996,6 +5238,8 @@
             if (!(mins > 0)) { showWarningToast('عشان تحدد يوم لازم تكتب مدة المهمة (أقصى 60 دقيقة)'); if (minsInp) minsInp.focus(); return; }
             if (!tryAssignDay(newItem, dayKey, mins)) return;
           }
+          const timeInpQ = byId(`quick-inbox-time-${secId}`);
+          if (timeInpQ && timeInpQ.value) newItem.dueTime = timeInpQ.value;
           INBOX.unshift(newItem);
           addingToInboxSecId = null;
           saveState();
@@ -5007,7 +5251,20 @@
       inboxGroupsEl.querySelectorAll('[data-quick-day-chips]').forEach(box => {
         const secId = box.dataset.quickDayChips;
         const dateInp = byId(`quick-inbox-date-${secId}`);
-        const sync = () => box.querySelectorAll('[data-quick-day]').forEach(c => c.classList.toggle('is-active', !!dateInp && c.dataset.quickDay === dateInp.value));
+        const sync = () => {
+          box.querySelectorAll('[data-quick-day]').forEach(c => c.classList.toggle('is-active', !!dateInp && c.dataset.quickDay === dateInp.value));
+          const lbl = box.querySelector('[data-quick-custom]');
+          if (lbl && dateInp) {
+            const isChip = Array.from(box.querySelectorAll('[data-quick-day]')).some(c => c.dataset.quickDay === dateInp.value);
+            const on = !!dateInp.value && !isChip;
+            lbl.classList.toggle('is-active', on);
+            lbl.querySelector('span').textContent = on ? '📅 ' + fmtDateEn(parseDateKey(dateInp.value)) : '📅 تاريخ آخر';
+          }
+          const tI = byId(`quick-inbox-time-${secId}`), tL = byId(`quick-time-lbl-${secId}`);
+          if (tI && tL) { tL.textContent = tI.value ? '⏰ ' + fmt12(tI.value) : '⏰ الساعة'; tL.parentElement.classList.toggle('is-active', !!tI.value); }
+        };
+        { const tI0 = byId(`quick-inbox-time-${secId}`), tB = inboxGroupsEl.querySelector('[data-quick-time="' + secId + '"]');
+          if (tI0 && tB) tB.addEventListener('click', e => { e.stopPropagation(); openTimePicker(tI0.value, v => { tI0.value = v; sync(); }); }); }
         box.querySelectorAll('[data-quick-day]').forEach(chip => {
           chip.addEventListener('click', e => {
             e.stopPropagation();
@@ -5042,6 +5299,41 @@
         });
       });
 
+      inboxGroupsEl.querySelectorAll('[data-today-date]').forEach(inp => {
+        ['click', 'pointerdown', 'touchstart', 'mousedown'].forEach(ev => inp.addEventListener(ev, e => e.stopPropagation()));
+        inp.addEventListener('change', () => {
+          const item = INBOX.find(x => x.id === Number(inp.dataset.todayDate));
+          if (!item || !inp.value) return;
+          if (dayDiff(inp.value) < 0) { showWarningToast('التاريخ ده فات — اختار النهارده أو يوم جاي'); renderInboxInsideModal(); return; }
+          if (Number(item.mins) > 0) { if (!tryAssignDay(item, inp.value, Number(item.mins))) { renderInboxInsideModal(); return; } }
+          else item.dueDate = inp.value;
+          saveState(); render(); renderInboxInsideModal();
+        });
+      });
+      inboxGroupsEl.querySelectorAll('[data-item-time]').forEach(btn => {
+        ['pointerdown', 'touchstart', 'mousedown'].forEach(ev => btn.addEventListener(ev, e => e.stopPropagation()));
+        btn.addEventListener('click', e => {
+          e.stopPropagation();
+          const item = INBOX.find(x => x.id === Number(btn.dataset.itemTime));
+          if (!item) return;
+          openTimePicker(item.dueTime || '', v => {
+            if (v) item.dueTime = v; else delete item.dueTime;
+            saveState(); render(); renderInboxInsideModal();
+          });
+        });
+      });
+      inboxGroupsEl.querySelectorAll('[data-edit-rep]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.editRep);
+          const item = INBOX.find(x => x.id === id);
+          if (!item) return;
+          openRepeatPicker(item.repeat, rule => {
+            if (rule) { item.repeat = rule; item.repAnchor = item.dueDate || repTodayKey(); }
+            else { delete item.repeat; delete item.repAnchor; }
+            saveState(); render(); renderInboxInsideModal();
+          }, item.dueDate);
+        });
+      });
       inboxGroupsEl.querySelectorAll('[data-save-inbox]').forEach(btn => {
         btn.addEventListener('click', () => {
           const id = Number(btn.dataset.saveInbox);
@@ -5056,6 +5348,18 @@
             return;
           }
           if (nameInp && nameInp.value.trim()) item.label = nameInp.value.trim();
+          const dateInpE = byId(`edit-inbox-date-${id}`);
+          if (dateInpE && dateInpE.value !== (item.dueDate || '')) {
+            if (!dateInpE.value) delete item.dueDate;
+            else {
+              if (dayDiff(dateInpE.value) < 0) { showWarningToast('التاريخ ده فات — اختار النهارده أو يوم جاي'); return; }
+              const mE = chkMins > 0 ? Math.min(60, chkMins) : (Number(item.mins) || 0);
+              if (mE > 0) { if (!tryAssignDay(item, dateInpE.value, mE)) return; }
+              else item.dueDate = dateInpE.value;
+            }
+          }
+          const timeInp = byId(`edit-inbox-time-${id}`);
+          if (timeInp) { if (timeInp.value) item.dueTime = timeInp.value; else delete item.dueTime; }
           if (noteInp) {
             const n = noteInp.value.trim();
             if (n) item.note = n;
@@ -5256,7 +5560,10 @@
           const logId = Date.now() + Math.floor(Math.random() * 1000);
           COMPLETED.unshift({ logId, label: removed.label, mins: removed.mins || 0, completedAt: Date.now() });
           swipedInboxId = null;
+          const nextClone = inboxSpawnNext(removed);
           showUndo(removed, idx, logId, 'inbox');
+          if (nextClone && lastRemoved) lastRemoved.extraId = nextClone.id;
+          if (nextClone) showInfoToast(`🔁 المرة الجاية: ${dueLabel(nextClone.dueDate).text}`);
           saveState();
           render();
           renderInboxInsideModal();
@@ -5334,6 +5641,7 @@
           const idx = INBOX.findIndex(x => x.id === id);
           if (idx === -1) return;
           const [item] = INBOX.splice(idx, 1);
+          inboxSpawnNext(item);
           const sec = INBOX_SECTIONS.find(s => s.id === item.sectionId) || INBOX_SECTIONS[0];
           TASKS.push({
             id: Date.now(),
@@ -5386,7 +5694,8 @@
       ensureTicker();
       renderNext5Mirror();
 
-      const remainingRoutineTotal = ROUTINE.filter(item => !item.doneToday).length;
+      const rtnTodayKey = repTodayKey();
+      const remainingRoutineTotal = ROUTINE.filter(item => !item.doneToday && repDueOn(item, rtnTodayKey)).length;
       document.getElementById('tab-routine').textContent = `Routine (${toAr(remainingRoutineTotal)})`;
       const inboxLauncherPill = document.getElementById('inbox-launcher-pill');
       if (inboxLauncherPill) inboxLauncherPill.textContent = toAr(INBOX.length);
@@ -5622,8 +5931,11 @@
       // Routine List grouped by sections with ▲/▼ reordering
       const routineListEl = document.getElementById('routine-list');
       routineListEl.innerHTML = ROUTINE_SECTIONS.map((sec, secIdx) => {
-        const items = ROUTINE.filter(item => (item.sectionId || ROUTINE_SECTIONS[0].id) === sec.id);
-        const remCount = items.filter(item => !item.doneToday).length;
+        const allItems = ROUTINE.filter(item => (item.sectionId || ROUTINE_SECTIONS[0].id) === sec.id);
+        const remCount = allItems.filter(item => !item.doneToday && repDueOn(item, rtnTodayKey)).length;
+        const showHid = Boolean(showRtnHidden[sec.id]);
+        const items = allItems.filter(item => showHid || editingRoutineId === item.id || (!item.doneToday && repDueOn(item, rtnTodayKey)));
+        const hiddenCnt = allItems.length - allItems.filter(item => !item.doneToday && repDueOn(item, rtnTodayKey)).length;
         const isOpen = Boolean(openRoutineSections[sec.id]);
         return `
           <div class="prio-group" data-rsec-id="${sec.id}" style="margin-bottom:10px; border-radius:16px;">
@@ -5650,13 +5962,14 @@
                   </div>
                 ` : ''}
                 ${items.length === 0
-                  ? '<div class="empty-msg" style="padding:10px;">لا توجد مهام في هذا القسم بعد.</div>'
+                  ? `<div class="empty-msg" style="padding:10px;">${allItems.length ? 'مفيش مهام ليك النهارده في القسم ده ✓' : 'لا توجد مهام في هذا القسم بعد.'}</div>`
                   : items.map((item, idx) => {
                       const isSwiped = swipedRoutineId === item.id;
                       const rSec = typeof item.remainingSec === 'number' ? item.remainingSec : item.mins * 60;
                       const durClass = item.running ? 'is-running' : (rSec === 0 ? 'is-finished' : '');
+                      const notDue = !item.doneToday && !repDueOn(item, rtnTodayKey);
                       return `
-                        <div class="inbox-item-outer">
+                        <div class="inbox-item-outer" ${notDue ? 'style="opacity:.5;"' : ''}>
                           <div class="swipe-wrap ${item.doneToday ? 'is-completing' : ''}" data-rtn-swipe-id="${item.id}">
                             <div class="swipe-actions">
                               <button type="button" class="timer-btn ${item.running ? 'is-stop' : ''}" data-rtn-timer="${item.id}" style="padding:6px 10px;">${item.running ? 'إيقاف' : 'بدء'}</button>
@@ -5667,14 +5980,14 @@
                             <div class="swipe-content" style="transform: translate3d(${isSwiped ? '220px' : '0px'}, 0, 0);">
                               <div class="unified-top">
                                 <span class="drag-handle rtn-task-drag-handle" title="اسحب للترتيب">⋮⋮</span>
-                                <div class="task-circle" data-check-routine="${item.id}" title="تعليم كمكتمل اليوم">
+                                <div class="task-circle" data-check-routine="${item.id}" title="تعليم كمكتمل اليوم" ${notDue ? 'style="pointer-events:none;"' : ''}>
                                   <svg viewBox="0 0 16 16" width="14" height="14">
                                     <path d="M3.2 8.4 L6.4 11.6 L12.8 4.4" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" />
                                   </svg>
                                 </div>
                                 <span class="color-dot color-dot-clickable" style="background:${sec.color || '#4f75ff'};" data-move-rsec="${item.id}" title="نقل لقسم آخر"></span>
                                 <div class="task-info" style="cursor: pointer;" data-edit-routine="${item.id}" title="اضغط لتعديل الاسم أو الوقت">
-                                  <span class="task-title">✏️ ${item.label}</span>
+                                  <span class="task-title">✏️ ${item.label}${item.repeat ? ` <span style="font-size:11px; font-weight:700; color:var(--blue);">🔁 ${repLabel(item.repeat)}${notDue ? (item.nextDue ? ' · الجاي ' + item.nextDue : ' · مش النهارده') : ''}</span>` : ''}</span>
                                   <div style="display:flex; align-items:center; gap:5px; flex-shrink:0;">
                                     ${item.running ? `<button type="button" class="timer-btn is-stop" data-rtn-timer="${item.id}" style="padding:2px 8px; font-size:11px;">إيقاف</button>` : ''}
                                     <span class="task-dur ${durClass}" id="rtn-dur-${item.id}">${formatDuration({ ...item, remainingSec: rSec })}</span>
@@ -5701,6 +6014,7 @@
                               <select id="edit-rtn-sec-${item.id}" class="input-field" style="padding:8px 10px; font-size:16px; font-weight:700;">
                                 ${ROUTINE_SECTIONS.map(s => `<option value="${s.id}" ${s.id === (item.sectionId || ROUTINE_SECTIONS[0].id) ? 'selected' : ''}>${s.name}</option>`).join('')}
                               </select>
+                              <button type="button" class="keep-chip ${item.repeat ? 'is-active' : ''}" data-rtn-rep="${item.id}">🔁 ${item.repeat ? repLabel(item.repeat) : 'تكرار'}</button>
                               <button type="button" class="timer-btn" data-save-rtn="${item.id}">حفظ</button>
                               <button type="button" class="icon-btn" data-cancel-rtn="1">إلغاء</button>
                             </div>
@@ -5708,11 +6022,15 @@
                         </div>
                       `;
                     }).join('')}
+                ${hiddenCnt > 0 ? `<button type="button" class="icon-btn" data-toggle-rhidden="${sec.id}" style="align-self:center; font-size:12px;">${showHid ? 'إخفاء المكتمل وغير المطلوب اليوم' : `عرض المخفي (${toAr(hiddenCnt)}) — مكتمل أو مش النهارده`}</button>` : ''}
               </div>
             ` : ''}
           </div>
         `;
       }).join('');
+      routineListEl.querySelectorAll('[data-toggle-rhidden]').forEach(b => b.addEventListener('click', () => {
+        const id = b.dataset.toggleRhidden; showRtnHidden[id] = !showRtnHidden[id]; render();
+      }));
 
       // Live tasks drag-and-drop reorder via subtle ⋮⋮ handle (instant 60fps + live neighbor displacement)
       let activeDragIdx = null;
@@ -6345,6 +6663,8 @@
           const item = ROUTINE.find(x => x.id === id);
           if (!item) return;
           item.doneToday = !item.doneToday;
+          if (item.doneToday && item.repeat && item.repeat.mode === 'completion') item.nextDue = repAfter(item.repeat, repTodayKey());
+          if (!item.doneToday) delete item.nextDue;
           if (item.doneToday) {
             const logId = Date.now() + Math.floor(Math.random() * 1000);
             item.routineLogId = logId;
@@ -6432,6 +6752,18 @@
         });
       });
 
+      routineListEl.querySelectorAll('[data-rtn-rep]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const id = Number(btn.dataset.rtnRep);
+          const item = ROUTINE.find(x => x.id === id);
+          if (!item) return;
+          openRepeatPicker(item.repeat, rule => {
+            if (rule) { item.repeat = rule; item.repAnchor = repTodayKey(); delete item.nextDue; }
+            else { delete item.repeat; delete item.repAnchor; delete item.nextDue; }
+            render();
+          });
+        });
+      });
       routineListEl.querySelectorAll('[data-save-rtn]').forEach(btn => {
         btn.addEventListener('click', () => {
           const id = Number(btn.dataset.saveRtn);
@@ -6477,7 +6809,7 @@
     const liveMinsInputEl = document.getElementById('live-mins-input');
 
     // Destination of the new task: hour (default) or inbox (folder required, day optional)
-    let liveDest = 'hour', liveSec = null, liveDay = '';
+    let liveDest = 'hour', liveSec = null, liveDay = '', liveTime = '', liveRep = null;
     const liveDestBoxEl = document.getElementById('live-dest-box');
     function hourFreeMins() {
       if (TASKS.length >= 5) return 0;
@@ -6509,16 +6841,27 @@
           <input type="date" class="input-field" id="live-dest-date" value="${liveDay}" style="width:auto;">
         </div>`;
       }
+      if (liveDest === 'inbox') {
+        html += `<div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+          <span class="max-hint">الساعة (اختياري):</span>
+          <button type="button" class="keep-chip ${liveTime ? 'is-active' : ''}" id="live-dest-time">⏰ ${liveTime ? fmt12(liveTime) : 'اختار'}</button>
+          <button type="button" class="keep-chip ${liveRep ? 'is-active' : ''}" id="live-dest-rep">🔁 ${liveRep ? repLabel(liveRep) : 'تكرار'}</button>
+        </div>`;
+      }
       liveDestBoxEl.innerHTML = html;
+      const ti = document.getElementById('live-dest-time');
+      if (ti) ti.addEventListener('click', () => openTimePicker(liveTime, v => { liveTime = v; renderLiveDest(); }));
+      const rb = document.getElementById('live-dest-rep');
+      if (rb) rb.addEventListener('click', () => openRepeatPicker(liveRep, r => { liveRep = r; renderLiveDest(); }, liveDay || null));
       liveDestBoxEl.querySelectorAll('[data-dest]').forEach(b => b.addEventListener('click', () => {
         liveDest = b.dataset.dest; renderLiveDest(); updateLiveMinsLabel();
       }));
       liveDestBoxEl.querySelectorAll('[data-dest-sec]').forEach(b => b.addEventListener('click', () => { liveSec = b.dataset.destSec; renderLiveDest(); }));
       liveDestBoxEl.querySelectorAll('[data-dest-day]').forEach(b => b.addEventListener('click', () => {
-        liveDay = (liveDay === b.dataset.destDay) ? '' : b.dataset.destDay; renderLiveDest();
+        liveDay = (liveDay === b.dataset.destDay) ? '' : b.dataset.destDay; if (!liveDay) liveTime = ''; renderLiveDest();
       }));
       const di = document.getElementById('live-dest-date');
-      if (di) di.addEventListener('change', () => { liveDay = di.value; renderLiveDest(); });
+      if (di) di.addEventListener('change', () => { liveDay = di.value; if (!liveDay) liveTime = ''; renderLiveDest(); });
     }
 
     addFormEl.addEventListener('submit', e => {
@@ -6528,7 +6871,7 @@
       if (!label) return;
       pendingLiveLabel = label;
       liveDest = hourFreeMins() > 0 ? 'hour' : 'inbox';
-      liveSec = null; liveDay = '';
+      liveSec = null; liveDay = ''; liveTime = ''; liveRep = null;
       if (liveDest === 'inbox') showInfoToast('الساعة مليانة — اختار فولدر في الإنبوكس');
       renderLiveDest();
       updateLiveMinsLabel();
@@ -6553,6 +6896,8 @@
           if (dayDiff(liveDay) < 0) { showWarningToast('التاريخ ده فات — اختار النهارده أو يوم جاي'); return; }
           if (!tryAssignDay(newItem, liveDay, mins)) return;
         }
+        if (liveTime) newItem.dueTime = liveTime;
+        if (liveRep) { newItem.repeat = liveRep; newItem.repAnchor = liveDay || repTodayKey(); }
         INBOX.unshift(newItem);
         openSections[liveSec] = true;
         const secName = (INBOX_SECTIONS.find(x => x.id === liveSec) || {}).name || '';
@@ -6575,7 +6920,7 @@
         });
       }
       pendingLiveLabel = '';
-      liveSec = null; liveDay = '';
+      liveSec = null; liveDay = ''; liveTime = ''; liveRep = null;
       document.getElementById('new-title').value = '';
       liveMinsInputEl.value = '';
       livePromptEl.classList.add('hidden');
