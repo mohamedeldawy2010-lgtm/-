@@ -1153,6 +1153,7 @@
     .azkar-item.is-done { opacity:.45; }
     .az-ctl { display:flex; flex-direction:column; align-items:center; gap:6px; flex-shrink:0; }
     .azkar-all { border:1px solid var(--green); background:transparent; color:var(--green); border-radius:999px; padding:4px 14px; font-weight:800; font-size:12px; font-family:inherit; cursor:pointer; touch-action:manipulation; }
+    .azkar-all.armed { background:var(--green); color:#fff; }
     .az-ctl-row { display:flex; gap:8px; }
     .az-ctl-row .azkar-count { flex:1; }
     .azkar-item.is-long .azkar-all { padding:0 20px; border-radius:18px; font-size:14px; }
@@ -6938,6 +6939,26 @@
     function azkarToText() {
       return AZKAR_CATS.map(c => `# ${c.name}\n` + (AZKAR[c.id] || []).map(it => `${it.count} | ${it.text}${it.note ? ' | ' + it.note : ''}`).join('\n')).join('\n\n');
     }
+    // Haptics: Android uses vibrate(); iOS Safari has no vibrate(), but toggling a switch checkbox gives a native tick.
+    const AZ_HAPTIC_EL = (() => {
+      try {
+        const l = document.createElement('label');
+        l.setAttribute('aria-hidden', 'true');
+        l.style.cssText = 'position:fixed; left:-200px; top:0; width:40px; height:30px; opacity:0.01; pointer-events:none;';
+        l.innerHTML = '<input type="checkbox" switch>';
+        document.body.appendChild(l);
+        return l;
+      } catch (e) { return null; }
+    })();
+    function azHaptic(n) {
+      try {
+        if (navigator.vibrate) { navigator.vibrate(n > 1 ? [25, 45, 25] : 12); return; }
+        if (AZ_HAPTIC_EL) {
+          AZ_HAPTIC_EL.click();
+          if (n > 1) setTimeout(() => { try { AZ_HAPTIC_EL.click(); } catch (e) {} }, 90);
+        }
+      } catch (e) {}
+    }
     const AZ_TIMERS = {};
     function azTEl(t) { return (t.acc || 0) + (t.run ? Date.now() - t.run : 0); }
     function azSyncTimers() {
@@ -6992,7 +7013,7 @@
       d.innerHTML = conf + `<div style="font-size:64px;">🎉</div><h3>مبروك! أنهيت ${cat.name}</h3><div style="color:var(--muted); font-weight:700;">الوقت</div><div class="az-time">${azFmt(ms)}</div><div style="font-weight:700;">تقبّل الله منك 🤍</div><button type="button" class="az-timer-btn" style="padding:10px 28px; font-size:15px;">تمام</button>`;
       d.querySelector('button').addEventListener('click', () => d.remove());
       box.appendChild(d);
-      try { if (navigator.vibrate) navigator.vibrate([40, 60, 40]); } catch (e) {}
+      azHaptic(2);
     }
     const QURAN_PAGES = 604;
     function qrSummary(o) {
@@ -7012,7 +7033,7 @@
         <button type="button" class="az-timer-btn" style="padding:10px 28px; font-size:15px;">تمام</button>`;
       d.querySelector('button').addEventListener('click', () => { d.remove(); azkarView = 'quran'; renderAzkar(); });
       box.appendChild(d);
-      try { if (navigator.vibrate) navigator.vibrate([30, 50, 30]); } catch (e) {}
+      azHaptic(2);
     }
     function qrElapsed() { return (QURAN.sacc || 0) + (QURAN.run ? Date.now() - QURAN.run : 0); }
     function qrStop() { if (QURAN.run) { const d = Date.now() - QURAN.run; QURAN.acc = (QURAN.acc || 0) + d; QURAN.sacc = (QURAN.sacc || 0) + d; QURAN.run = null; } }
@@ -7136,13 +7157,13 @@
       sc.addEventListener('touchend', e => { if (e.touches.length < 2) d0 = 0; });
       const bism = document.getElementById('qr-bism');
       if (bism) bism.addEventListener('click', () => {
-        try { if (navigator.vibrate) navigator.vibrate(15); } catch (e) {}
+        azHaptic(1);
         QURAN.sacc = 0; QURAN.sCount = 0; QURAN.sFrom = page; QURAN.sTo = page; QURAN.run = Date.now();
         saveState(); renderAzkar();
       });
       const nd = document.getElementById('qr-next-done');
       if (nd) nd.addEventListener('click', () => {
-        try { if (navigator.vibrate) navigator.vibrate(15); } catch (e) {}
+        azHaptic(1);
         qrComplete(page); saveState();
         QR_VIEW = page + 1; renderAzkar();
         qrToast('ما شاء الله، تمت صفحة ' + page + ' ✓');
@@ -7297,7 +7318,20 @@
       azkarBody.innerHTML = html;
       azkarBody.scrollTop = scroll;
       azkarBody.querySelectorAll('[data-az-tap]').forEach(b => b.addEventListener('click', () => tapAzkar(cat.id, b.dataset.azTap)));
-      azkarBody.querySelectorAll('[data-az-all]').forEach(b => b.addEventListener('click', () => tapAzkar(cat.id, b.dataset.azAll, true)));
+      azkarBody.querySelectorAll('[data-az-all]').forEach(b => {
+        let armed = null;
+        b.addEventListener('click', () => {
+          if (!armed) {
+            azHaptic(1);
+            b.textContent = 'تأكيد؟';
+            b.classList.add('armed');
+            armed = setTimeout(() => { armed = null; b.textContent = 'تم ✓'; b.classList.remove('armed'); }, 3000);
+            return;
+          }
+          clearTimeout(armed); armed = null;
+          tapAzkar(cat.id, b.dataset.azAll, true);
+        });
+      });
       const rc = document.getElementById('azkar-reset-cat');
       if (rc) rc.addEventListener('click', () => { delete AZ_TIMERS[cat.id]; items.forEach(it => { delete AZKAR_PROGRESS.left[it.id]; }); saveState(); renderAzkar(); azkarBody.scrollTop = 0; });
     }
@@ -7315,7 +7349,7 @@
       const next = all ? 0 : azkarLeft(item) - 1;
       AZKAR_PROGRESS.left[item.id] = next;
       saveState();
-      try { if (navigator.vibrate) navigator.vibrate(next === 0 ? 25 : 8); } catch (e) {}
+      azHaptic(next === 0 ? 2 : 1);
       const t = AZ_TIMERS[catId];
       if (!list.some(it => azkarLeft(it) > 0)) {
         if (t && !t.end) { t.acc = azTEl(t); t.run = null; t.end = true; }
