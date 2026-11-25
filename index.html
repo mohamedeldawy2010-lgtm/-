@@ -1151,6 +1151,11 @@
     .azkar-item { display:flex; align-items:center; gap:12px; padding:12px 14px; border-radius:18px; border:1px solid var(--border); background:var(--item); margin-bottom:10px; transition:opacity .2s ease, border-color .2s ease; }
     .azkar-item.is-active { border-color:var(--blue); box-shadow:0 0 0 3px var(--blue-soft); }
     .azkar-item.is-done { opacity:.45; }
+    .az-ctl { display:flex; flex-direction:column; align-items:center; gap:6px; flex-shrink:0; }
+    .azkar-all { border:1px solid var(--green); background:transparent; color:var(--green); border-radius:999px; padding:4px 14px; font-weight:800; font-size:12px; font-family:inherit; cursor:pointer; touch-action:manipulation; }
+    .az-ctl-row { display:flex; gap:8px; }
+    .az-ctl-row .azkar-count { flex:1; }
+    .azkar-item.is-long .azkar-all { padding:0 20px; border-radius:18px; font-size:14px; }
     .azkar-item.is-long { flex-direction:column; align-items:stretch; }
     .azkar-item.is-long .azkar-count { width:100%; height:58px; border-radius:18px; flex-direction:row; gap:8px; }
     .azkar-item.is-long .azkar-count small { margin-top:0; font-size:12px; }
@@ -6934,6 +6939,17 @@
       return AZKAR_CATS.map(c => `# ${c.name}\n` + (AZKAR[c.id] || []).map(it => `${it.count} | ${it.text}${it.note ? ' | ' + it.note : ''}`).join('\n')).join('\n\n');
     }
     const AZ_TIMERS = {};
+    function azTEl(t) { return (t.acc || 0) + (t.run ? Date.now() - t.run : 0); }
+    function azSyncTimers() {
+      const visible = !azkarModal.classList.contains('hidden') && !document.hidden;
+      Object.keys(AZ_TIMERS).forEach(k => {
+        const t = AZ_TIMERS[k]; if (!t || t.end) return;
+        const active = visible && k === azkarView;
+        if (active && !t.run) t.run = Date.now();
+        else if (!active && t.run) { t.acc = azTEl(t); t.run = null; }
+      });
+    }
+    document.addEventListener('visibilitychange', () => azSyncTimers());
     function azFmt(ms) { const t = Math.max(0, Math.floor(ms / 1000)); const h = Math.floor(t / 3600), m = Math.floor((t % 3600) / 60), sec = t % 60; return (h ? h + ':' + String(m).padStart(2, '0') : String(m).padStart(2, '0')) + ':' + String(sec).padStart(2, '0'); }
     function azRenderTimerSlot() {
       const slot = document.getElementById('azkar-timer-slot');
@@ -6946,20 +6962,20 @@
       if (!cat || !(AZKAR[cat.id] || []).length) { slot.innerHTML = ''; return; }
       const t = AZ_TIMERS[cat.id];
       if (!t) slot.innerHTML = `<button type="button" class="az-timer-btn" id="az-start">▶ ابدأ</button>`;
-      else if (!t.end) slot.innerHTML = `<span class="az-timer-run" id="az-timer-txt" dir="ltr">⏱ ${azFmt(Date.now() - t.start)}</span>`;
-      else slot.innerHTML = `<span class="az-timer-run" dir="ltr">✓ ${azFmt(t.end - t.start)}</span>`;
+      else if (!t.end) slot.innerHTML = `<span class="az-timer-run" id="az-timer-txt" dir="ltr">⏱ ${azFmt(azTEl(t))}</span>`;
+      else slot.innerHTML = `<span class="az-timer-run" dir="ltr">✓ ${azFmt(t.acc)}</span>`;
       const b = document.getElementById('az-start');
       if (b) b.addEventListener('click', () => {
         const items = AZKAR[cat.id] || [];
         if (!items.some(it => azkarLeft(it) > 0)) items.forEach(it => { delete AZKAR_PROGRESS.left[it.id]; });
-        AZ_TIMERS[cat.id] = { start: Date.now(), end: null };
+        AZ_TIMERS[cat.id] = { acc: 0, run: Date.now(), end: false };
         saveState(); renderAzkar(); azkarBody.scrollTop = 0; focusNextAzkar(false);
       });
     }
     setInterval(() => {
       const el = document.getElementById('az-timer-txt');
       const t = AZ_TIMERS[azkarView];
-      if (el && t && !t.end) el.textContent = '⏱ ' + azFmt(Date.now() - t.start);
+      if (el && t && !t.end) el.textContent = '⏱ ' + azFmt(azTEl(t));
       const qe = document.getElementById('qr-timer-txt');
       if (qe && QURAN.run) qe.textContent = '⏱ ' + azFmt(qrElapsed());
       const qb = document.getElementById('qr-btn-timer');
@@ -7192,6 +7208,7 @@
     }
     function renderAzkar() {
       azkarEnsureDay();
+      azSyncTimers();
       azkarModal.classList.toggle('azkar-q', azkarView === 'quran' || azkarView === 'quran-read');
       azRenderTimerSlot();
       const back = document.getElementById('azkar-back');
@@ -7264,10 +7281,11 @@
         const done = left === 0;
         const isLong = String(it.text).length > 250;
         const cbtn = `<button type="button" class="azkar-count" data-az-tap="${it.id}" dir="ltr" aria-label="عدّ">${done ? '✓' : left}${done ? '' : `<small>of ${it.count}</small>`}</button>`;
+        const allBtn = (i === activeIdx && !done && it.count >= 30) ? `<button type="button" class="azkar-all" data-az-all="${it.id}">تم ✓</button>` : '';
         html += `<div class="azkar-item ${isLong ? 'is-long' : ''} ${done ? 'is-done' : ''} ${i === activeIdx ? 'is-active' : ''}" data-az-item="${it.id}">
-          ${isLong ? '' : cbtn}
+          ${isLong ? '' : `<div class="az-ctl">${cbtn}${allBtn}</div>`}
           <div class="az-text">${escapeHtml(it.text)}${it.note ? `<span class="az-note">${escapeHtml(it.note)}</span>` : ''}</div>
-          ${isLong ? cbtn : ''}
+          ${isLong ? `<div class="az-ctl-row">${cbtn}${allBtn}</div>` : ''}
         </div>`;
       });
       if (items.length && activeIdx === -1) {
@@ -7279,6 +7297,7 @@
       azkarBody.innerHTML = html;
       azkarBody.scrollTop = scroll;
       azkarBody.querySelectorAll('[data-az-tap]').forEach(b => b.addEventListener('click', () => tapAzkar(cat.id, b.dataset.azTap)));
+      azkarBody.querySelectorAll('[data-az-all]').forEach(b => b.addEventListener('click', () => tapAzkar(cat.id, b.dataset.azAll, true)));
       const rc = document.getElementById('azkar-reset-cat');
       if (rc) rc.addEventListener('click', () => { delete AZ_TIMERS[cat.id]; items.forEach(it => { delete AZKAR_PROGRESS.left[it.id]; }); saveState(); renderAzkar(); azkarBody.scrollTop = 0; });
     }
@@ -7286,24 +7305,24 @@
       const el = azkarBody.querySelector('.azkar-item.is-active');
       if (el) el.scrollIntoView({ block: 'center', behavior: smooth ? 'smooth' : 'auto' });
     }
-    function tapAzkar(catId, itemId) {
+    function tapAzkar(catId, itemId, all) {
       const list = AZKAR[catId] || [];
       const item = list.find(it => it.id === itemId);
       if (!item) return;
       const act = list.find(it => azkarLeft(it) > 0);
       if (!act || act.id !== item.id) return; // only the current dikr counts
-      if (!AZ_TIMERS[catId]) { AZ_TIMERS[catId] = { start: Date.now(), end: null }; azRenderTimerSlot(); }
-      const next = azkarLeft(item) - 1;
+      if (!AZ_TIMERS[catId]) { AZ_TIMERS[catId] = { acc: 0, run: Date.now(), end: false }; azRenderTimerSlot(); }
+      const next = all ? 0 : azkarLeft(item) - 1;
       AZKAR_PROGRESS.left[item.id] = next;
       saveState();
       try { if (navigator.vibrate) navigator.vibrate(next === 0 ? 25 : 8); } catch (e) {}
       const t = AZ_TIMERS[catId];
       if (!list.some(it => azkarLeft(it) > 0)) {
-        if (t && !t.end) t.end = Date.now();
+        if (t && !t.end) { t.acc = azTEl(t); t.run = null; t.end = true; }
         azkarView = null;
         renderAzkar();
         azkarBody.scrollTop = 0;
-        azCelebrate(AZKAR_CATS.find(c => c.id === catId), t.end - t.start);
+        azCelebrate(AZKAR_CATS.find(c => c.id === catId), t.acc);
         return;
       }
       if (next > 0) {
@@ -7323,9 +7342,9 @@
     (function () { let v = false; try { v = localStorage.getItem('azkar_full') === '1'; } catch (e) {} setAzkarFull(v, false); })();
     document.getElementById('azkar-full-btn').addEventListener('click', () => setAzkarFull(!azkarModal.classList.contains('azkar-full'), true));
     document.getElementById('open-azkar-btn').addEventListener('click', () => { azkarView = null; renderAzkar(); azkarModal.classList.remove('hidden'); });
-    document.getElementById('close-azkar').addEventListener('click', () => { azkarModal.classList.add('hidden'); const c = azkarModal.querySelector('.az-celebrate'); if (c) c.remove(); });
+    document.getElementById('close-azkar').addEventListener('click', () => { azkarModal.classList.add('hidden'); azSyncTimers(); const c = azkarModal.querySelector('.az-celebrate'); if (c) c.remove(); });
     document.getElementById('azkar-back').addEventListener('click', () => { azkarView = azkarView === 'quran-read' ? 'quran' : null; renderAzkar(); });
-    azkarModal.addEventListener('click', e => { if (e.target === azkarModal) azkarModal.classList.add('hidden'); });
+    azkarModal.addEventListener('click', e => { if (e.target === azkarModal) { azkarModal.classList.add('hidden'); azSyncTimers(); } });
 
     // Trackers Log & Export PDF Modal
     function openTrackersLog() {
