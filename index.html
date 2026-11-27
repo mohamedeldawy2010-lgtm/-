@@ -6079,7 +6079,8 @@
       renderRoutineMirror();
 
       const rtnTodayKey = repTodayKey();
-      const remainingRoutineTotal = ROUTINE.filter(item => !item.doneToday && repDueOn(item, rtnTodayKey)).length;
+      const firstTwoSecIds = ROUTINE_SECTIONS.filter(x => x.inFilter).map(x => x.id);
+      const remainingRoutineTotal = ROUTINE.filter(item => firstTwoSecIds.includes(item.sectionId || ROUTINE_SECTIONS[0].id) && rtnShownToday(item, rtnTodayKey)).length;
       document.getElementById('tab-routine').textContent = `Routine (${toAr(remainingRoutineTotal)})`;
       const inboxLauncherPill = document.getElementById('inbox-launcher-pill');
       if (inboxLauncherPill) inboxLauncherPill.textContent = toAr(INBOX.length);
