@@ -6820,21 +6820,20 @@
         const secId = groupEl.dataset.rsecId;
         const bodyEl = groupEl.querySelector('.prio-group-body');
         if (!bodyEl) return;
+        const visIds = [...bodyEl.querySelectorAll('.inbox-item-outer')].map(el => Number(el.querySelector('[data-rtn-swipe-id]')?.dataset.rtnSwipeId));
         attachLiveSortable(
           bodyEl,
           '.inbox-item-outer',
           '.rtn-task-drag-handle',
           (from, to) => {
-            const secIndices = ROUTINE.map((x, idx) => ((x.sectionId || ROUTINE_SECTIONS[0].id) === secId ? idx : -1)).filter(idx => idx !== -1);
-            if (from < secIndices.length && to < secIndices.length) {
-              const idxA = secIndices[from];
-              const idxB = secIndices[to];
-              const tmp = ROUTINE[idxA];
-              ROUTINE[idxA] = ROUTINE[idxB];
-              ROUTINE[idxB] = tmp;
-            }
+            if (from === to || from >= visIds.length || to >= visIds.length) return;
+            const ia = ROUTINE.findIndex(x => x.id === visIds[from]);
+            const ib = ROUTINE.findIndex(x => x.id === visIds[to]);
+            if (ia < 0 || ib < 0) return;
+            const tmp = ROUTINE[ia]; ROUTINE[ia] = ROUTINE[ib]; ROUTINE[ib] = tmp;
+            const t2 = visIds[from]; visIds[from] = visIds[to]; visIds[to] = t2;
           },
-          () => render()
+          () => { saveState(); render(); }
         );
       });
 
