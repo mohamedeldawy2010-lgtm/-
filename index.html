@@ -1403,7 +1403,13 @@
         </form>
         <form class="promote-box hidden" id="live-mins-prompt" style="margin-top:10px;">
           <span class="max-hint" id="live-mins-label">الوقت (دقائق):</span>
-          <input type="text" inputmode="numeric" class="input-field input-mins" id="live-mins-input" value="" placeholder="الدقائق" required>
+          <div id="live-mins-row" style="flex:0 0 100%; display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+            <button type="button" class="keep-chip" data-qm="5">٥ د</button>
+            <button type="button" class="keep-chip" data-qm="10">١٠ د</button>
+            <button type="button" class="keep-chip" data-qm="15">١٥ د</button>
+            <button type="button" class="keep-chip" data-qm="30">٣٠ د</button>
+            <input type="text" inputmode="numeric" class="input-field input-mins" id="live-mins-input" value="" placeholder="الدقائق" required>
+          </div>
           <div id="live-dest-box" style="flex:0 0 100%; display:flex; flex-direction:column; gap:6px;"></div>
           <div style="flex:0 0 100%; display:flex; gap:8px; align-items:center;">
             <button type="submit" class="timer-btn" style="background:var(--green); color:#fff;">✓ تأكيد</button>
@@ -6039,7 +6045,33 @@
       });
       return ch;
     }
-    function render() {
+    const EDIT_SNAP = new Map();
+    function editDirtySync() {
+      const btns = [...document.querySelectorAll('[data-save-inbox],[data-save-live],[data-save-rtn]')];
+      const live = new Set();
+      btns.forEach(btn => {
+        const id = btn.dataset.saveInbox ? 'i' + btn.dataset.saveInbox : btn.dataset.saveLive ? 'l' + btn.dataset.saveLive : 'r' + btn.dataset.saveRtn;
+        live.add(id);
+        const box = btn.closest('.promote-box');
+        const ser = () => [...box.querySelectorAll('input,select')].map(e => e.value).join('\u0001') ;
+        if (!EDIT_SNAP.has(id)) EDIT_SNAP.set(id, ser());
+        const upd = () => {
+          const dirty = ser() !== EDIT_SNAP.get(id);
+          btn.disabled = !dirty;
+          btn.style.background = dirty ? '' : 'var(--item)';
+          btn.style.color = dirty ? '' : 'var(--muted)';
+          btn.style.opacity = dirty ? '' : '0.6';
+          btn.style.cursor = dirty ? '' : 'default';
+        };
+        upd();
+        if (!box._ds) { box._ds = 1; box.addEventListener('input', () => box._u && box._u()); box.addEventListener('change', () => box._u && box._u()); }
+        box._u = upd;
+      });
+      [...EDIT_SNAP.keys()].forEach(k => { if (!live.has(k)) EDIT_SNAP.delete(k); });
+    }
+    function render() { render0(); editDirtySync(); }
+    (function(){ let q=false; new MutationObserver(() => { if (q) return; q=true; requestAnimationFrame(() => { q=false; try { editDirtySync(); } catch(e){} }); }).observe(document.body, {childList:true, subtree:true}); })();
+    function render0() {
       rtnRollForward();
       saveState();
       ensureTicker();
@@ -7143,6 +7175,12 @@
     const livePromptEl = document.getElementById('live-mins-prompt');
     const liveMinsLabelEl = document.getElementById('live-mins-label');
     const liveMinsInputEl = document.getElementById('live-mins-input');
+    function liveQmSync() {
+      const v = (liveMinsInputEl.value || '').trim();
+      document.querySelectorAll('#live-mins-row [data-qm]').forEach(b => b.classList.toggle('is-active', b.dataset.qm === v));
+    }
+    document.querySelectorAll('#live-mins-row [data-qm]').forEach(b => b.addEventListener('click', () => { liveMinsInputEl.value = b.dataset.qm; liveQmSync(); }));
+    liveMinsInputEl.addEventListener('input', liveQmSync);
 
     // Destination of the new task: hour (default) or inbox (folder required, day optional)
     let liveDest = 'hour', liveSec = null, liveDay = '', liveTime = '', liveRep = null;
@@ -7211,6 +7249,7 @@
       if (liveDest === 'inbox') showInfoToast('الساعة مليانة — اختار فولدر في الإنبوكس');
       renderLiveDest();
       updateLiveMinsLabel();
+      setTimeout(liveQmSync, 0);
       liveMinsInputEl.classList.remove('hidden');
       livePromptEl.querySelector('button[type="submit"]').classList.remove('hidden');
       liveMinsInputEl.value = '';
