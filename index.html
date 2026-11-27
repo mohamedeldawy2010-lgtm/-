@@ -8004,10 +8004,12 @@
     let QR_VIEW = 1;
     function qrJuz(p) { return p <= 1 ? 1 : Math.min(30, Math.floor((p - 2) / 20) + 1); }
     function qrToast(msg) {
-      const box = azkarModal.querySelector('.modal-box');
+      const fs = document.getElementById('qr-fs');
+      const box = fs || azkarModal.querySelector('.modal-box');
       const t = document.createElement('div');
       t.className = 'az-toast';
       t.textContent = msg;
+      if (fs) t.style.cssText = 'position:fixed; left:50%; top:50%; transform:translate(-50%,-50%); z-index:100001; white-space:nowrap;';
       box.appendChild(t);
       setTimeout(() => t.remove(), 1600);
     }
@@ -8109,9 +8111,10 @@
       const nx = document.getElementById('qr-next'); if (nx) nx.addEventListener('click', () => goPage(page + 1));
       const en = document.getElementById('qr-end');
       if (en) en.addEventListener('click', () => {
-        if (page === QURAN_PAGES) { QURAN.khatmat = (QURAN.khatmat || 0) + 1; QURAN.page = 1; qrToast('ما شاء الله، ختمة مباركة 🎉 — المكان رجع لأول المصحف'); }
-        else { QURAN.page = page; qrToast('اتثبّت مكانك عند صفحة ' + page + ' 🔖'); }
-        saveState(); renderAzkar();
+        let msg;
+        if (page === QURAN_PAGES) { QURAN.khatmat = (QURAN.khatmat || 0) + 1; QURAN.page = 1; msg = 'ما شاء الله، ختمة مباركة 🎉 — المكان رجع لأول المصحف'; }
+        else { QURAN.page = page; msg = 'اتثبّت مكانك عند صفحة ' + page + ' 🔖'; }
+        saveState(); renderAzkar(); qrToast(msg);
       });
       document.getElementById('qr-fsb').addEventListener('click', () => { QR_FS = true; qrFsBuild(page, false); });
       if (QR_FS) qrFsBuild(page, false); else qrFsRemove();
@@ -8132,7 +8135,7 @@
         <div class="kh-fs-top">
           <button type="button" class="icon-btn" id="qf-exit" style="font-weight:800;">⤡ خروج</button>
           <span dir="ltr" style="font-weight:800; font-size:13px;">Page ${page}</span>
-          <span></span>
+          <span style="font-weight:800; font-size:13px; color:var(--green);">${page === QURAN.page ? '🔖 مكانك' : ''}</span>
           <span style="display:flex; gap:6px;"><button type="button" class="icon-btn" id="qf-inv">◐</button><button type="button" class="icon-btn" id="qf-zm" style="font-weight:800;">−</button><button type="button" class="icon-btn" id="qf-zp" style="font-weight:800;">+</button></span>
         </div>
         <div class="kh-fs-bot">
