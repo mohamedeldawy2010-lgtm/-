@@ -1339,6 +1339,10 @@
     .time-badge.is-over { background:var(--red-soft); color:var(--red); }
     .view-switch { display:inline-flex; gap:8px; align-items:center; }
     .view-sym { border:1.5px solid var(--border); background:transparent; color:var(--text-soft); border-radius:999px; height:32px; padding:0 14px; font-family:inherit; font-size:13px; font-weight:600; line-height:1; cursor:pointer; white-space:nowrap; transition:background .15s, color .15s, border-color .15s; }
+    .view-due { width:38px; height:38px; border-radius:50%; border:2px solid var(--red); background:var(--red-soft); color:var(--red); display:inline-flex; flex-direction:column; align-items:center; justify-content:center; gap:1px; padding:0; font-family:inherit; line-height:1; cursor:pointer; flex:0 0 38px; }
+    .view-due b { font-size:14px; font-weight:800; }
+    .view-due span { font-size:8px; font-weight:800; letter-spacing:.2px; }
+    .view-due.is-active { background:var(--red); color:#fff; }
     .view-sym.is-active { background:var(--blue); border-color:var(--blue); color:var(--on-accent); }
     .ring-btn { position:relative; width:38px; height:38px; border:none; background:transparent; padding:0; cursor:pointer; flex-shrink:0; font-family:inherit; }
     .ring-btn svg { display:block; }
@@ -4775,7 +4779,8 @@
     let DAY_CAP_MINS = (Number(_dc.mins) >= 30 && Number(_dc.mins) <= 1440) ? Math.round(Number(_dc.mins)) : 240;
     let DAY_CAP_COUNT = (Number(_dc.count) >= 1 && Number(_dc.count) <= 99) ? Math.round(Number(_dc.count)) : 15;
     function fmtCapHours(m) { const h = m / 60; return Number.isInteger(h) ? String(h) : h.toFixed(1).replace(/\.0$/, ''); }
-    let todayView = 'today'; // 'today' | 'tomorrow'
+    let todayView = 'today'; // 'overdue' | 'today' | 'tomorrow'
+    function overdueInboxItems() { const t = toDateKey(logicalToday()); return INBOX.filter(x => x.dueDate && x.dueDate < t).sort((a, b) => a.dueDate.localeCompare(b.dueDate)); }
     function viewDayKey() {
       const d = logicalToday();
       if (todayView === 'tomorrow') d.setDate(d.getDate() + 1);
@@ -5063,6 +5068,9 @@
     function inboxDateCtl(item) {
       return `<label style="position:relative; display:inline-flex; flex-shrink:0; margin:0; overflow:hidden; contain:paint; border-radius:7px;" title="تغيير التاريخ"><span style="font-size:9px; line-height:1; padding:2px 4px; border-radius:7px; background:var(--item-hover);">📅</span><input type="date" data-today-date="${item.id}" value="${item.dueDate || ''}" style="position:absolute; left:0; top:0; width:100%; height:100%; min-width:0; max-width:100%; margin:0; padding:0; border:0; opacity:0; font-size:16px; -webkit-appearance:none; appearance:none;"></label>`;
     }
+    function inboxOverdueDateCtl(item) {
+      return `<label style="position:relative; display:inline-flex; flex-shrink:0; margin:0; overflow:hidden; contain:paint; border-radius:9px;" title="غيّر الميعاد"><span dir="ltr" style="font-size:12px; font-weight:800; line-height:1; padding:4px 7px; border-radius:9px; background:var(--red-soft); color:var(--red);">📅 ${fmtDateEn(parseDateKey(item.dueDate))}</span><input type="date" data-today-date="${item.id}" value="${item.dueDate || ''}" style="position:absolute; left:0; top:0; width:100%; height:100%; min-width:0; max-width:100%; margin:0; padding:0; border:0; opacity:0; font-size:16px; -webkit-appearance:none; appearance:none;"></label>`;
+    }
     function renderInboxGroupsInto(inboxGroupsEl, onlySecId, openMap) {
       if (!inboxGroupsEl) return;
       const isMirror = Boolean(onlySecId);
@@ -5072,7 +5080,7 @@
       const todayKey = viewDayKey();
       const secList = isToday ? [{ id: TODAY_SEC_ID, name: 'Today', color: '#12a762' }] : INBOX_SECTIONS.filter(s => !onlySecId || s.id === onlySecId);
       inboxGroupsEl.innerHTML = secList.map((sec, secIdx) => {
-        const items = isToday ? INBOX.filter(item => item.dueDate === todayKey).sort((a, b) => (a.dueTime && b.dueTime) ? a.dueTime.localeCompare(b.dueTime) : (a.dueTime ? -1 : b.dueTime ? 1 : (a.todayRank ?? 1e9) - (b.todayRank ?? 1e9))) : INBOX.filter(item => item.sectionId === sec.id);
+        const items = isToday ? (todayView === 'overdue' ? overdueInboxItems() : INBOX.filter(item => item.dueDate === todayKey)).sort((a, b) => todayView === 'overdue' ? a.dueDate.localeCompare(b.dueDate) : (a.dueTime && b.dueTime) ? a.dueTime.localeCompare(b.dueTime) : (a.dueTime ? -1 : b.dueTime ? 1 : (a.todayRank ?? 1e9) - (b.todayRank ?? 1e9))) : INBOX.filter(item => item.sectionId === sec.id);
         const isOpen = Boolean(openMap[sec.id]);
         const todayMins = isToday ? items.reduce((sum, x) => sum + (Number(x.mins) || 0), 0) : 0;
         const todayPct = Math.min(100, Math.round(todayMins / DAY_CAP_MINS * 100));
@@ -5082,17 +5090,17 @@
               <div class="prio-group-title">
                 ${isMirror ? '' : '<span class="drag-handle sec-drag-handle" title="اسحب لترتيب القسم">⋮⋮</span>'}
                 <span class="color-dot" style="background:${sec.color || '#4f75ff'};"></span>
-                ${isToday ? `<span class="view-switch"><button type="button" class="view-sym ${todayView === 'today' ? 'is-active' : ''}" data-today-view="today">Today</button><button type="button" class="view-sym ${todayView === 'tomorrow' ? 'is-active' : ''}" data-today-view="tomorrow">Tomorrow</button></span>` : `<span>${sec.name}</span>`}
+                ${isToday ? `<span class="view-switch">${(() => { const oc = overdueInboxItems().length; return (oc > 0 || todayView === 'overdue') ? `<button type="button" class="view-due ${todayView === 'overdue' ? 'is-active' : ''}" data-today-view="overdue" title="متأخرة"><b>${oc}</b><span>Due</span></button>` : ''; })()}<button type="button" class="view-sym ${todayView === 'today' ? 'is-active' : ''}" data-today-view="today">Today</button><button type="button" class="view-sym ${todayView === 'tomorrow' ? 'is-active' : ''}" data-today-view="tomorrow">Tomorrow</button></span>` : `<span>${sec.name}</span>`}
               </div>
               <div class="prio-group-right" style="gap:8px;">
                 ${isToday ? '' : `<button type="button" class="gear-btn" data-add-in-sec="${sec.id}" title="إضافة مهمة في هذا القسم" style="font-weight:800; padding:2px 8px;">+</button>`}
-                ${isToday ? ringHtml('count', toAr(items.length), items.length / DAY_CAP_COUNT) + ringHtml('time', fmtRingTime(todayMins), todayMins / DAY_CAP_MINS) : `<span class="count-pill">${(sec.maxTasks > 0 ? `${toAr(items.length)}/${toAr(sec.maxTasks)}` : toAr(items.length))}</span>`}
+                ${isToday ? (todayView === 'overdue' ? `<span class="count-pill" style="color:var(--red);">${toAr(items.length)}</span>` : ringHtml('count', toAr(items.length), items.length / DAY_CAP_COUNT) + ringHtml('time', fmtRingTime(todayMins), todayMins / DAY_CAP_MINS)) : `<span class="count-pill">${(sec.maxTasks > 0 ? `${toAr(items.length)}/${toAr(sec.maxTasks)}` : toAr(items.length))}</span>`}
                 <span class="group-arrow">${isOpen ? '▼' : '◀'}</span>
               </div>
             </div>
             ${isOpen ? `
               <div class="prio-group-body">
-                ${isToday && items.length > 0 ? `
+                ${isToday && todayView !== 'overdue' && items.length > 0 ? `
                   <div style="height:5px; border-radius:999px; background:var(--item-hover); overflow:hidden;"><div style="height:100%; width:${todayPct}%; background:${todayPct >= 100 ? 'var(--red)' : 'var(--blue)'};"></div></div>
                 ` : ''}
                 ${addingToInboxSecId === sec.id ? `
@@ -5115,7 +5123,7 @@
                   </div>
                 ` : ''}
                 ${items.length === 0
-                  ? (isToday ? `<div class="empty-msg" style="padding:10px;">مفيش مهام ليها ${todayView === 'tomorrow' ? 'بكرة' : 'النهارده'} — حدد يوم لأي مهمة في الانبوكس وهتظهر هنا لوحدها.</div>` : '<div class="empty-msg" style="padding:10px;">لا توجد مهام في هذا القسم بعد.</div>')
+                  ? (isToday ? (todayView === 'overdue' ? `<div class="empty-msg" style="padding:10px;">مفيش مهام متأخرة ✓</div>` : '') + (todayView === 'overdue' ? '' : `<div class="empty-msg" style="padding:10px;">مفيش مهام ليها ${todayView === 'tomorrow' ? 'بكرة' : 'النهارده'} — حدد يوم لأي مهمة في الانبوكس وهتظهر هنا لوحدها.</div>`) : '<div class="empty-msg" style="padding:10px;">لا توجد مهام في هذا القسم بعد.</div>')
                   : items.map((item, idx) => {
                       const isSwiped = swipedInboxId === item.id;
                       return `
@@ -5136,7 +5144,7 @@
                                 <div class="row-meta">
                                   ${item.mins > 0 ? `<span class="task-dur" dir="ltr">${item.mins} min</span>` : ''}
                                   ${inboxTimeCtl(item)}${item.repeat ? `<span title="${repLabel(item.repeat)}" style="font-size:13px;">🔁</span>` : ''}
-                                  ${isToday ? '' : dueBadgeHtml(item)}
+                                  ${isToday ? (todayView === 'overdue' ? inboxOverdueDateCtl(item) : '') : dueBadgeHtml(item)}
                                 </div>
                               </div>
                               ${item.note ? `<div class="task-note" style="padding-right:34px;">${item.note}</div>` : ''}
@@ -5842,6 +5850,8 @@
       }
       render();
     }
+    // routine item is visible today if not done, due today, and not already sent to the hour today
+    function rtnShownToday(item, key) { return !item.doneToday && repDueOn(item, key) && item.hourDay !== key; }
     function rtnToHour(id) {
       if (TASKS.length >= 5) { showWarningToast('وصلت للحد الأقصى (5 مهام في الساعة)'); return; }
       const totalTasksMins = TASKS.reduce((a, t) => a + t.mins, 0);
@@ -5851,6 +5861,7 @@
       const mins = Math.min(60, item.mins);
       noteOverHour(totalTasksMins + mins);
       TASKS.push({ id: Date.now() + Math.floor(Math.random() * 1000), label: item.label, mins, color: nextDistinctColor(), remainingSec: mins * 60, running: false, endAt: null, completing: false });
+      item.hourDay = repTodayKey();
       showInfoToast('اتنقلت للساعة');
       render();
     }
@@ -5886,7 +5897,7 @@
       const secOf = it => ROUTINE_SECTIONS.find(sc => sc.id === (it.sectionId || ROUTINE_SECTIONS[0].id)) || ROUTINE_SECTIONS[0];
       const items = [];
       ROUTINE_SECTIONS.filter(sc => sc.inFilter).forEach(sc => ROUTINE.forEach(it => {
-        if (secOf(it).id === sc.id && !it.doneToday && repDueOn(it, today)) items.push(it);
+        if (secOf(it).id === sc.id && rtnShownToday(it, today)) items.push(it);
       }));
       const mins = items.reduce((a, it) => a + (Number(it.mins) || 0), 0);
       box.innerHTML = `<div class="prio-group" style="margin-bottom:0;">
@@ -6009,7 +6020,20 @@
     }
 
     // Main App Render
+    // Routine items repeating "after completion": if the due date was missed, skip it and move to the next occurrence (no overdue).
+    function rtnRollForward() {
+      const today = repTodayKey(); let ch = false;
+      ROUTINE.forEach(it => {
+        if (it.repeat && it.repeat.mode === 'completion' && it.nextDue && it.nextDue < today && !it.doneToday) {
+          let k = it.nextDue, guard = 0;
+          while (k < today && guard++ < 4000) k = repAddUnits(k, it.repeat);
+          it.nextDue = k; ch = true;
+        }
+      });
+      return ch;
+    }
     function render() {
+      rtnRollForward();
       saveState();
       ensureTicker();
       renderNext5Mirror();
@@ -6253,10 +6277,10 @@
       // Routine List grouped by sections with ▲/▼ reordering
       const routineListEl = document.getElementById('routine-list');
       routineListEl.innerHTML = ROUTINE_SECTIONS.map((sec, secIdx) => {
-        const allItems = ROUTINE.filter(item => (item.sectionId || ROUTINE_SECTIONS[0].id) === sec.id);
-        const remCount = allItems.filter(item => !item.doneToday && repDueOn(item, rtnTodayKey)).length;
+        const allItems = ROUTINE.filter(item => (item.sectionId || ROUTINE_SECTIONS[0].id) === sec.id && item.hourDay !== rtnTodayKey);
+        const remCount = allItems.filter(item => rtnShownToday(item, rtnTodayKey)).length;
         const showHid = Boolean(showRtnHidden[sec.id]);
-        const items = allItems.filter(item => showHid || editingRoutineId === item.id || (!item.doneToday && repDueOn(item, rtnTodayKey)));
+        const items = allItems.filter(item => showHid || editingRoutineId === item.id || rtnShownToday(item, rtnTodayKey));
         const hiddenCnt = allItems.length - allItems.filter(item => !item.doneToday && repDueOn(item, rtnTodayKey)).length;
         const isOpen = Boolean(openRoutineSections[sec.id]);
         return `
@@ -7051,6 +7075,7 @@
             endAt: null,
             completing: false
           });
+          item.hourDay = repTodayKey();
           switchTab('live');
         });
       });
