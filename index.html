@@ -8012,12 +8012,14 @@
       });
       const locate = () => {
         const el = list.querySelector('.qr-row.cur') || list.querySelector('.qr-row:last-child');
-        if (el) el.scrollIntoView({ block: 'center' });
+        if (el && list.clientHeight) list.scrollTop = el.offsetTop - list.offsetTop - (list.clientHeight - el.offsetHeight) / 2;
       };
       document.getElementById('qr-locate').addEventListener('click', locate);
       const nb = document.getElementById('qr-new');
       if (nb) nb.addEventListener('click', () => { QURAN.page = 1; QURAN.acc = 0; QURAN.sacc = 0; QURAN.sFrom = 1; QURAN.run = null; saveState(); renderAzkar(); });
       locate();
+      requestAnimationFrame(locate);
+      setTimeout(locate, 120);
     }
     function renderQuranRead() {
       const page = Math.min(QURAN_PAGES, Math.max(1, QR_VIEW));
