@@ -1154,6 +1154,7 @@
     .kh-text .kh-n { white-space:nowrap; }
     .kh-fs { position:fixed; inset:0; z-index:99999; background:var(--card); display:flex; flex-direction:column; }
     .kh-fs-scroll { flex:1 1 auto; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch; padding:max(env(safe-area-inset-top), 22px) 18px max(env(safe-area-inset-bottom), 30px); box-sizing:border-box; }
+    .kh-fs #qr-fs-content .qr-img { width:calc((100vw - 36px) * var(--qz, 1)); }
     .kh-fs-scroll.is-blur .kh-text { filter: blur(12px); pointer-events:none; }
     .kh-fs-top, .kh-fs-bot { position:absolute; left:0; right:0; display:flex; align-items:center; gap:8px; padding:10px 14px; background:var(--card); box-shadow:0 0 18px rgba(0,0,0,.18); transition:transform .22s ease, opacity .22s ease; box-sizing:border-box; }
     .kh-fs-top { top:0; padding-top:max(env(safe-area-inset-top), 10px); justify-content:space-between; transform:translateY(-110%); opacity:0; }
@@ -8096,7 +8097,7 @@
       const o = document.createElement('div');
       o.id = 'qr-fs'; o.className = 'kh-fs';
       const c = document.getElementById('qr-content');
-      o.innerHTML = `<div class="kh-fs-scroll ${running || QURAN.paused ? '' : 'is-blur'}" id="qr-fs-scroll" style="--qz:${QR_ZOOM}; --qzp:1; touch-action: pan-x pan-y;"><div id="qr-fs-content" class="qr-text">${c ? c.innerHTML : ''}</div></div>
+      o.innerHTML = `<div class="kh-fs-scroll ${running || QURAN.paused ? '' : 'is-blur'}" id="qr-fs-scroll" style="--qz:${QR_ZOOM}; direction:ltr; overflow:auto; touch-action: pan-x pan-y;"><div id="qr-fs-content" class="qr-text" style="width:max-content; min-width:100%;">${c ? c.innerHTML : ''}</div></div>
         <div class="kh-fs-top">
           <button type="button" class="icon-btn" id="qf-exit" style="font-weight:800;">⤡ خروج</button>
           <span dir="ltr" style="font-weight:800; font-size:13px;">Page ${page}</span>
@@ -8109,7 +8110,15 @@
         </div>`;
       azkarModal.appendChild(o);
       const sc = o.querySelector('#qr-fs-scroll');
-      const setZoom = z => { QR_ZOOM = Math.min(4, Math.max(1, Math.round(z * 20) / 20)); sc.style.setProperty('--qz', QR_ZOOM); try { localStorage.setItem('quran_zoom', String(QR_ZOOM)); } catch (e) {} };
+      const setZoom = z => {
+        const w0 = sc.scrollWidth, h0 = sc.scrollHeight, fit = QR_ZOOM <= 1 || w0 <= sc.clientWidth + 1 || sc.scrollLeft + sc.clientWidth >= w0 - 2;
+        const cx = fit ? 1 : (sc.scrollLeft + sc.clientWidth / 2) / w0, cy = (sc.scrollTop + sc.clientHeight / 2) / h0;
+        QR_ZOOM = Math.min(4, Math.max(1, Math.round(z * 20) / 20)); sc.style.setProperty('--qz', QR_ZOOM);
+        try { localStorage.setItem('quran_zoom', String(QR_ZOOM)); } catch (e) {}
+        sc.scrollLeft = fit ? sc.scrollWidth : cx * sc.scrollWidth - sc.clientWidth / 2;
+        sc.scrollTop = cy * sc.scrollHeight - sc.clientHeight / 2;
+      };
+      if (QR_ZOOM > 1) setTimeout(() => { sc.scrollLeft = sc.scrollWidth; }, 60);
       const hide = () => o.classList.remove('show-bars');
       const arm = () => { clearTimeout(QR_FS_T); if (running) QR_FS_T = setTimeout(hide, 3500); };
       const show = () => { o.classList.add('show-bars'); arm(); };
