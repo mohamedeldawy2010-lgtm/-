@@ -1362,7 +1362,8 @@
     .live-head .hour-clock b { color:var(--blue); font-weight:800; }
     .live-head .hour-clock small { color:var(--muted); font-size:12px; font-weight:600; }
     .live-head [hidden] { display:none !important; }
-  </style>
+  #toggle-completed.on{background:var(--green); color:#fff !important;}
+</style>
 </head>
 <body>
   <div class="container">
@@ -1421,6 +1422,7 @@
       <!-- Bottom Corner Icon Actions -->
       <div class="footer-actions" style="margin-top:0; padding-top:0; border-top:none; justify-content:flex-end;">
         <div style="display:flex; gap:6px; align-items:center;">
+          <button type="button" class="icon-btn" id="toggle-completed" title="المهام المكتملة (آخر 48 ساعة)" style="padding:0; width:34px; height:34px; border-radius:50%; font-size:13px; font-weight:800; color:var(--green); border:1.5px solid var(--green);">0</button>
           <button type="button" class="icon-btn" id="open-backup-btn" title="نقل أو حفظ نسخة احتياطية" style="padding:6px 10px; font-size:15px;">💾</button>
           <button type="button" class="icon-btn" id="refresh-app-btn" title="تحديث نسخة التطبيق" style="padding:6px 10px; font-size:15px;">↻</button>
         </div>
@@ -1429,6 +1431,11 @@
 
     <!-- 2. ROUTINE VIEW -->
     <div id="view-routine" class="hidden container" style="margin:0; gap:14px;">
+      <!-- Azkar / Quran khatma shortcuts -->
+      <div style="display:flex; gap:10px;">
+        <button type="button" id="open-azkar-btn" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:16px 10px; border-radius:22px; border:1px solid var(--border); background:var(--card); color:var(--text); font-family:inherit; font-size:16px; font-weight:800; cursor:pointer;">🤲 الأذكار</button>
+        <button type="button" id="open-quran-btn" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:16px 10px; border-radius:22px; border:1px solid var(--border); background:var(--card); color:var(--text); font-family:inherit; font-size:16px; font-weight:800; cursor:pointer;">📖 ختمة القرآن</button>
+      </div>
       <!-- Trackers Card inside Routine (Progress Rings + Next Up Controls) -->
       <div class="prio-group" style="margin-bottom:0;">
         <div class="prio-group-header">
@@ -1438,12 +1445,11 @@
             <button type="button" class="gear-btn" id="open-trackers-settings-btn-2" title="إعدادات العدادات">⚙️</button>
           </div>
           <div class="prio-group-right">
-            <button type="button" class="icon-btn" id="open-azkar-btn" style="background: var(--card); font-weight: 700; padding: 4px 10px;">🤲 الأذكار</button>
             <button type="button" class="icon-btn" id="open-trackers-log-btn" style="background: var(--card); font-weight: 700; padding: 4px 10px;">📊 السجل</button>
-            <span class="group-arrow" id="toggle-trackers-btn" style="cursor:pointer; padding:2px 4px;">▼</span>
+            <span class="group-arrow" id="toggle-trackers-btn" style="cursor:pointer; padding:2px 4px;">◀</span>
           </div>
         </div>
-        <div class="prio-group-body" id="trackers-body">
+        <div class="prio-group-body hidden" id="trackers-body">
           <div class="task-list" id="routine-trackers-list"></div>
         </div>
       </div>
@@ -2668,7 +2674,7 @@
     let TRACKERS = state.trackers;
     let TRACKERS_LOGS = state.trackersLogs;
 
-    let trackersOpen = true;
+    let trackersOpen = false;
     let completedOpen = false;
     let openSections = {};
     INBOX_SECTIONS.forEach(s => { openSections[s.id] = false; });
@@ -6211,18 +6217,8 @@
 
       const completedBox = document.getElementById('completed-box');
       completedBox.innerHTML = `
-        <div class="prio-group-header" id="toggle-completed" style="cursor:pointer;">
-          <div class="prio-group-title">
-            <span class="color-dot" style="background:var(--green);"></span>
-            <span>المهام المكتملة (48 ساعة)</span>
-          </div>
-          <div class="prio-group-right">
-            <span class="count-pill">${toAr(total48Count)}</span>
-            <span class="group-arrow">${completedOpen ? '▼' : '◀'}</span>
-          </div>
-        </div>
         ${completedOpen ? `
-          <div class="prio-group-body">
+          <div class="prio-group-body" style="margin-bottom:10px;">
             <div class="today-summary" style="flex-direction:column; align-items:stretch; gap:6px;">
               <div style="display:flex; justify-content:space-between; align-items:center; gap:8px;">
                 <span>إنجاز اليوم</span>
@@ -6270,10 +6266,13 @@
         ` : ''}
       `;
 
-      document.getElementById('toggle-completed').addEventListener('click', () => {
+      const tcBtn = document.getElementById('toggle-completed');
+      tcBtn.textContent = toAr(total48Count);
+      tcBtn.classList.toggle('on', completedOpen);
+      tcBtn.onclick = () => {
         completedOpen = !completedOpen;
         render();
-      });
+      };
 
       // Routine List grouped by sections with ▲/▼ reordering
       const routineListEl = document.getElementById('routine-list');
@@ -8210,7 +8209,7 @@
             <span class="ac-main"><span class="ac-name">${c.name}</span><span class="azkar-bar"><i style="width:${pct}%"></i></span></span>
             <span class="count-pill" dir="ltr">${st.done} / ${st.total}</span>
           </button>`;
-        }).join('') + azJumuaCatHtml() + azQuranCatHtml() + `<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:4px;">
+        }).join('') + azJumuaCatHtml() + `<div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-top:4px;">
             <button type="button" class="icon-btn" id="az-sound-btn" style="font-size:12px;">${AZ_SOUND ? '🔔 صوت النقر: شغال' : '🔕 صوت النقر: مقفول'}</button>
           </div></div>`;
         azkarBody.querySelectorAll('[data-az-open]').forEach(b => b.addEventListener('click', () => { azkarView = b.dataset.azOpen; if (azkarView === 'quran' && !QURAN.run && !QURAN.paused) { QURAN.sFrom = Math.min(QURAN_PAGES, QURAN.page); QURAN.sacc = 0; saveState(); } renderAzkar(); azkarBody.scrollTop = 0; focusNextAzkar(false); }));
@@ -8402,9 +8401,14 @@
     }
     (function () { let v = false; try { v = localStorage.getItem('azkar_full') === '1'; } catch (e) {} setAzkarFull(v, false); })();
     document.getElementById('azkar-full-btn').addEventListener('click', () => setAzkarFull(!azkarModal.classList.contains('azkar-full'), true));
+    document.getElementById('open-quran-btn').addEventListener('click', () => {
+      azkarView = 'quran';
+      if (!QURAN.run && !QURAN.paused) { QURAN.sFrom = Math.min(QURAN_PAGES, QURAN.page); QURAN.sacc = 0; saveState(); }
+      renderAzkar(); azkarModal.classList.remove('hidden');
+    });
     document.getElementById('open-azkar-btn').addEventListener('click', () => { azkarView = null; renderAzkar(); azkarModal.classList.remove('hidden'); });
     document.getElementById('close-azkar').addEventListener('click', () => { azkarModal.classList.add('hidden'); azSyncTimers(); const c = azkarModal.querySelector('.az-celebrate'); if (c) c.remove(); });
-    document.getElementById('azkar-back').addEventListener('click', () => { azkarView = azkarView === 'quran-read' ? 'quran' : (azkarView === 'jumua-kahf' || azkarView === 'jumua-salawat') ? 'jumua' : null; renderAzkar(); });
+    document.getElementById('azkar-back').addEventListener('click', () => { if (azkarView === 'quran') { azkarModal.classList.add('hidden'); azkarView = null; azSyncTimers(); return; } azkarView = azkarView === 'quran-read' ? 'quran' : (azkarView === 'jumua-kahf' || azkarView === 'jumua-salawat') ? 'jumua' : null; renderAzkar(); });
     azkarModal.addEventListener('click', e => { if (e.target === azkarModal) { azkarModal.classList.add('hidden'); azSyncTimers(); } });
 
     // Trackers Log & Export PDF Modal
