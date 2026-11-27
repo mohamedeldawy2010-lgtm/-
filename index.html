@@ -437,26 +437,26 @@
       margin-right: 36px;
       display: flex;
       align-items: center;
-      justify-content: flex-end; /* RTL: flex-end = physical left */
-      gap: 6px;
-      padding: 4px 10px;
+      gap: 8px;
+      padding: 6px 2px;
       min-height: 28px;
       border: none;
       border-radius: 10px;
       cursor: pointer;
       font-family: inherit;
       color: var(--text);
-      background: linear-gradient(to left, color-mix(in srgb, var(--tc) 30%, transparent) var(--pct), var(--item-hover) var(--pct));
-      box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--tc) 35%, transparent);
+      background: transparent;
       -webkit-tap-highlight-color: transparent;
       transition: transform .12s ease;
     }
     .live-time-bar:active { transform: scale(.985); }
-    .live-time-bar .ltb-icon { font-size: 11px; color: var(--tc); }
-    .live-time-bar .task-dur { background: transparent; border: none; padding: 0; font-size: 12.5px; color: var(--text); }
-    .live-time-bar .task-dur.is-running { background: transparent; color: var(--red); }
+    .live-time-bar .ltb-icon { font-size: 12px; color: var(--tc); flex-shrink: 0; width: 14px; text-align: center; }
+    .live-time-bar .ltb-track { display: block; flex: 1; height: 5px; border-radius: 999px; overflow: hidden; background: color-mix(in srgb, var(--tc) 18%, transparent); }
+    .live-time-bar .ltb-fill { display: block; height: 100%; width: var(--pct); border-radius: 999px; background: var(--tc); transition: width 1s linear; }
+    .live-time-bar .task-dur { background: transparent; border: none; padding: 0; font-size: 12.5px; font-weight: 800; color: var(--text); flex-shrink: 0; }
+    .live-time-bar .task-dur.is-running { background: transparent; color: var(--tc); }
     .live-time-bar .task-dur.is-finished { background: transparent; color: var(--green); }
-    .live-time-bar.is-running { box-shadow: inset 0 0 0 1.5px var(--red); }
+    .live-time-bar.is-running .ltb-fill { box-shadow: 0 0 8px color-mix(in srgb, var(--tc) 70%, transparent); }
     .unified-bar-row {
       display: flex;
       align-items: center;
@@ -1377,6 +1377,7 @@
 
         <!-- Live mirror of the "Next 5" Inbox partition -->
         <div id="next5-mirror" style="margin-top:12px;"></div>
+        <div id="routine-mirror" style="margin-top:12px;"></div>
       </div>
 
       <!-- Card 5: Completed Log (48h rolling) -->
@@ -3978,12 +3979,21 @@
         <div style="background:var(--item); padding:10px 12px; border-radius:12px; border:1px solid var(--border); display:flex; align-items:center; gap:6px;">
           <input type="color" value="${sec.color || '#4f75ff'}" data-rsec-color="${sec.id}" style="width:30px; height:30px; border:none; border-radius:8px; cursor:pointer; background:transparent; flex-shrink:0;">
           <input type="text" value="${sec.name}" data-rsec-name="${sec.id}" class="input-field" style="flex:1; min-width:0; padding:6px 10px; font-size:16px; font-weight:700;">
+          <button type="button" class="icon-btn ${sec.inFilter ? 'is-active' : ''}" data-rsec-pin="${sec.id}" title="يظهر في فلتر الروتين" style="padding:5px 7px; ${sec.inFilter ? 'background:var(--blue-soft); color:var(--blue);' : 'opacity:.6;'}">📌</button>
           <button type="button" class="icon-btn" data-rsec-up="${idx}" ${idx === 0 ? 'disabled' : ''} title="تحريك لأعلى" style="padding:5px 7px;">▲</button>
           <button type="button" class="icon-btn" data-rsec-down="${idx}" ${idx === ROUTINE_SECTIONS.length - 1 ? 'disabled' : ''} title="تحريك لأسفل" style="padding:5px 7px;">▼</button>
           <button type="button" class="icon-btn del" data-del-rsec="${sec.id}" ${ROUTINE_SECTIONS.length <= 1 ? 'disabled title="لا يمكن حذف القسم الأخير"' : 'title="حذف القسم"'} style="padding:5px 8px;">×</button>
         </div>
       `).join('');
 
+      listEl.querySelectorAll('[data-rsec-pin]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const sec = ROUTINE_SECTIONS.find(x => x.id === btn.dataset.rsecPin);
+          if (!sec) return;
+          sec.inFilter = !sec.inFilter;
+          saveState(); render(); renderRoutineSectionsManagerList();
+        });
+      });
       listEl.querySelectorAll('[data-rsec-name]').forEach(inp => {
         inp.addEventListener('change', () => {
           const id = inp.dataset.rsecName;
@@ -5750,6 +5760,58 @@
 
     // Smart "Today" list in the main view: a live filter over the Inbox (tasks whose day is today). Read-only list: no adding here.
     let next5Open = {}; // Today starts collapsed; the user opens it
+    function toggleRoutineDone(id) {
+      const item = ROUTINE.find(x => x.id === id);
+      if (!item) return;
+      item.doneToday = !item.doneToday;
+      if (item.doneToday && item.repeat && item.repeat.mode === 'completion') item.nextDue = repAfter(item.repeat, repTodayKey());
+      if (!item.doneToday) delete item.nextDue;
+      if (item.doneToday) {
+        const logId = Date.now() + Math.floor(Math.random() * 1000);
+        item.routineLogId = logId;
+        COMPLETED.unshift({ logId, label: item.label, mins: item.mins, completedAt: Date.now() });
+        checkCompletedMilestoneToast();
+      } else if (item.routineLogId) {
+        COMPLETED = COMPLETED.filter(c => c.logId !== item.routineLogId);
+        delete item.routineLogId;
+      }
+    }
+    let routineMirrorOpen = false;
+    function renderRoutineMirror() {
+      const box = document.getElementById('routine-mirror');
+      if (!box) return;
+      if (!ROUTINE_SECTIONS.some(sc => sc.inFilter)) { box.innerHTML = ''; return; }
+      const today = repTodayKey();
+      const secOf = it => ROUTINE_SECTIONS.find(sc => sc.id === (it.sectionId || ROUTINE_SECTIONS[0].id)) || ROUTINE_SECTIONS[0];
+      const items = [];
+      ROUTINE_SECTIONS.filter(sc => sc.inFilter).forEach(sc => ROUTINE.forEach(it => {
+        if (secOf(it).id === sc.id && !it.doneToday && repDueOn(it, today)) items.push(it);
+      }));
+      const mins = items.reduce((a, it) => a + (Number(it.mins) || 0), 0);
+      box.innerHTML = `<div class="prio-group" style="margin-bottom:0;">
+        <div class="prio-group-header" data-rmir-toggle="1" style="cursor:pointer; padding:11px 14px;">
+          <div class="prio-group-title"><span class="color-dot" style="background:var(--blue);"></span><span dir="ltr">Daily Routine</span></div>
+          <div class="prio-group-right" style="gap:8px;">
+            <span class="count-pill">${toAr(items.length)}${mins ? ' · ' + fmtLongTime(mins) : ''}</span>
+            <span class="group-arrow">${routineMirrorOpen ? '▼' : '◀'}</span>
+          </div>
+        </div>
+        ${routineMirrorOpen ? `<div class="prio-group-body">
+          ${items.length === 0 ? '<div class="empty-msg" style="padding:10px;">خلصت روتين النهارده ✓</div>' : items.map(it => `
+            <div class="inbox-item-outer"><div class="swipe-wrap"><div class="swipe-content"><div class="unified-top">
+              <div class="task-circle" data-rmir-check="${it.id}" title="تم">
+                <svg viewBox="0 0 16 16" width="14" height="14"><path d="M3.2 8.4 L6.4 11.6 L12.8 4.4" fill="none" stroke="#ffffff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" /></svg>
+              </div>
+              <span class="color-dot" style="background:${secOf(it).color || '#4f75ff'};"></span>
+              <div class="task-info"><span class="task-title">${escapeHtml(it.label)}</span></div>
+              <div class="row-meta">${it.repeat ? '<span title="' + repLabel(it.repeat) + '" style="font-size:12px;">🔁</span>' : ''}${it.mins > 0 ? `<span class="task-dur" dir="ltr">${it.mins} min</span>` : ''}</div>
+            </div></div></div></div>`).join('')}
+        </div>` : ''}
+      </div>`;
+      box.querySelector('[data-rmir-toggle]').addEventListener('click', () => { routineMirrorOpen = !routineMirrorOpen; renderRoutineMirror(); });
+      box.querySelectorAll('[data-rmir-check]').forEach(c => c.addEventListener('click', e => { e.stopPropagation(); toggleRoutineDone(Number(c.dataset.rmirCheck)); render(); }));
+    }
+
     function renderNext5Mirror() {
       const box = document.getElementById('next5-mirror');
       if (!box) return;
@@ -5765,6 +5827,7 @@
       saveState();
       ensureTicker();
       renderNext5Mirror();
+      renderRoutineMirror();
 
       const rtnTodayKey = repTodayKey();
       const remainingRoutineTotal = ROUTINE.filter(item => !item.doneToday && repDueOn(item, rtnTodayKey)).length;
@@ -5865,6 +5928,7 @@
                     ${t.note ? `<div class="task-note">${t.note}</div>` : ''}
                     <button type="button" class="live-time-bar ${t.running ? 'is-running' : ''}" data-timer="${t.id}" title="${t.running ? 'اضغط لإيقاف المهمة' : 'اضغط لبدء المهمة'}" style="--tc:${t.color}; --pct:${livePct(t, barPct)}%;">
                       <span class="ltb-icon">${t.running ? '■' : '▶'}</span>
+                      <span class="ltb-track"><span class="ltb-fill"></span></span>
                       <span class="task-dur ${durClass}" id="dur-${t.id}">${formatDuration(t)}</span>
                     </button>
                   </div>
@@ -6018,6 +6082,7 @@
                 <span>${sec.name}</span>
               </div>
               <div class="prio-group-right" style="gap:5px;">
+                <button type="button" class="gear-btn" data-rsec-pin2="${sec.id}" title="${sec.inFilter ? 'بيظهر في فلتر الروتين — اضغط للإلغاء' : 'اظهر القسم ده في فلتر الروتين'}" style="padding:2px 7px; ${sec.inFilter ? 'background:var(--blue-soft); color:var(--blue);' : 'opacity:.55;'}">📌</button>
                 <button type="button" class="gear-btn" data-add-in-rsec="${sec.id}" title="إضافة مهمة في هذا القسم" style="font-weight:800; padding:2px 8px;">+</button>
                 <span class="count-pill">${toAr(remCount)}</span>
                 <span class="group-arrow">${isOpen ? '▼' : '◀'}</span>
@@ -6100,6 +6165,14 @@
           </div>
         `;
       }).join('');
+      routineListEl.querySelectorAll('[data-rsec-pin2]').forEach(b => b.addEventListener('click', e => {
+        e.stopPropagation();
+        const sec = ROUTINE_SECTIONS.find(x => x.id === b.dataset.rsecPin2);
+        if (!sec) return;
+        sec.inFilter = !sec.inFilter;
+        showInfoToast(sec.inFilter ? `«${sec.name}» هتظهر في فلتر الروتين` : `«${sec.name}» اتشالت من فلتر الروتين`);
+        render();
+      }));
       routineListEl.querySelectorAll('[data-toggle-rhidden]').forEach(b => b.addEventListener('click', () => {
         const id = b.dataset.toggleRhidden; showRtnHidden[id] = !showRtnHidden[id]; render();
       }));
@@ -6731,26 +6804,7 @@
       routineListEl.querySelectorAll('[data-check-routine]').forEach(circle => {
         circle.addEventListener('click', e => {
           e.stopPropagation();
-          const id = Number(circle.dataset.checkRoutine);
-          const item = ROUTINE.find(x => x.id === id);
-          if (!item) return;
-          item.doneToday = !item.doneToday;
-          if (item.doneToday && item.repeat && item.repeat.mode === 'completion') item.nextDue = repAfter(item.repeat, repTodayKey());
-          if (!item.doneToday) delete item.nextDue;
-          if (item.doneToday) {
-            const logId = Date.now() + Math.floor(Math.random() * 1000);
-            item.routineLogId = logId;
-            COMPLETED.unshift({
-              logId,
-              label: item.label,
-              mins: item.mins,
-              completedAt: Date.now()
-            });
-            checkCompletedMilestoneToast();
-          } else if (item.routineLogId) {
-            COMPLETED = COMPLETED.filter(c => c.logId !== item.routineLogId);
-            delete item.routineLogId;
-          }
+          toggleRoutineDone(Number(circle.dataset.checkRoutine));
           render();
         });
       });
