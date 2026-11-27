@@ -8068,7 +8068,7 @@
       const running = !!QURAN.run;
       azkarBody.innerHTML = `<div class="qr-wrap">
         <div style="display:flex; align-items:center; gap:8px; justify-content:space-between; font-weight:800; font-size:13px;">
-          <span id="qr-pagelabel" dir="ltr">Page ${page} · Juz ${qrJuz(page)}${isDone ? ' · ✓' : ''}</span>
+          <span style="display:flex; gap:8px; align-items:center;"><span id="qr-pagelabel" dir="ltr">Page ${page} · Juz ${qrJuz(page)}${isDone ? ' · ✓' : ''}</span>${!running && !QURAN.paused ? (page === QURAN.page ? '<span style="color:var(--green); font-size:12px;">📍 مكانك</span>' : '<button type="button" class="keep-chip" id="qr-setpos" style="font-size:12px; padding:4px 9px;">📍 أكمل من هنا</button>') : ''}</span>
           <span style="display:flex; gap:6px; align-items:center;">
             <button type="button" class="icon-btn" id="qr-fsb" title="ملء الشاشة" style="font-weight:800;">⛶</button>
             <button type="button" class="icon-btn" id="qr-zm" title="تصغير" style="font-weight:800;">−</button>
@@ -8106,6 +8106,12 @@
         if (QURAN.paused) { QURAN.paused = false; QURAN.run = Date.now(); }
         else { QURAN.sacc = 0; QURAN.sCount = 0; QURAN.sFrom = page; QURAN.sTo = page; QURAN.run = Date.now(); }
         saveState(); renderAzkar();
+      });
+      const sp = document.getElementById('qr-setpos');
+      if (sp) sp.addEventListener('click', () => {
+        QURAN.page = page; QURAN.sFrom = page; QURAN.sTo = page; QURAN.sacc = 0; QURAN.sCount = 0;
+        saveState(); renderAzkar();
+        qrToast('تمام، هتكمل من صفحة ' + page + ' ✓');
       });
       const nd = document.getElementById('qr-next-done');
       if (nd) nd.addEventListener('click', () => {
