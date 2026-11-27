@@ -8065,10 +8065,10 @@
       const page = Math.min(QURAN_PAGES, Math.max(1, QR_VIEW));
       document.getElementById('azkar-title').textContent = '📖 صفحة ' + page;
       const isDone = page < QURAN.page;
-      const running = !!QURAN.run;
+      const running = false; QURAN.run = null; QURAN.paused = false;
       azkarBody.innerHTML = `<div class="qr-wrap">
         <div style="display:flex; align-items:center; gap:8px; justify-content:space-between; font-weight:800; font-size:13px;">
-          <span style="display:flex; gap:8px; align-items:center;"><span id="qr-pagelabel" dir="ltr">Page ${page} · Juz ${qrJuz(page)}${isDone ? ' · ✓' : ''}</span>${!running && !QURAN.paused ? (page === QURAN.page ? '<span style="color:var(--green); font-size:12px;">📍 مكانك</span>' : '<button type="button" class="keep-chip" id="qr-setpos" style="font-size:12px; padding:4px 9px;">📍 أكمل من هنا</button>') : ''}</span>
+          <span style="display:flex; gap:8px; align-items:center;"><span id="qr-pagelabel" dir="ltr">Page ${page} · Juz ${qrJuz(page)}${isDone ? ' · ✓' : ''}</span>${page === QURAN.page ? '<span style="color:var(--green); font-size:13px; font-weight:800;">🔖 مكانك</span>' : '<button type="button" class="keep-chip" id="qr-setpos" style="font-size:12px; padding:4px 9px;">🔖 ثبّت مكاني هنا</button>'}</span>
           <span style="display:flex; gap:6px; align-items:center;">
             <button type="button" class="icon-btn" id="qr-fsb" title="ملء الشاشة" style="font-weight:800;">⛶</button>
             <button type="button" class="icon-btn" id="qr-zm" title="تصغير" style="font-weight:800;">−</button>
@@ -8076,11 +8076,13 @@
             <button type="button" class="icon-btn" id="qr-inv" title="عكس الألوان">◐</button>
           </span>
         </div>
-        <div class="qr-scroll ${running || QURAN.paused ? '' : 'is-blur'}" id="qr-scroll" style="--qz:${QR_ZOOM}"><div id="qr-content" class="qr-text" style="min-height:200px;"><span style="color:var(--muted); font-size:15px;">جاري التحميل…</span></div></div>
+        <div class="qr-scroll" id="qr-scroll" style="--qz:${QR_ZOOM}"><div id="qr-content" class="qr-text" style="min-height:200px;"><span style="color:var(--muted); font-size:15px;">جاري التحميل…</span></div></div>
         <div class="qr-nav" style="flex-direction:column; gap:8px;">
-          ${running ? `${page < QURAN_PAGES ? `<button type="button" class="az-timer-btn" id="qr-next-done" style="width:100%;">تم وافتح التالي ←</button>` : ''}
-            <button type="button" class="az-timer-btn qr-sec" id="qr-end" style="width:100%; display:flex; justify-content:center; gap:12px;"><span>صدق الله العظيم</span><span id="qr-btn-timer" dir="ltr">⏱ ${azFmt(qrElapsed())}</span></button>`
-          : `<button type="button" class="az-timer-btn" id="qr-bism" style="width:100%; padding:14px;">${QURAN.paused ? 'متابعة من صفحة ' + page + ' ▶' : 'بسم الله الرحمن الرحيم'}</button>`}
+          <div style="display:flex; gap:8px; width:100%;">
+            ${page > 1 ? `<button type="button" class="az-timer-btn qr-sec" id="qr-prev" style="flex:1;">→ السابقة</button>` : ''}
+            ${page < QURAN_PAGES ? `<button type="button" class="az-timer-btn" id="qr-next" style="flex:2;">التالية ←</button>` : ''}
+          </div>
+          <button type="button" class="az-timer-btn qr-sec" id="qr-end" style="width:100%;">صدق الله العظيم 🔖</button>
         </div></div>`;
       document.getElementById('qr-inv').addEventListener('click', () => {
         const nv = !qrInvert();
@@ -8100,38 +8102,19 @@
       sc.addEventListener('touchstart', e => { if (e.touches.length === 2) { d0 = dist(e); z0 = QR_ZOOM; } }, { passive: true });
       sc.addEventListener('touchmove', e => { if (e.touches.length === 2 && d0) { e.preventDefault(); setZoom(z0 * dist(e) / d0); } }, { passive: false });
       sc.addEventListener('touchend', e => { if (e.touches.length < 2) d0 = 0; });
-      const bism = document.getElementById('qr-bism');
-      if (bism) bism.addEventListener('click', () => {
-        azHaptic(1);
-        if (QURAN.paused) { QURAN.paused = false; QURAN.run = Date.now(); }
-        else { QURAN.sacc = 0; QURAN.sCount = 0; QURAN.sFrom = page; QURAN.sTo = page; QURAN.run = Date.now(); }
-        saveState(); renderAzkar();
-      });
       const sp = document.getElementById('qr-setpos');
-      if (sp) sp.addEventListener('click', () => {
-        QURAN.page = page; QURAN.sFrom = page; QURAN.sTo = page; QURAN.sacc = 0; QURAN.sCount = 0;
-        saveState(); renderAzkar();
-        qrToast('تمام، هتكمل من صفحة ' + page + ' ✓');
-      });
-      const nd = document.getElementById('qr-next-done');
-      if (nd) nd.addEventListener('click', () => {
-        azHaptic(1);
-        qrComplete(page); saveState();
-        QR_VIEW = page + 1; renderAzkar();
-        qrToast('ما شاء الله، تمت صفحة ' + page + ' ✓');
-      });
+      if (sp) sp.addEventListener('click', () => { QURAN.page = page; saveState(); renderAzkar(); qrToast('اتثبّت مكانك عند صفحة ' + page + ' 🔖'); });
+      const goPage = n => { QR_VIEW = n; renderAzkar(); };
+      const pv = document.getElementById('qr-prev'); if (pv) pv.addEventListener('click', () => goPage(page - 1));
+      const nx = document.getElementById('qr-next'); if (nx) nx.addEventListener('click', () => goPage(page + 1));
       const en = document.getElementById('qr-end');
       if (en) en.addEventListener('click', () => {
-        QR_FS = false; qrFsRemove(); QURAN.paused = false;
-        qrStop();
-        const khatma = qrComplete(page);
-        const o = { from: Math.min(QURAN.sFrom || page, page), to: QURAN.sTo || page, n: QURAN.sCount || 1, ms: QURAN.sacc || 0, khatma, total: QURAN.acc || 0 };
-        azLogCompleted(`ورد القرآن (${o.n === 1 ? 'صفحة' : o.n === 2 ? 'صفحتين' : o.n + ' صفحات'})`, o.ms);
-        saveState();
-        qrSummary(o);
+        if (page === QURAN_PAGES) { QURAN.khatmat = (QURAN.khatmat || 0) + 1; QURAN.page = 1; qrToast('ما شاء الله، ختمة مباركة 🎉 — المكان رجع لأول المصحف'); }
+        else { QURAN.page = page; qrToast('اتثبّت مكانك عند صفحة ' + page + ' 🔖'); }
+        saveState(); renderAzkar();
       });
-      document.getElementById('qr-fsb').addEventListener('click', () => { QR_FS = true; qrFsBuild(page, running); });
-      if (QR_FS) qrFsBuild(page, running); else qrFsRemove();
+      document.getElementById('qr-fsb').addEventListener('click', () => { QR_FS = true; qrFsBuild(page, false); });
+      if (QR_FS) qrFsBuild(page, false); else qrFsRemove();
       qrShow(page);
     }
     let QR_FS = false, QR_FS_T = 0;
@@ -8145,16 +8128,15 @@
       const o = document.createElement('div');
       o.id = 'qr-fs'; o.className = 'kh-fs';
       const c = document.getElementById('qr-content');
-      o.innerHTML = `<div class="kh-fs-scroll ${running || QURAN.paused ? '' : 'is-blur'}" id="qr-fs-scroll" style="--qz:${QR_ZOOM}; direction:ltr; overflow:auto; display:flex; padding-left:6px; padding-right:6px; touch-action: pan-x pan-y;"><div id="qr-fs-content" class="qr-text" style="width:max-content; margin:auto;">${c ? c.innerHTML : ''}</div></div>
+      o.innerHTML = `<div class="kh-fs-scroll" id="qr-fs-scroll" style="--qz:${QR_ZOOM}; direction:ltr; overflow:auto; display:flex; padding-left:6px; padding-right:6px; touch-action: pan-x pan-y;"><div id="qr-fs-content" class="qr-text" style="width:max-content; margin:auto;">${c ? c.innerHTML : ''}</div></div>
         <div class="kh-fs-top">
           <button type="button" class="icon-btn" id="qf-exit" style="font-weight:800;">⤡ خروج</button>
           <span dir="ltr" style="font-weight:800; font-size:13px;">Page ${page}</span>
-          <span class="qr-tm" dir="ltr" style="font-weight:800; font-size:13px; color:var(--green);">${running ? '⏱ ' + azFmt(qrElapsed()) : ''}</span>
+          <span></span>
           <span style="display:flex; gap:6px;"><button type="button" class="icon-btn" id="qf-inv">◐</button><button type="button" class="icon-btn" id="qf-zm" style="font-weight:800;">−</button><button type="button" class="icon-btn" id="qf-zp" style="font-weight:800;">+</button></span>
         </div>
         <div class="kh-fs-bot">
-          ${running ? `${page < QURAN_PAGES ? `<button type="button" class="az-timer-btn" id="qf-next">تم وافتح التالي ←</button>` : ''}<button type="button" class="az-timer-btn qr-sec" id="qf-end">صدق الله العظيم</button>`
-          : `<button type="button" class="az-timer-btn" id="qf-start">${QURAN.paused ? 'متابعة من صفحة ' + page + ' ▶' : 'بسم الله الرحمن الرحيم'}</button>`}
+          ${page > 1 ? `<button type="button" class="az-timer-btn qr-sec" id="qf-prev">→</button>` : ''}${page < QURAN_PAGES ? `<button type="button" class="az-timer-btn" id="qf-next">التالية ←</button>` : ''}<button type="button" class="az-timer-btn qr-sec" id="qf-end">صدق الله العظيم 🔖</button>
         </div>`;
       azkarModal.appendChild(o);
       const sc = o.querySelector('#qr-fs-scroll');
@@ -8167,7 +8149,7 @@
         sc.scrollTop = cy * sc.scrollHeight - sc.clientHeight / 2;
       };
       if (QR_ZOOM > 1) setTimeout(() => { sc.scrollLeft = sc.scrollWidth; }, 60);
-      const live = running || QURAN.paused;
+      const live = true;
       const hide = () => o.classList.remove('show-bars');
       const arm = () => { clearTimeout(QR_FS_T); if (live) QR_FS_T = setTimeout(hide, 3500); };
       const show = () => { o.classList.add('show-bars'); arm(); };
@@ -8175,7 +8157,7 @@
       o.querySelector('#qf-zp').addEventListener('click', e => { e.stopPropagation(); setZoom(QR_ZOOM + 0.25); arm(); });
       o.querySelector('#qf-zm').addEventListener('click', e => { e.stopPropagation(); setZoom(QR_ZOOM - 0.25); arm(); });
       o.querySelector('#qf-inv').addEventListener('click', e => { e.stopPropagation(); const nv = !qrInvert(); try { localStorage.setItem('quran_inv', nv ? '1' : '0'); } catch (er) {} document.querySelectorAll('.qr-img').forEach(im => im.classList.toggle('inv', nv)); arm(); });
-      [['qf-next', 'qr-next-done'], ['qf-end', 'qr-end'], ['qf-start', 'qr-bism']].forEach(([a, b]) => { const el = o.querySelector('#' + a); if (el) el.addEventListener('click', e => { e.stopPropagation(); const m = document.getElementById(b); if (m) m.click(); }); });
+      [['qf-next', 'qr-next'], ['qf-prev', 'qr-prev'], ['qf-end', 'qr-end']].forEach(([a, b]) => { const el = o.querySelector('#' + a); if (el) el.addEventListener('click', e => { e.stopPropagation(); const m = document.getElementById(b); if (m) m.click(); }); });
       sc.addEventListener('click', () => { if (!live) return; if (o.classList.contains('show-bars')) { hide(); clearTimeout(QR_FS_T); } else show(); });
       let d0 = 0, z0 = 1;
       const dist = e => Math.hypot(e.touches[0].clientX - e.touches[1].clientX, e.touches[0].clientY - e.touches[1].clientY);
@@ -8450,8 +8432,7 @@
     (function () { let v = false; try { v = localStorage.getItem('azkar_full') === '1'; } catch (e) {} setAzkarFull(v, false); })();
     document.getElementById('azkar-full-btn').addEventListener('click', () => setAzkarFull(!azkarModal.classList.contains('azkar-full'), true));
     document.getElementById('open-quran-btn').addEventListener('click', () => {
-      azkarView = 'quran';
-      if (!QURAN.run && !QURAN.paused) { QURAN.sFrom = Math.min(QURAN_PAGES, QURAN.page); QURAN.sacc = 0; saveState(); }
+      azkarView = 'quran-read'; QR_VIEW = Math.min(QURAN_PAGES, Math.max(1, QURAN.page));
       renderAzkar(); azkarModal.classList.remove('hidden');
     });
     document.getElementById('open-azkar-btn').addEventListener('click', () => { azkarView = null; renderAzkar(); azkarModal.classList.remove('hidden'); });
