@@ -1422,17 +1422,6 @@
         <div id="routine-mirror" style="margin-top:12px;"></div>
       </div>
 
-      <!-- Card 5: Completed Log (48h rolling) -->
-      <div class="prio-group" id="completed-box" style="margin-bottom:0;"></div>
-
-      <!-- Bottom Corner Icon Actions -->
-      <div class="footer-actions" style="margin-top:0; padding-top:0; border-top:none; justify-content:flex-end;">
-        <div style="display:flex; gap:6px; align-items:center;">
-          <button type="button" class="icon-btn" id="toggle-completed" title="المهام المكتملة (آخر 48 ساعة)" style="padding:0; width:34px; height:34px; border-radius:50%; font-size:13px; font-weight:800; color:var(--green); border:1.5px solid var(--green);">0</button>
-          <button type="button" class="icon-btn" id="open-backup-btn" title="نقل أو حفظ نسخة احتياطية" style="padding:6px 10px; font-size:15px;">💾</button>
-          <button type="button" class="icon-btn" id="refresh-app-btn" title="تحديث نسخة التطبيق" style="padding:6px 10px; font-size:15px;">↻</button>
-        </div>
-      </div>
     </div>
 
     <!-- 2. ROUTINE VIEW -->
@@ -1442,6 +1431,8 @@
         <button type="button" id="open-azkar-btn" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:16px 10px; border-radius:22px; border:1px solid var(--border); background:var(--card); color:var(--text); font-family:inherit; font-size:16px; font-weight:800; cursor:pointer;">🤲 الأذكار</button>
         <button type="button" id="open-quran-btn" style="flex:1; display:flex; align-items:center; justify-content:center; gap:8px; padding:16px 10px; border-radius:22px; border:1px solid var(--border); background:var(--card); color:var(--text); font-family:inherit; font-size:16px; font-weight:800; cursor:pointer;">📖 ختمة القرآن</button>
       </div>
+      <!-- Principles: شفرة السلام والسكينة -->
+      <div class="prio-group" id="principles-card" style="margin-bottom:0;"></div>
       <!-- Trackers Card inside Routine (Progress Rings + Next Up Controls) -->
       <div class="prio-group" style="margin-bottom:0;">
         <div class="prio-group-header">
@@ -1475,6 +1466,21 @@
 
         <div id="routine-list"></div>
       </div>
+    </div>
+
+    <!-- Shared footer (both tabs) -->
+    <div id="shared-footer" class="container" style="margin:14px 0 0; gap:14px;">
+      <!-- Card 5: Completed Log (48h rolling) -->
+
+      <!-- Bottom Corner Icon Actions -->
+      <div class="footer-actions" style="margin-top:0; padding-top:0; border-top:none; justify-content:flex-end;">
+        <div style="display:flex; gap:6px; align-items:center;">
+          <button type="button" class="icon-btn" id="toggle-completed" title="المهام المكتملة (آخر 48 ساعة)" style="padding:0; width:34px; height:34px; border-radius:50%; font-size:13px; font-weight:800; color:var(--green); border:1.5px solid var(--green);">0</button>
+          <button type="button" class="icon-btn" id="open-backup-btn" title="نقل أو حفظ نسخة احتياطية" style="padding:6px 10px; font-size:15px;">💾</button>
+          <button type="button" class="icon-btn" id="refresh-app-btn" title="تحديث نسخة التطبيق" style="padding:6px 10px; font-size:15px;">↻</button>
+        </div>
+      </div>
+      <div class="prio-group" id="completed-box" style="margin-bottom:0;"></div>
     </div>
   </div>
 
@@ -2674,6 +2680,17 @@
       });
       return base;
     })();
+    const DEFAULT_PRINCIPLES = [
+      { id: 'pr1', icon: '👑', title: 'بُوصلةُ الغِنَى وَجَمْعُ الشَّمْلِ', body: '💎🕋 «مَنْ كَانَتِ الآخِرَةُ هَمَّهُ جَعَلَ اللَّهُ غِنَاهُ فِي قَلْبِهِ، وَجَمَعَ لَهُ شَمْلَهُ، وَأَتَتْهُ الدُّنْيَا وَهِيَ رَاغِمَةٌ.. وَمَنْ كَانَتِ الدُّنْيَا هَمَّهُ جَعَلَ اللَّهُ فَقْرَهُ بَيْنَ عَيْنَيْهِ، وَفَرَّقَ عَلَيْهِ شَمْلَهُ، وَلَمْ يَأْتِهِ مِنَ الدُّنْيَا إِلَّا مَا قُدِّرَ لَهُ»' },
+      { id: 'pr2', icon: '🛡️', title: 'مِيثَاقُ الْبَدَنِ وَالْخِفّةِ', body: '🧠📴 عقلٌ يصوم\n🥗⚖️ وبطنٌ يخفّ\n👟🚀 وقدمٌ تسعى\n📿✨ ولسانٌ يَذْكُر' },
+      { id: 'pr3', icon: '🦁', title: 'سِيَادَةُ النّفْسِ', body: '🍽️🔒 «أَحْكِمْ قبضتك على شهوة بطنك.. تملك زمام نفسك؛ فخفّة البدن هي بوابة صفاء القلب والروح»' },
+      { id: 'pr4', icon: '🎯', title: 'حُكْمُ الْفِعْلِ لَا الْمِزَاجِ', body: '🧠🚫➡️⚡🎬 «Never Ever let your mood dictate what to do»\n⏳ المشاعر تتغير.. والالتزام يصنع الواقع.' },
+      { id: 'pr5', icon: '🧠', title: 'مِصْيَدَةُ الأَفْكَارِ (Catch • Check • Challenge)', body: '🕸️ اصطاد الفكرة: أول ما تلاقي نفسك عطلان، اقفش الفكرة فوراً.\n🔍 افحص حقيقتها: حللها واسأل: هل دي حقيقة ولا عقلي بيخدعني؟\n🥊 تحدّى سلبيتها: اكسرها بالعمل، انزل واثبت عكسها على أرض الواقع!' },
+      { id: 'pr6', icon: '🚪', title: 'قَانُونُ التَّرْكِ وَالْوُصُولِ', body: '🎯✂️📦➡️🏆 «القدرة على التَّرْكِ هي أساس النجاح.. لا يوجد ارتقاء حقيقي بدون التخلي عما لا ينفعك»' },
+      { id: 'pr7', icon: '⏱️', title: 'حَسْمُ اللّحْظَةِ (قَاعِدَةُ الْحَرَكَةِ)', body: '🔔🏃 «المهمة اللي ييجي وقتها.. أقوم أعملها فوراً»\n💭🚫 التفكير الزائد يسرق العزم؛ ابدأ بالحركة تنضبط الأفكار.' },
+      { id: 'pr8', icon: '🌊', title: 'سَكِينَةُ الْخَلْوَةِ', body: '🌿🚶🕌📿🌅 «راحة البال تُبنى في الخلوة، والمشي في المساحات المفتوحة، وعمارة القلب بالذكر.. وليست في ملاحقة دوشة الزائلين»' }
+    ];
+    let PRINCIPLES = Array.isArray(state.principles) ? state.principles : JSON.parse(JSON.stringify(DEFAULT_PRINCIPLES));
     let JUMUA_STATE = (state.jumua && typeof state.jumua === 'object') ? state.jumua : { week: '', done: {}, sal: 0 };
     let QURAN = Object.assign({ page: 1, acc: 0, sacc: 0, sFrom: 1, sTo: 1, sCount: 0, run: null, khatmat: 0 }, (state.quran && typeof state.quran === 'object') ? state.quran : {});
     let AZKAR_PROGRESS = (state.azkarProgress && typeof state.azkarProgress === 'object') ? state.azkarProgress : { day: '', left: {} };
@@ -2748,6 +2765,7 @@
           azkarProgress: AZKAR_PROGRESS,
           quran: QURAN,
           jumua: JUMUA_STATE,
+          principles: PRINCIPLES,
           dayCaps: { mins: DAY_CAP_MINS, count: DAY_CAP_COUNT },
           lastReset: state.lastReset
         }));
@@ -6045,15 +6063,68 @@
       });
       return ch;
     }
+    let principlesOpen = false, editingPrinId = null, deletingPrinId = null;
+    function prEsc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+    function prEditHtml(pr) {
+      const isNew = pr.id === 'new';
+      return `<div class="promote-box" style="flex-wrap:nowrap; width:auto; padding:10px; box-sizing:border-box; background:var(--item); border-radius:14px; border:1px solid var(--border); margin:0; display:flex; flex-direction:column; align-items:stretch; gap:8px;">
+        <div style="display:flex; gap:8px;">
+          <input type="text" class="input-field" id="pr-icon" value="${prEsc(pr.icon)}" placeholder="🌿" style="border:1px solid var(--border); background:var(--card); flex:0 0 64px; box-sizing:border-box; width:64px; text-align:center; font-size:20px; padding:8px 4px;">
+          <input type="text" class="input-field" id="pr-title" value="${prEsc(pr.title)}" placeholder="اسم المبدأ" style="border:1px solid var(--border); background:var(--card); flex:1; min-width:0; box-sizing:border-box; font-size:16px; padding:8px 10px;">
+        </div>
+        <textarea class="input-field" id="pr-body" placeholder="نص المبدأ..." style="border:1px solid var(--border); background:var(--card); box-sizing:border-box; width:100%; min-height:130px; font-weight:400; font-size:15px; line-height:1.8; padding:10px; resize:vertical; font-family:inherit;">${prEsc(pr.body)}</textarea>
+        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap; min-width:0;">
+          <button type="button" class="timer-btn" data-save-prin="${prEsc(pr.id)}">${isNew ? 'إضافة' : 'حفظ'}</button>
+          <button type="button" class="icon-btn" data-prin-cancel="1">إلغاء</button>
+          ${isNew ? '' : (deletingPrinId === pr.id ? `<button type="button" class="icon-btn" data-prin-del-ok="${prEsc(pr.id)}" style="margin-inline-start:auto; background:var(--red); color:#fff; border-color:var(--red);">تأكيد الحذف</button>` : `<button type="button" class="icon-btn" data-prin-del="${prEsc(pr.id)}" style="margin-inline-start:auto;">🗑</button>`)}
+        </div>
+      </div>`;
+    }
+    function renderPrinciples() {
+      const box = document.getElementById('principles-card');
+      if (!box) return;
+      let body = '';
+      if (principlesOpen) {
+        body = '<div class="prio-group-body">' + PRINCIPLES.map((pr, i) => editingPrinId === pr.id ? prEditHtml(pr) : `
+          <div class="task-row" style="flex-direction:column; align-items:stretch; gap:6px; padding:12px 14px;">
+            <div style="display:flex; align-items:flex-start; gap:8px; justify-content:space-between;">
+              <div style="font-weight:800; font-size:16px; line-height:1.7;">${prEsc(pr.icon)} ${i + 1}. ${prEsc(pr.title)}</div>
+              <button type="button" class="icon-btn" data-prin-edit="${prEsc(pr.id)}" title="تعديل" style="padding:4px 8px; font-size:13px; flex-shrink:0;">✏️</button>
+            </div>
+            <div style="white-space:pre-line; font-size:15px; line-height:1.9; font-weight:600;">${prEsc(pr.body)}</div>
+          </div>`).join('') +
+          (editingPrinId === 'new' ? prEditHtml({ id: 'new', icon: '🌿', title: '', body: '' }) : '<button type="button" class="keep-chip" id="pr-add" style="align-self:flex-start; padding:8px 14px;">＋ إضافة مبدأ</button>') + '</div>';
+      }
+      box.innerHTML = `<div class="prio-group-header" id="pr-toggle" style="cursor:pointer;">
+          <div class="prio-group-title"><span class="color-dot" style="background:var(--green);"></span><span>🕊️ شفرة السلام والسكينة</span></div>
+          <div class="prio-group-right"><span class="count-pill">${toAr(PRINCIPLES.length)}</span><span class="group-arrow">${principlesOpen ? '▼' : '◀'}</span></div>
+        </div>${body}`;
+      box.querySelector('#pr-toggle').addEventListener('click', () => { principlesOpen = !principlesOpen; if (!principlesOpen) { editingPrinId = null; deletingPrinId = null; } renderPrinciples(); });
+      const q = (sel, fn) => box.querySelectorAll(sel).forEach(el => el.addEventListener('click', e => { e.stopPropagation(); fn(el); }));
+      q('[data-prin-edit]', el => { editingPrinId = el.dataset.prinEdit; deletingPrinId = null; renderPrinciples(); });
+      q('[data-prin-cancel]', () => { editingPrinId = null; deletingPrinId = null; renderPrinciples(); });
+      q('#pr-add', () => { editingPrinId = 'new'; renderPrinciples(); const t = document.getElementById('pr-title'); if (t) t.focus(); });
+      q('[data-prin-del]', el => { deletingPrinId = el.dataset.prinDel; renderPrinciples(); });
+      q('[data-prin-del-ok]', el => { PRINCIPLES = PRINCIPLES.filter(x => x.id !== el.dataset.prinDelOk); editingPrinId = null; deletingPrinId = null; saveState(); renderPrinciples(); });
+      q('[data-save-prin]', el => {
+        const title = document.getElementById('pr-title').value.trim();
+        const icon = document.getElementById('pr-icon').value.trim();
+        const bodyTxt = document.getElementById('pr-body').value.trim();
+        if (!title) { showWarningToast('اكتب اسم المبدأ'); return; }
+        if (el.dataset.savePrin === 'new') PRINCIPLES.push({ id: 'pr' + Date.now(), icon: icon || '🌿', title, body: bodyTxt });
+        else { const pr = PRINCIPLES.find(x => x.id === el.dataset.savePrin); if (pr) { pr.icon = icon; pr.title = title; pr.body = bodyTxt; } }
+        editingPrinId = null; saveState(); renderPrinciples();
+      });
+    }
     const EDIT_SNAP = new Map();
     function editDirtySync() {
-      const btns = [...document.querySelectorAll('[data-save-inbox],[data-save-live],[data-save-rtn]')];
+      const btns = [...document.querySelectorAll('[data-save-inbox],[data-save-live],[data-save-rtn],[data-save-prin]:not([data-save-prin="new"])')];
       const live = new Set();
       btns.forEach(btn => {
-        const id = btn.dataset.saveInbox ? 'i' + btn.dataset.saveInbox : btn.dataset.saveLive ? 'l' + btn.dataset.saveLive : 'r' + btn.dataset.saveRtn;
+        const id = btn.dataset.saveInbox ? 'i' + btn.dataset.saveInbox : btn.dataset.saveLive ? 'l' + btn.dataset.saveLive : btn.dataset.savePrin ? 'p' + btn.dataset.savePrin : 'r' + btn.dataset.saveRtn;
         live.add(id);
         const box = btn.closest('.promote-box');
-        const ser = () => [...box.querySelectorAll('input,select')].map(e => e.value).join('\u0001') ;
+        const ser = () => [...box.querySelectorAll('input,select,textarea')].map(e => e.value).join('\u0001') ;
         if (!EDIT_SNAP.has(id)) EDIT_SNAP.set(id, ser());
         const upd = () => {
           const dirty = ser() !== EDIT_SNAP.get(id);
@@ -6240,6 +6311,7 @@
 
       updateHourClock();
       renderTrackersRoutineView();
+      if (!editingPrinId) renderPrinciples();
 
       // Completed Log
       const todayStats = getTodayCompletedStats();
