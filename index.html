@@ -1400,6 +1400,7 @@
         <form class="add-bar" id="add-form">
           <input type="text" class="input-field input-name" id="new-title" placeholder="اكتب اسم المهمة الجديدة..." required>
           <button type="submit" class="add-btn" title="إضافة مهمة">+</button>
+          <button type="button" class="add-btn" id="search-open-btn" title="بحث في الإنبوكس والروتين" style="width:48px; height:41px; padding:0; display:inline-flex; align-items:center; justify-content:center;"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg></button>
         </form>
         <form class="promote-box hidden" id="live-mins-prompt" style="margin-top:10px;">
           <span class="max-hint" id="live-mins-label">الوقت (دقائق):</span>
@@ -6063,6 +6064,102 @@
       });
       return ch;
     }
+    function openSearchDialog() {
+      const old = document.getElementById('search-dialog'); if (old) old.remove();
+      const ov = document.createElement('div');
+      ov.className = 'modal-overlay'; ov.id = 'search-dialog'; ov.style.zIndex = '450';
+      ov.innerHTML = `<div class="modal-box" style="max-width:520px; display:flex; flex-direction:column; max-height:86vh;">
+        <div class="modal-head"><div style="display:flex; align-items:center; gap:8px;"><span>🔍</span><h2>بحث</h2></div><button type="button" class="icon-btn" id="sr-x">✕</button></div>
+        <input type="text" class="input-field" id="sr-q" placeholder="اكتب جزء من اسم المهمة..." style="width:100%; box-sizing:border-box; font-size:16px; padding:10px 12px; margin-bottom:10px;">
+        <div id="sr-res" style="overflow-y:auto; display:flex; flex-direction:column; gap:8px; min-height:60px;"></div>
+      </div>`;
+      document.body.appendChild(ov);
+      const close = () => ov.remove();
+      ov.querySelector('#sr-x').onclick = close;
+      ov.addEventListener('click', e => { if (e.target === ov) close(); });
+      const qEl = ov.querySelector('#sr-q'), resEl = ov.querySelector('#sr-res');
+      const norm = t => String(t || '').toLowerCase();
+      const run = () => {
+        const q = norm(qEl.value).trim();
+        if (!q) { resEl.innerHTML = '<div class="empty-msg">اكتب أي كلمة وهدور في الإنبوكس والروتين.</div>'; return; }
+        const rKey = repTodayKey();
+        const inb = INBOX.filter(it => norm(it.label).includes(q) || norm(it.note).includes(q));
+        const rtn = ROUTINE.filter(it => norm(it.label).includes(q));
+        if (!inb.length && !rtn.length) { resEl.innerHTML = '<div class="empty-msg">مفيش نتايج.</div>'; return; }
+        const row = (kind, it) => {
+          let meta;
+          if (kind === 'i') {
+            const sec = INBOX_SECTIONS.find(x => x.id === it.sectionId);
+            meta = `📥 ${escapeHtml(sec ? sec.name : 'Inbox')}${it.mins > 0 ? ' · ' + toAr(it.mins) + ' د' : ''}${it.dueDate ? ' · ' + escapeHtml(dueLabel(it.dueDate).text) : ''}${it.repeat ? ' · 🔁' : ''}`;
+          } else {
+            const sec = ROUTINE_SECTIONS.find(x => x.id === (it.sectionId || ROUTINE_SECTIONS[0].id));
+            meta = `🔁 ${escapeHtml(sec ? sec.name : 'Routine')} · ${toAr(it.mins || 0)} د${it.doneToday ? ' · ✓ اتعملت النهارده' : (!repDueOn(it, rKey) ? ' · مش النهارده' : '')}`;
+          }
+          return `<div class="task-row" style="flex-direction:column; align-items:stretch; gap:6px; padding:10px 12px;">
+            <div style="font-weight:800; font-size:15px;">${escapeHtml(it.label)}</div>
+            <div class="max-hint">${meta}</div>
+            ${it.note ? `<div class="task-note">${escapeHtml(it.note)}</div>` : ''}
+            <div style="display:flex; gap:6px; align-items:center; flex-wrap:wrap;">
+              <span class="max-hint">⏱</span><input type="text" inputmode="numeric" class="input-field input-mins" data-sr-mins="${kind}${it.id}" value="${it.mins > 0 ? it.mins : ''}" placeholder="د" style="width:56px; padding:6px; font-size:14px;">
+              ${kind === 'i' ? `<span class="max-hint">📅</span><input type="date" class="input-field" data-sr-date="${it.id}" value="${it.dueDate || ''}" style="width:auto; min-width:0; font-size:13px; padding:5px 7px;">` : ''}
+              <button type="button" class="timer-btn" data-sr-hour="${kind}${it.id}" style="padding:6px 10px;">للساعة</button>
+              ${kind === 'i' || !it.doneToday ? `<button type="button" class="timer-btn" data-sr-done="${kind}${it.id}" style="padding:6px 10px; background:var(--green);">✓ تم</button>` : `<button type="button" class="icon-btn" data-sr-done="${kind}${it.id}">↩ رجّعها</button>`}
+            </div>
+          </div>`;
+        };
+        resEl.innerHTML = (inb.length ? `<div class="max-hint" style="font-weight:800;">الإنبوكس (${toAr(inb.length)})</div>` + inb.map(it => row('i', it)).join('') : '') +
+          (rtn.length ? `<div class="max-hint" style="font-weight:800; margin-top:4px;">الروتين (${toAr(rtn.length)})</div>` + rtn.map(it => row('r', it)).join('') : '');
+        resEl.querySelectorAll('[data-sr-hour]').forEach(b => b.addEventListener('click', () => {
+          const kind = b.dataset.srHour[0], id = Number(b.dataset.srHour.slice(1));
+          if (TASKS.length >= 5) { showWarningToast('وصلت للحد الأقصى (5 مهام في الساعة)'); return; }
+          const tot = TASKS.reduce((a, t) => a + t.mins, 0);
+          if (tot >= 60) { showWarningToast('الساعة مكتملة (60 دقيقة)'); return; }
+          if (kind === 'r') { close(); rtnToHour(id); return; }
+          const it = INBOX.find(x => x.id === id); if (!it) return;
+          let m = it.mins;
+          { const inp = resEl.querySelector(`[data-sr-mins="i${id}"]`); const iv = inp ? parseMins(inp.value) : 0; if (iv > 0) m = iv; if (!(m > 0)) { showWarningToast('اكتب مدة المهمة الأول'); if (inp) inp.focus(); return; } }
+          m = Math.min(60, m);
+          noteOverHour(tot + m);
+          close(); promoteInboxNow(id, m);
+          showInfoToast('اتنقلت للساعة');
+        }));
+        resEl.querySelectorAll('[data-sr-mins]').forEach(inp => inp.addEventListener('change', () => {
+          const kind = inp.dataset.srMins[0], id = Number(inp.dataset.srMins.slice(1));
+          const it = (kind === 'i' ? INBOX : ROUTINE).find(x => x.id === id); if (!it) return;
+          const m = Math.min(60, parseMins(inp.value));
+          if (!(m > 0)) { run(); return; }
+          if (kind === 'i' && it.dueDate && dayLoadMins(it.dueDate, it.id) + m > DAY_CAP_MINS) { showWarningToast(`المدة دي هتعدّي ${fmtCapHours(DAY_CAP_MINS)} ساعات في اليوم ده`); run(); return; }
+          it.mins = m; if (!it.running) it.remainingSec = m * 60;
+          saveState(); render(); renderInboxInsideModal(); run();
+        }));
+        resEl.querySelectorAll('[data-sr-date]').forEach(inp => inp.addEventListener('change', () => {
+          const id = Number(inp.dataset.srDate); const it = INBOX.find(x => x.id === id); if (!it) return;
+          const v = inp.value;
+          if (!v) { delete it.dueDate; delete it.dueTime; }
+          else {
+            if (dayDiff(v) < 0) { showWarningToast('التاريخ ده فات — اختار النهارده أو يوم جاي'); run(); return; }
+            const mi = resEl.querySelector(`[data-sr-mins="i${id}"]`); const mv = mi ? Math.min(60, parseMins(mi.value)) : 0;
+            const m = mv > 0 ? mv : (Number(it.mins) || 0);
+            if (m > 0) { if (!tryAssignDay(it, v, m)) { run(); return; } } else it.dueDate = v;
+          }
+          saveState(); render(); renderInboxInsideModal(); run();
+        }));
+        resEl.querySelectorAll('[data-sr-done]').forEach(b => b.addEventListener('click', () => {
+          const kind = b.dataset.srDone[0], id = Number(b.dataset.srDone.slice(1));
+          if (kind === 'r') { toggleRoutineDone(id); run(); return; }
+          const idx = INBOX.findIndex(x => x.id === id); if (idx === -1) return;
+          const removed = INBOX[idx]; INBOX.splice(idx, 1);
+          const logId = Date.now() + Math.floor(Math.random() * 1000);
+          COMPLETED.unshift({ logId, label: removed.label, mins: removed.mins || 0, completedAt: Date.now() });
+          const nextClone = inboxSpawnNext(removed);
+          if (nextClone) showInfoToast(`🔁 المرة الجاية: ${dueLabel(nextClone.dueDate).text}`);
+          saveState(); render(); renderInboxInsideModal(); checkCompletedMilestoneToast(); run();
+        }));
+      };
+      qEl.addEventListener('input', run);
+      run(); setTimeout(() => qEl.focus(), 50);
+    }
+    document.getElementById('search-open-btn').addEventListener('click', openSearchDialog);
     let principlesOpen = false, editingPrinId = null, deletingPrinId = null;
     function prEsc(t) { return String(t == null ? '' : t).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
     function prEditHtml(pr) {
