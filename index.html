@@ -4379,6 +4379,7 @@
     }
     // is a routine item due on this day?
     function repDueOn(item, key) {
+      if (item.skipDay === key) return false;
       if (!item.repeat) return true;
       if (item.repeat.mode === 'completion') return !item.nextDue || item.nextDue <= key;
       return repOccursOn(item.repeat, key, item.repAnchor || key);
@@ -6736,7 +6737,7 @@
                               <button type="button" class="timer-btn ${item.running ? 'is-stop' : ''}" data-rtn-timer="${item.id}" style="padding:6px 10px;">${item.running ? 'إيقاف' : 'بدء'}</button>
                               <button type="button" class="timer-btn" data-use-routine="${item.id}" style="padding:6px 10px; background:var(--text-soft);">للساعة</button>
                               <button type="button" class="icon-btn" data-move-rsec="${item.id}" title="نقل لقسم آخر">نقل</button>
-                              <button type="button" class="icon-btn del" data-del-routine="${item.id}" title="حذف من الروتين">×</button>
+                              <button type="button" class="icon-btn del" data-del-routine="${item.id}" title="${item.repeat ? 'تخطي النهارده بس (لها تكرار)' : 'حذف من الروتين'}">×</button>
                             </div>
                             <div class="swipe-content" style="transform: translate3d(${isSwiped ? '220px' : '0px'}, 0, 0);">
                               <div class="unified-top">
@@ -7545,8 +7546,16 @@
         btn.addEventListener('click', () => {
           swipedRoutineId = null;
           const id = Number(btn.dataset.delRoutine);
+          const it = ROUTINE.find(x => x.id === id);
+          if (it && it.repeat) {
+            // لها تكرار: × بتخفيها النهارده بس، وهترجع في معادها
+            it.skipDay = repTodayKey();
+            saveState(); render();
+            showInfoToast('اتشالت من النهارده بس 🔁 — عشان تمسحها خالص شيل التكرار الأول');
+            return;
+          }
           ROUTINE = ROUTINE.filter(x => x.id !== id);
-          render();
+          saveState(); render();
         });
       });
     }
