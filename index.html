@@ -1492,6 +1492,10 @@
         <div style="display:flex; align-items:center; gap:8px;">
           <span>📥</span>
           <h2>صندوق المهام (Inbox)</h2>
+          <button type="button" class="gear-btn" id="open-inbox-import-btn" title="استيراد مهام من AI" style="font-size: 11px; padding: 2px 7px; margin-right: 4px; gap: 3px;">
+            <span>🤖</span>
+            <span style="font-size: 10.5px;">استيراد AI</span>
+          </button>
           <button type="button" class="gear-btn" id="open-inbox-sections-mgr-btn" title="إدارة أقسام الـ Inbox" style="font-size: 11px; padding: 2px 7px; margin-right: 4px; gap: 3px;">
             <span>⚙️</span>
             <span style="font-size: 10.5px;">الأقسام</span>
@@ -2834,8 +2838,8 @@
 
       const key = toDateKey(logicalToday());
       const today = INBOX.filter(x => x.dueDate === key).sort((a, b) => (a.todayRank ?? 1e9) - (b.todayRank ?? 1e9));
-      const todayMins = today.reduce((n, x) => n + (x.mins || 0), 0);
-      L.push(`## مهام Today (${today.length} من ${DAY_CAP_COUNT} · ${dm(todayMins)} من ${dm(DAY_CAP_MINS)})`);
+      const todayMins = today.filter(x => !x.light).reduce((n, x) => n + (x.mins || 0), 0);
+      L.push(`## مهام Today (${today.filter(x => !x.light).length} من ${DAY_CAP_COUNT} · ${dm(todayMins)} من ${dm(DAY_CAP_MINS)})`);
       if (!today.length) L.push('- لا يوجد');
       today.forEach(x => L.push(line(x)));
       L.push('');
@@ -4277,7 +4281,7 @@
     function isInboxSectionFull(secId) {
       const sec = INBOX_SECTIONS.find(s => s.id === secId);
       if (!sec || !(sec.maxTasks > 0)) return false;
-      const count = INBOX.filter(x => (x.sectionId || INBOX_SECTIONS[0].id) === secId).length;
+      const count = INBOX.filter(x => (x.sectionId || INBOX_SECTIONS[0].id) === secId && !x.light).length;
       if (count >= sec.maxTasks) {
         showWarningToast(`وصلت للحد الأقصى في «${sec.name}» (${toAr(sec.maxTasks)} مهام)`);
         return true;
@@ -4792,7 +4796,8 @@
       if (diff < -1) return { text: `Late · ${full}`, kind: 'late' };
       return { text: full, kind: 'soon' };
     }
-    function dueBadgeHtml(item) {
+    function dueBadgeHtml(item0) {
+      const item = (!item0.dueDate && item0.sug && item0.sug.date) ? Object.assign({}, item0, { dueDate: item0.sug.date }) : item0;
       if (!item.dueDate) {
         return `<button type="button" class="icon-btn" data-pick-day="${item.id}" title="حدد اليوم" style="padding:3px 8px; font-size:12px; opacity:.85; flex-shrink:0;">📅</button>`;
       }
@@ -4874,7 +4879,9 @@
       return `${h === 1 ? 'ساعة' : (h === 2 ? 'ساعتين' : toAr(h) + ' ساعات')} و${toAr(mm)} دقيقة`;
     }
     function dayCountFull(key, exceptId) {
-      const n = INBOX.filter(x => x.dueDate === key && x.id !== exceptId).length;
+      const selfIt = INBOX.find(x => x.id === exceptId);
+      if (selfIt && selfIt.light) return false;
+      const n = INBOX.filter(x => x.dueDate === key && x.id !== exceptId && !x.light).length;
       if (n >= DAY_CAP_COUNT) {
         showWarningToast(`اليوم ده وصل الحد الأقصى (${toAr(DAY_CAP_COUNT)} مهمة)`);
         return true;
@@ -4883,11 +4890,12 @@
     }
     function fmtHM(m) { return toAr(Math.floor(m / 60)) + ':' + toAr(pad2(m % 60)); }
     function dayLoadMins(key, exceptId) {
-      return INBOX.filter(x => x.dueDate === key && x.id !== exceptId).reduce((sum, x) => sum + (Number(x.mins) || 0), 0);
+      return INBOX.filter(x => x.dueDate === key && x.id !== exceptId && !x.light).reduce((sum, x) => sum + (Number(x.mins) || 0), 0);
     }
     // Assign a day to a task, enforcing: duration is mandatory and the day stays within 4 hours.
     function tryAssignDay(item, key, mins) {
       const m = mins > 0 ? mins : Number(item.mins) || 0;
+      if (item.light) { if (m > 0) { item.mins = m; if (!item.running) item.remainingSec = m * 60; } item.dueDate = key; return true; }
       if (!(m > 0)) return false;
       if (dayCountFull(key, item.id)) return false;
       const load = dayLoadMins(key, item.id);
@@ -5114,7 +5122,7 @@
       inboxGroupsEl.innerHTML = secList.map((sec, secIdx) => {
         const items = isToday ? (todayView === 'overdue' ? overdueInboxItems() : INBOX.filter(item => item.dueDate === todayKey)).sort((a, b) => todayView === 'overdue' ? a.dueDate.localeCompare(b.dueDate) : (a.dueTime && b.dueTime) ? a.dueTime.localeCompare(b.dueTime) : (a.dueTime ? -1 : b.dueTime ? 1 : (a.todayRank ?? 1e9) - (b.todayRank ?? 1e9))) : INBOX.filter(item => item.sectionId === sec.id);
         const isOpen = Boolean(openMap[sec.id]);
-        const todayMins = isToday ? items.reduce((sum, x) => sum + (Number(x.mins) || 0), 0) : 0;
+        const todayMins = isToday ? items.filter(x => !x.light).reduce((sum, x) => sum + (Number(x.mins) || 0), 0) : 0;
         const todayPct = Math.min(100, Math.round(todayMins / DAY_CAP_MINS * 100));
         return `
           <div class="prio-group" data-sec-id="${sec.id}">
@@ -5126,7 +5134,7 @@
               </div>
               <div class="prio-group-right" style="gap:8px;">
                 ${isToday ? '' : `<button type="button" class="gear-btn" data-add-in-sec="${sec.id}" title="إضافة مهمة في هذا القسم" style="font-weight:800; padding:2px 8px;">+</button>`}
-                ${isToday ? (todayView === 'overdue' ? `<span class="count-pill" style="color:var(--red);">${toAr(items.length)}</span>` : ringHtml('count', toAr(items.length), items.length / DAY_CAP_COUNT) + ringHtml('time', fmtRingTime(todayMins), todayMins / DAY_CAP_MINS)) : `<span class="count-pill">${(sec.maxTasks > 0 ? `${toAr(items.length)}/${toAr(sec.maxTasks)}` : toAr(items.length))}</span>`}
+                ${isToday ? (todayView === 'overdue' ? `<span class="count-pill" style="color:var(--red);">${toAr(items.length)}</span>` : ringHtml('count', toAr(items.filter(x => !x.light).length), items.filter(x => !x.light).length / DAY_CAP_COUNT) + ringHtml('time', fmtRingTime(todayMins), todayMins / DAY_CAP_MINS)) : `<span class="count-pill">${(sec.maxTasks > 0 ? `${toAr(items.filter(x => !x.light).length)}/${toAr(sec.maxTasks)}` : toAr(items.length))}</span>`}
                 <span class="group-arrow">${isOpen ? '▼' : '◀'}</span>
               </div>
             </div>
@@ -5175,11 +5183,18 @@
                                 </div>
                                 <div class="row-meta">
                                   ${item.mins > 0 ? `<span class="task-dur" dir="ltr">${item.mins} min</span>` : ''}
-                                  ${inboxTimeCtl(item)}${item.repeat ? `<span title="${repLabel(item.repeat)}" style="font-size:13px;">🔁</span>` : ''}
+                                  ${inboxTimeCtl(item)}${item.light ? '<span title="خفيفة — مش محسوبة في الحدود" style="font-size:13px;">🪶</span>' : ''}${item.repeat ? `<span title="${repLabel(item.repeat)}" style="font-size:13px;">🔁</span>` : ''}
                                   ${isToday ? (todayView === 'overdue' ? inboxOverdueDateCtl(item) : '') : dueBadgeHtml(item)}
                                 </div>
                               </div>
                               ${item.note ? `<div class="task-note" style="padding-right:34px;">${item.note}</div>` : ''}
+                              ${item.sug ? `<div class="promote-box" style="margin:6px 0 0; padding:7px 10px; border-top:none; background:var(--blue-soft); border-radius:12px; gap:6px;">
+                                <span class="max-hint" style="font-weight:800; color:var(--blue);">🤖 اقتراح: ${item.sug.folder ? '📂 ' + escapeHtml(item.sug.folder) : ''}${item.sug.date ? ' · 📅 ' + escapeHtml(dueLabel(item.sug.date).text) : ''}${!item.sug.folder && !item.sug.date ? 'من غير فولدر أو تاريخ' : ''}</span>
+                                <button type="button" class="timer-btn" data-sug-ok="${item.id}" style="padding:5px 10px; background:var(--blue); color:#fff;">اعتمد</button>
+                                <button type="button" class="timer-btn" data-sug-done="${item.id}" style="padding:5px 10px; background:var(--green); color:#fff;">✓ تم</button>
+                                <button type="button" class="keep-chip ${item.light ? 'is-active' : ''}" data-toggle-light="${item.id}" style="padding:4px 9px; font-size:12px;" title="خفيفة — مش محسوبة في الحدود">🪶</button>
+                                <button type="button" class="icon-btn" data-sug-no="${item.id}" style="padding:5px 9px; font-size:12px;">تجاهل</button>
+                              </div>` : ''}
                             </div>
                           </div>
                           ${isToday && delegatingInboxId === item.id ? delegatePickerHtml(item) : ''}
@@ -5189,10 +5204,11 @@
                               <input type="text" class="input-field input-name" id="edit-inbox-name-${item.id}" value="${item.label}" placeholder="اسم المهمة" style="font-size:15px; padding:8px 10px;">
                               <input type="text" inputmode="numeric" class="input-field input-mins" id="edit-inbox-mins-${item.id}" style="font-size:15px; padding:8px 10px; width:80px;" value="" placeholder="${item.mins > 0 ? toAr(item.mins) + ' د' : 'الوقت'}">
                               <input type="text" class="input-field" id="edit-inbox-note-${item.id}" value="${item.note || ''}" placeholder="نوت / ملاحظة (اختياري)..." style="width:100%; font-weight:400; font-size:14px; padding:7px 10px;">
-                              <div style="flex:0 0 100%; display:flex; gap:5px; align-items:center; flex-wrap:nowrap;">
-                                <input type="date" class="input-field" id="edit-inbox-date-${item.id}" value="${item.dueDate || ''}" title="اليوم (اختياري)" style="width:auto; flex:0 1 auto; min-width:0; font-size:13px; padding:5px 7px;">
+                              <div style="flex:0 0 100%; display:flex; gap:5px; align-items:center; flex-wrap:wrap; box-sizing:border-box; max-width:100%;">
+                                <input type="date" class="input-field" id="edit-inbox-date-${item.id}" value="${item.dueDate || ''}" title="اليوم (اختياري)" style="width:auto; flex:1 1 110px; min-width:0; max-width:100%; font-size:13px; padding:5px 7px;">
                                 <button type="button" class="keep-chip" data-move-sec="${item.id}" style="font-size:12px; padding:5px 9px; flex-shrink:0;">📂 نقل</button>
                                 <button type="button" class="keep-chip ${item.repeat ? 'is-active' : ''}" data-edit-rep="${item.id}" style="font-size:12px; padding:5px 9px; flex-shrink:0;">🔁 ${item.repeat ? 'متكررة' : 'تكرار'}</button>
+                                <button type="button" class="keep-chip ${item.light ? 'is-active' : ''}" data-toggle-light="${item.id}" style="font-size:12px; padding:5px 9px; flex-shrink:0;" title="خفيفة — مش محسوبة في الحدود">🪶</button>
                               </div>
                               <button type="button" class="timer-btn" data-save-inbox="${item.id}">حفظ</button>
                               <button type="button" class="icon-btn" data-cancel-inbox-edit="1">إلغاء</button>
@@ -5498,6 +5514,16 @@
           }, item.dueDate, item.id);
         });
       });
+      inboxGroupsEl.querySelectorAll('[data-toggle-light]').forEach(btn => btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const it = INBOX.find(x => x.id === Number(btn.dataset.toggleLight)); if (!it) return;
+        if (!it.light) { it.light = true; }
+        else {
+          it.light = false;
+          if (it.dueDate && (dayCountFull(it.dueDate, it.id) || dayLoadMins(it.dueDate, it.id) + (Number(it.mins) || 0) > DAY_CAP_MINS)) { it.light = true; showWarningToast('مينفعش تشيل «خفيفة»: اليوم ده هيعدّي الحدود'); return; }
+        }
+        saveState(); render(); renderInboxInsideModal();
+      }));
       inboxGroupsEl.querySelectorAll('[data-edit-rep]').forEach(btn => {
         btn.addEventListener('click', () => {
           const id = Number(btn.dataset.editRep);
@@ -5519,7 +5545,7 @@
           const minsInp = byId(`edit-inbox-mins-${id}`);
           const noteInp = byId(`edit-inbox-note-${id}`);
           const chkMins = parseMins(minsInp ? minsInp.value : '');
-          if (chkMins > 0 && item.dueDate && dayLoadMins(item.dueDate, item.id) + Math.min(60, chkMins) > DAY_CAP_MINS) {
+          if (!item.light && chkMins > 0 && item.dueDate && dayLoadMins(item.dueDate, item.id) + Math.min(60, chkMins) > DAY_CAP_MINS) {
             showWarningToast(`المدة دي هتعدّي ${fmtCapHours(DAY_CAP_MINS)} ساعات في اليوم ده — المتبقي ${toAr(Math.max(0, DAY_CAP_MINS - dayLoadMins(item.dueDate, item.id)))} دقيقة`);
             return;
           }
@@ -5570,13 +5596,32 @@
         });
       });
 
+      inboxGroupsEl.querySelectorAll('[data-sug-no]').forEach(btn => btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const it = INBOX.find(x => x.id === Number(btn.dataset.sugNo)); if (!it) return;
+        delete it.sug; saveState(); renderInboxInsideModal();
+      }));
+      inboxGroupsEl.querySelectorAll('[data-sug-done]').forEach(btn => btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const id = Number(btn.dataset.sugDone);
+        const idx = INBOX.findIndex(x => x.id === id); if (idx === -1) return;
+        const removed = INBOX[idx]; INBOX.splice(idx, 1);
+        const logId = Date.now() + Math.floor(Math.random() * 1000);
+        COMPLETED.unshift({ logId, label: removed.label, mins: removed.mins || 0, completedAt: Date.now() });
+        saveState(); render(); renderInboxInsideModal(); checkCompletedMilestoneToast();
+        showInfoToast('✓ اتسجلت في المكتملة');
+      }));
+      inboxGroupsEl.querySelectorAll('[data-sug-ok]').forEach(btn => btn.addEventListener('click', e => {
+        e.stopPropagation();
+        const it = INBOX.find(x => x.id === Number(btn.dataset.sugOk)); if (it) approveSuggestion(it);
+      }));
       inboxGroupsEl.querySelectorAll('[data-set-inbox-sec]').forEach(btn => {
         btn.addEventListener('click', () => {
           const id = Number(btn.dataset.setInboxSec);
           const targetSec = btn.dataset.targetSec;
           const item = INBOX.find(x => x.id === id);
           if (!item) return;
-          if (item.sectionId !== targetSec && isInboxSectionFull(targetSec)) return;
+          if (item.sectionId !== targetSec && !item.light && isInboxSectionFull(targetSec)) return;
           item.sectionId = targetSec;
           openMap[targetSec] = true;
           openSections[targetSec] = true;
@@ -6064,6 +6109,119 @@
       });
       return ch;
     }
+    // ===== Claude import (drafts folder) =====
+    function ensureDraftSection() {
+      let d = INBOX_SECTIONS.find(x => x.draft);
+      if (!d) { d = { id: 'sec-drafts', name: '🤖 مسودات AI', color: '#8b5cf6', draft: true }; INBOX_SECTIONS.push(d); }
+      return d;
+    }
+    function approveSuggestion(item) {
+      const sg = item.sug; if (!sg) return;
+      if (!sg.folder) { showWarningToast('Claude مقترحش فولدر — انقل المهمة بإيدك'); return; }
+      const nm = String(sg.folder).trim();
+      const f = INBOX_SECTIONS.find(x => !x.draft && x.name.trim() === nm) || INBOX_SECTIONS.find(x => !x.draft && (x.name.includes(nm) || nm.includes(x.name.trim())));
+      if (!f) { showWarningToast('مش لاقي فولدر باسم «' + nm + '» — انقل المهمة بإيدك'); return; }
+      if (!item.light && isInboxSectionFull(f.id)) return;
+      if (sg.date) {
+        if (dayDiff(sg.date) < 0) { showWarningToast('التاريخ المقترح فات — غيّره بإيدك'); return; }
+        if (!item.light && !(Number(item.mins) > 0)) { showWarningToast('حدد مدة المهمة الأول عشان أتحقق من سعة اليوم'); return; }
+        if (!tryAssignDay(item, sg.date, Number(item.mins) || 0)) return;
+      }
+      item.sectionId = f.id; delete item.sug;
+      saveState(); render(); renderInboxInsideModal();
+      showInfoToast('اتنقلت لـ «' + f.name + '»' + (sg.date ? ' · ' + dueLabel(sg.date).text : ''));
+    }
+    function buildImportPrompt() {
+      const L = [];
+      const today = toDateKey(logicalToday());
+      L.push('# جهّز لي مهام للإنبوكس');
+      L.push('اتكلم معايا الأول عن يومي واعرف مني المهام المطلوبة. في الآخر، لما أقولك "جاهز"، اكتب المهام كلها كـ JSON فقط (من غير أي شرح قبله أو بعده) بالشكل ده بالظبط:');
+      L.push('[{"title":"اسم المهمة","mins":30,"date":"YYYY-MM-DD","folder":"اسم الفولدر بالظبط","note":"اختياري","light":false}]');
+      L.push('');
+      L.push(`اليوم عندي: ${today} (اليوم بيبدأ الساعة 3 الفجر).`);
+      L.push('');
+      L.push('## قواعدي (التزم بيها)');
+      L.push(`- كل مهمة لازم لها مدة بالدقايق (mins) من 5 لـ 60.`);
+      L.push(`- اليوم الواحد: أقصى ${DAY_CAP_COUNT} مهمة وأقصى ${Math.floor(DAY_CAP_MINS / 60)} ساعات (${DAY_CAP_MINS} دقيقة) إجمالي مدد.`);
+      L.push('- date اختياري: لو مفيش تاريخ مناسب خليه "" .');
+      L.push('- light: حط true للحاجات الصغيرة جدًا اللي بتحصل في النص (زي شاور، غسيل الوش، مكالمة دقيقتين). المهام الخفيفة مش بتتحسب في حدود العدد ولا الوقت، فمتعدّهاش في حساب سعة اليوم. باقي المهام الفعلية light:false.');
+      L.push('- folder لازم يكون واحد من الأسماء دي بالظبط:');
+      INBOX_SECTIONS.filter(x => !x.draft).forEach(x => {
+        const n = INBOX.filter(i => i.sectionId === x.id).length;
+        L.push(`  • ${x.name}${x.maxTasks > 0 ? ` (الحد ${x.maxTasks} مهام، فيه حاليًا ${n})` : ' (بلا حد)'}`);
+      });
+      L.push('');
+      L.push('## الحمل الحالي على الأيام (عشان توزع صح)');
+      for (let k = 0; k < 10; k++) {
+        const d = new Date(logicalToday().getTime() + k * 864e5); const key = toDateKey(d);
+        const n = INBOX.filter(i => i.dueDate === key && !i.light).length;
+        const m = INBOX.filter(i => i.dueDate === key && !i.light).reduce((a, i) => a + (Number(i.mins) || 0), 0);
+        L.push(`- ${key}: ${n} مهمة · ${m} دقيقة (المتاح: ${Math.max(0, DAY_CAP_COUNT - n)} مهمة، ${Math.max(0, DAY_CAP_MINS - m)} دقيقة)`);
+      }
+      return L.join('\n');
+    }
+    function parseImportText(txt) {
+      let t = String(txt || '').trim().replace(/^```[a-z]*\s*/i, '').replace(/```\s*$/, '').trim();
+      let arr = null;
+      try { arr = JSON.parse(t); } catch (e) {
+        const a = t.indexOf('['), b = t.lastIndexOf(']');
+        if (a >= 0 && b > a) { try { arr = JSON.parse(t.slice(a, b + 1)); } catch (e2) {} }
+      }
+      if (!Array.isArray(arr)) {
+        arr = t.split('\n').map(l => l.replace(/^[\s\-*•\d.)]+/, '').trim()).filter(Boolean).map(l => { const q = l.split('|').map(x => x.trim()); return { title: q[0], mins: q[1], date: q[2], folder: q[3], note: q[4] }; });
+      }
+      return arr.filter(o => o && (o.title || o.label || o.name));
+    }
+    function openImportDialog() {
+      const old = document.getElementById('imp-dialog'); if (old) old.remove();
+      const ov = document.createElement('div');
+      ov.className = 'modal-overlay'; ov.id = 'imp-dialog'; ov.style.zIndex = '460';
+      ov.innerHTML = `<div class="modal-box" style="max-width:520px;">
+        <div class="modal-head"><div style="display:flex; align-items:center; gap:8px;"><span>🤖</span><h2>استيراد AI</h2></div><button type="button" class="icon-btn" id="imp-x">✕</button></div>
+        <div style="display:flex; flex-direction:column; gap:10px;">
+          <div class="max-hint" style="white-space:normal; overflow-wrap:anywhere;">1) انسخ التعليمات والصقها في محادثة مع أي AI. 2) بعد ما يرد بالمهام، الصق ردّه هنا.</div>
+          <button type="button" class="keep-chip" id="imp-copy" style="align-self:flex-start; padding:8px 14px;">📋 نسخ التعليمات للـ AI</button>
+          <textarea id="imp-text" class="input-field" placeholder="الصق رد الـ AI هنا..." style="width:100%; box-sizing:border-box; min-height:150px; font-weight:400; font-size:14px; line-height:1.6; padding:10px; font-family:inherit;"></textarea>
+          <div class="max-hint" style="white-space:normal; overflow-wrap:anywhere;">المهام هتتضاف في فولدر «🤖 مسودات AI» ومعاها اقتراحاتها، وبتعتمدها واحدة واحدة (القواعد بتتطبق وقت الاعتماد).</div>
+          <div style="display:flex; gap:8px;"><button type="button" class="timer-btn" id="imp-go" style="background:var(--green); color:#fff;">استيراد</button><button type="button" class="icon-btn" id="imp-back">رجوع</button></div>
+        </div></div>`;
+      document.body.appendChild(ov);
+      const close = () => ov.remove();
+      ov.querySelector('#imp-x').onclick = close; ov.querySelector('#imp-back').onclick = close;
+      ov.addEventListener('click', e => { if (e.target === ov) close(); });
+      ov.querySelector('#imp-copy').onclick = async () => {
+        const txt = buildImportPrompt();
+        const cb = ov.querySelector('#imp-copy');
+        const flash = (msg, ok) => {
+          cb.textContent = msg; cb.style.background = ok ? 'var(--green)' : ''; cb.style.color = ok ? '#fff' : '';
+          clearTimeout(cb._t); cb._t = setTimeout(() => { cb.textContent = '📋 نسخ التعليمات للـ AI'; cb.style.background = ''; cb.style.color = ''; }, 2500);
+        };
+        try { await navigator.clipboard.writeText(txt); flash('✓ اتنسخت — الصقها في الـ AI', true); }
+        catch (e) { const ta = ov.querySelector('#imp-text'); ta.value = txt; ta.select(); flash('انسخ النص من الخانة تحت', false); }
+      };
+      ov.querySelector('#imp-go').onclick = () => {
+        const rows = parseImportText(ov.querySelector('#imp-text').value);
+        if (!rows.length) { showWarningToast('مقدرتش أفهم أي مهام من النص'); return; }
+        const d = ensureDraftSection();
+        let n = 0;
+        rows.forEach((o, i) => {
+          const label = String(o.title || o.label || o.name || '').trim(); if (!label) return;
+          const m = Math.min(60, parseMins(String(o.mins == null ? '' : o.mins)));
+          const date = /^\d{4}-\d{2}-\d{2}$/.test(String(o.date || '').trim()) ? String(o.date).trim() : '';
+          const folder = String(o.folder || '').trim();
+          const it = { id: Date.now() + i, label, sectionId: d.id };
+          if (m > 0) { it.mins = m; it.remainingSec = m * 60; }
+          if (o.note && String(o.note).trim()) it.note = String(o.note).trim();
+          if (o.light === true || o.light === 1 || String(o.light).toLowerCase() === 'true') it.light = true;
+          if (date || folder) it.sug = { date, folder };
+          INBOX.push(it); n++;
+        });
+        openSections[d.id] = true;
+        saveState(); render(); renderInboxInsideModal(); close();
+        showInfoToast('اتضاف ' + toAr(n) + ' مهمة في «مسودات AI»');
+      };
+    }
+    document.getElementById('open-inbox-import-btn').addEventListener('click', openImportDialog);
     function openSrDatePicker(it, getMins, after) {
       const old = document.getElementById('sr-date-dialog'); if (old) old.remove();
       const ov = document.createElement('div');
@@ -6172,7 +6330,7 @@
           const it = (kind === 'i' ? INBOX : ROUTINE).find(x => x.id === id); if (!it) return;
           const m = Math.min(60, parseMins(inp.value));
           if (!(m > 0)) { run(); return; }
-          if (kind === 'i' && it.dueDate && dayLoadMins(it.dueDate, it.id) + m > DAY_CAP_MINS) { showWarningToast(`المدة دي هتعدّي ${fmtCapHours(DAY_CAP_MINS)} ساعات في اليوم ده`); run(); return; }
+          if (kind === 'i' && !it.light && it.dueDate && dayLoadMins(it.dueDate, it.id) + m > DAY_CAP_MINS) { showWarningToast(`المدة دي هتعدّي ${fmtCapHours(DAY_CAP_MINS)} ساعات في اليوم ده`); run(); return; }
           it.mins = m; if (!it.running) it.remainingSec = m * 60;
           saveState(); render(); renderInboxInsideModal(); run();
         }));
