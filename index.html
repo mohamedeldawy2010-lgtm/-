@@ -5189,7 +5189,7 @@
                               </div>
                               ${item.note ? `<div class="task-note" style="padding-right:34px;">${item.note}</div>` : ''}
                               ${item.sug ? `<div class="promote-box" style="margin:6px 0 0; padding:7px 10px; border-top:none; background:var(--blue-soft); border-radius:12px; gap:6px;">
-                                <span class="max-hint" style="font-weight:800; color:var(--blue);">🤖 اقتراح: ${item.sug.folder ? '📂 ' + escapeHtml(item.sug.folder) : ''}${item.sug.date ? ' · 📅 ' + escapeHtml(dueLabel(item.sug.date).text) : ''}${!item.sug.folder && !item.sug.date ? 'من غير فولدر أو تاريخ' : ''}</span>
+                                <span class="max-hint" style="font-weight:800; color:var(--blue);">🤖 اقتراح: ${item.sug.folder ? '📂 ' + escapeHtml(item.sug.folder) : ''}${item.sug.date ? ' · 📅 ' + escapeHtml(dueLabel(item.sug.date).text) : ''}${item.sug.time ? ' · ⏰ ' + fmt12(item.sug.time) : ''}${!item.sug.folder && !item.sug.date ? 'من غير فولدر أو تاريخ' : ''}</span>
                                 <button type="button" class="timer-btn" data-sug-ok="${item.id}" style="padding:5px 10px; background:var(--blue); color:#fff;">اعتمد</button>
                                 <button type="button" class="timer-btn" data-sug-done="${item.id}" style="padding:5px 10px; background:var(--green); color:#fff;">✓ تم</button>
                                 <button type="button" class="keep-chip ${item.light ? 'is-active' : ''}" data-toggle-light="${item.id}" style="padding:4px 9px; font-size:12px;" title="خفيفة — مش محسوبة في الحدود">🪶</button>
@@ -6127,7 +6127,9 @@
         if (!item.light && !(Number(item.mins) > 0)) { showWarningToast('حدد مدة المهمة الأول عشان أتحقق من سعة اليوم'); return; }
         if (!tryAssignDay(item, sg.date, Number(item.mins) || 0)) return;
       }
-      item.sectionId = f.id; delete item.sug;
+      item.sectionId = f.id;
+      if (sg.time && item.dueDate) item.dueTime = sg.time;
+      delete item.sug;
       saveState(); render(); renderInboxInsideModal();
       showInfoToast('اتنقلت لـ «' + f.name + '»' + (sg.date ? ' · ' + dueLabel(sg.date).text : ''));
     }
@@ -6136,7 +6138,7 @@
       const today = toDateKey(logicalToday());
       L.push('# جهّز لي مهام للإنبوكس');
       L.push('اتكلم معايا الأول عن يومي واعرف مني المهام المطلوبة. في الآخر، لما أقولك "جاهز"، اكتب المهام كلها كـ JSON فقط (من غير أي شرح قبله أو بعده) بالشكل ده بالظبط:');
-      L.push('[{"title":"اسم المهمة","mins":30,"date":"YYYY-MM-DD","folder":"اسم الفولدر بالظبط","note":"اختياري","light":false}]');
+      L.push('[{"title":"اسم المهمة","mins":30,"date":"YYYY-MM-DD","folder":"اسم الفولدر بالظبط","time":"HH:MM","note":"اختياري","light":false}]');
       L.push('');
       L.push(`اليوم عندي: ${today} (اليوم بيبدأ الساعة 3 الفجر).`);
       L.push('');
@@ -6144,6 +6146,7 @@
       L.push(`- كل مهمة لازم لها مدة بالدقايق (mins) من 5 لـ 60.`);
       L.push(`- اليوم الواحد: أقصى ${DAY_CAP_COUNT} مهمة وأقصى ${Math.floor(DAY_CAP_MINS / 60)} ساعات (${DAY_CAP_MINS} دقيقة) إجمالي مدد.`);
       L.push('- date اختياري: لو مفيش تاريخ مناسب خليه "" .');
+      L.push('- time: ميعاد بداية المهمة بنظام 24 ساعة "HH:MM" (مثلاً "16:15" مش "4:15"). ده حقل لوحده — ممنوع تكتب الميعاد أو "من .. إلى .." جوه note. لو مفيش ميعاد محدد خليه "". المدة بتتحط في mins بس.');
       L.push('- light: حط true للحاجات الصغيرة جدًا اللي بتحصل في النص (زي شاور، غسيل الوش، مكالمة دقيقتين). المهام الخفيفة مش بتتحسب في حدود العدد ولا الوقت، فمتعدّهاش في حساب سعة اليوم. باقي المهام الفعلية light:false.');
       L.push('- folder لازم يكون واحد من الأسماء دي بالظبط:');
       INBOX_SECTIONS.filter(x => !x.draft).forEach(x => {
@@ -6211,9 +6214,27 @@
           const folder = String(o.folder || '').trim();
           const it = { id: Date.now() + i, label, sectionId: d.id };
           if (m > 0) { it.mins = m; it.remainingSec = m * 60; }
-          if (o.note && String(o.note).trim()) it.note = String(o.note).trim();
+          let note = (o.note && String(o.note).trim()) || '';
+          let time = '';
+          const tm = String(o.time || '').trim().match(/^(\d{1,2}):(\d{2})$/);
+          if (tm && +tm[1] < 24 && +tm[2] < 60) time = pad2(+tm[1]) + ':' + tm[2];
+          if (!time && note) {
+            // salvage: the AI wrote the slot inside the note ("من 4:15 إلى 4:45")
+            const rg = note.match(/(?:من\s*)?(\d{1,2}):(\d{2})\s*(?:إلى|الى|[-–—]|to)\s*(\d{1,2}):(\d{2})/i);
+            if (rg) {
+              let h1 = +rg[1], h2 = +rg[3];
+              if (h1 < 7) h1 += 12;
+              if (h2 < 7 || h2 < (+rg[1])) h2 += 12;
+              if (h1 < 24 && +rg[2] < 60) {
+                time = pad2(h1) + ':' + rg[2];
+                if (!(m > 0)) { const diff = (h2 * 60 + +rg[4]) - (h1 * 60 + +rg[2]); if (diff > 0 && diff <= 60) { it.mins = diff; it.remainingSec = diff * 60; } }
+                note = note.replace(rg[0], '').replace(/^[\s·\-–—،,]+|[\s·\-–—،,]+$/g, '');
+              }
+            }
+          }
+          if (note) it.note = note;
           if (o.light === true || o.light === 1 || String(o.light).toLowerCase() === 'true') it.light = true;
-          if (date || folder) it.sug = { date, folder };
+          if (date || folder || time) it.sug = { date, folder, time };
           INBOX.push(it); n++;
         });
         openSections[d.id] = true;
