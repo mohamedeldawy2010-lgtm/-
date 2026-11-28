@@ -6138,7 +6138,7 @@
       const today = toDateKey(logicalToday());
       L.push('# جهّز لي مهام للإنبوكس');
       L.push('اتكلم معايا الأول عن يومي واعرف مني المهام المطلوبة. في الآخر، لما أقولك "جاهز"، اكتب المهام كلها كـ JSON فقط (من غير أي شرح قبله أو بعده) بالشكل ده بالظبط:');
-      L.push('[{"title":"اسم المهمة","mins":30,"date":"YYYY-MM-DD","folder":"اسم الفولدر بالظبط","time":"HH:MM","note":"اختياري","light":false}]');
+      L.push('[{"title":"اسم المهمة","mins":30,"date":"YYYY-MM-DD","time":"HH:MM","note":"اختياري"}]');
       L.push('');
       L.push(`اليوم عندي: ${today} (اليوم بيبدأ الساعة 3 الفجر).`);
       L.push('');
@@ -6147,12 +6147,6 @@
       L.push(`- اليوم الواحد: أقصى ${DAY_CAP_COUNT} مهمة وأقصى ${Math.floor(DAY_CAP_MINS / 60)} ساعات (${DAY_CAP_MINS} دقيقة) إجمالي مدد.`);
       L.push('- date اختياري: لو مفيش تاريخ مناسب خليه "" .');
       L.push('- time: ميعاد بداية المهمة بنظام 24 ساعة "HH:MM" (مثلاً "16:15" مش "4:15"). ده حقل لوحده — ممنوع تكتب الميعاد أو "من .. إلى .." جوه note. لو مفيش ميعاد محدد خليه "". المدة بتتحط في mins بس.');
-      L.push('- light: حط true للحاجات الصغيرة جدًا اللي بتحصل في النص (زي شاور، غسيل الوش، مكالمة دقيقتين). المهام الخفيفة مش بتتحسب في حدود العدد ولا الوقت، فمتعدّهاش في حساب سعة اليوم. باقي المهام الفعلية light:false.');
-      L.push('- folder لازم يكون واحد من الأسماء دي بالظبط:');
-      INBOX_SECTIONS.filter(x => !x.draft).forEach(x => {
-        const n = INBOX.filter(i => i.sectionId === x.id).length;
-        L.push(`  • ${x.name}${x.maxTasks > 0 ? ` (الحد ${x.maxTasks} مهام، فيه حاليًا ${n})` : ' (بلا حد)'}`);
-      });
       L.push('');
       L.push('## الحمل الحالي على الأيام (عشان توزع صح)');
       for (let k = 0; k < 10; k++) {
@@ -6185,7 +6179,7 @@
           <div class="max-hint" style="white-space:normal; overflow-wrap:anywhere;">1) انسخ التعليمات والصقها في محادثة مع أي AI. 2) بعد ما يرد بالمهام، الصق ردّه هنا.</div>
           <button type="button" class="keep-chip" id="imp-copy" style="align-self:flex-start; padding:8px 14px;">📋 نسخ التعليمات للـ AI</button>
           <textarea id="imp-text" class="input-field" placeholder="الصق رد الـ AI هنا..." style="width:100%; box-sizing:border-box; min-height:150px; font-weight:400; font-size:14px; line-height:1.6; padding:10px; font-family:inherit;"></textarea>
-          <div class="max-hint" style="white-space:normal; overflow-wrap:anywhere;">المهام هتتضاف في فولدر «🤖 مسودات AI» ومعاها اقتراحاتها، وبتعتمدها واحدة واحدة (القواعد بتتطبق وقت الاعتماد).</div>
+          <div class="max-hint" style="white-space:normal; overflow-wrap:anywhere;">المهام هتتضاف في فولدر «🤖 مسودات AI» بتاريخها وميعادها ومدتها — وكلها خفيفة 🪶، وانت اللي تقرر أي منها تبقى عادية.</div>
           <div style="display:flex; gap:8px;"><button type="button" class="timer-btn" id="imp-go" style="background:var(--green); color:#fff;">استيراد</button><button type="button" class="icon-btn" id="imp-back">رجوع</button></div>
         </div></div>`;
       document.body.appendChild(ov);
@@ -6206,7 +6200,7 @@
         const rows = parseImportText(ov.querySelector('#imp-text').value);
         if (!rows.length) { showWarningToast('مقدرتش أفهم أي مهام من النص'); return; }
         const d = ensureDraftSection();
-        let n = 0;
+        let n = 0, late = 0; const touched = {};
         rows.forEach((o, i) => {
           const label = String(o.title || o.label || o.name || '').trim(); if (!label) return;
           const m = Math.min(60, parseMins(String(o.mins == null ? '' : o.mins)));
@@ -6233,13 +6227,15 @@
             }
           }
           if (note) it.note = note;
-          if (o.light === true || o.light === 1 || String(o.light).toLowerCase() === 'true') it.light = true;
-          if (date || folder || time) it.sug = { date, folder, time };
+          it.light = true; // كل المهام المستوردة خفيفة — هو اللي يقرر
+          if (date && dayDiff(date) >= 0) { it.dueDate = date; if (time) it.dueTime = time; }
+          else if (date) late++;
           INBOX.push(it); n++;
         });
         openSections[d.id] = true;
         saveState(); render(); renderInboxInsideModal(); close();
-        showInfoToast('اتضاف ' + toAr(n) + ' مهمة في «مسودات AI»');
+        showInfoToast('اتضاف ' + toAr(n) + ' مهمة في «مسودات AI» (كلها خفيفة 🪶)');
+        if (late) setTimeout(() => showWarningToast(toAr(late) + ' مهمة تاريخها فات واتساب من غير تاريخ'), 2600);
       };
     }
     document.getElementById('open-inbox-import-btn').addEventListener('click', openImportDialog);
